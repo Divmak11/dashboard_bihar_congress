@@ -344,7 +344,7 @@ function CoordinatorSearchDropdown({ coordinators, search, setSearch, selected, 
 
   // When selected changes, update input and close dropdown
   useEffect(() => {
-    if (selected) {
+    if (selected !== null) {
       setSearch(selected);
       setDropdownOpen(false);
     }
@@ -364,7 +364,8 @@ function CoordinatorSearchDropdown({ coordinators, search, setSearch, selected, 
 
   // On selection, set selected and close dropdown
   function handleSelect(name: string) {
-    setSelected(name);
+    setSelected(name + ""); // force new string instance
+    setSearch(name);
     setDropdownOpen(false);
   }
 
@@ -489,14 +490,16 @@ function LeaderCard({ row, fcFilter }: { row: MeetingRow; fcFilter?: string | nu
             </span>
           )}
           <button
-            className="btn btn-xs btn-outline"
+            className={`btn btn-xs btn-outline cursor-pointer transition-colors ${expanded ? "bg-blue-100 text-blue-800" : ""}`}
             onClick={() => setExpanded((e) => !e)}
             aria-label={expanded ? "Collapse details" : "Expand details"}
           >
             {expanded ? "Hide Details" : "Show Details"}
           </button>
           {isSLP && (
-            <button className="btn btn-xs btn-primary ml-2">Show Members</button>
+            <button className="btn btn-xs btn-primary ml-2 cursor-pointer transition-colors hover:bg-blue-700 hover:text-white active:bg-blue-900 active:text-white focus:bg-blue-700 focus:text-white">
+              Show Members
+            </button>
           )}
         </span>
       </div>
