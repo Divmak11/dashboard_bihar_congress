@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 :root {
   --background: #ffffff;
@@ -23,4 +24,18 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+.leaflet-container {
+  cursor: pointer !important;
+}
+
+.leaflet-tooltip.leaflet-tooltip-custom {
+  background: white;
+  border-radius: 4px;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  color: #222;
+  font-size: 1rem;
 }
