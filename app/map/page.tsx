@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
-import L from "leaflet";
 import { fetchSheetData, MeetingRow } from "../utils/fetchSheetData";
 
 // Dynamically import React-Leaflet components to avoid SSR issues
@@ -38,8 +37,10 @@ const FitBoundsHandler = dynamic(
       const map = useMap();
       useEffect(() => {
         if (geoData) {
-          const layer = L.geoJSON(geoData);
-          map.fitBounds(layer.getBounds(), { padding: [20, 20] });
+          import("leaflet").then(L => {
+            const layer = L.geoJSON(geoData);
+            map.fitBounds(layer.getBounds(), { padding: [20, 20] });
+          });
         }
       }, [geoData, map]);
       return null;
@@ -75,6 +76,9 @@ export default function BiharMapPage() {
   const [assemblyStats, setAssemblyStats] = useState<Record<string, { meetings: number; slp: number; onboarded: number }>>({});
   const [selectedAssembly, setSelectedAssembly] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<string>("shakti");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   // Fetch GeoJSON
   useEffect(() => {
@@ -199,7 +203,7 @@ export default function BiharMapPage() {
     <div className="max-w-7xl mx-auto p-8">
       <h1 className="text-2xl font-bold mb-4 text-center">Bihar Assembly Constituency Map</h1>
       <div className="relative w-full h-[900px] rounded-lg overflow-hidden">
-        {typeof window !== "undefined" && isDataReady && (
+        {mounted && isDataReady && (
           <MapContainer
             center={[25.5, 85.2]}
             zoom={7}
