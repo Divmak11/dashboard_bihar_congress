@@ -1,63 +1,99 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { fetchSheetData, MeetingRow } from "./utils/fetchSheetData";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "./utils/firebase";
+import { getWtmSlpSummary, getCurrentAdminUser } from "./utils/fetchFirebaseData";
+import { WtmSlpSummary } from "../models/types";
+import LogoutButton from "../components/LogoutButton";
 
-function getWTMSLPMetrics(data: MeetingRow[]): { assemblies: number; meetings: number; volunteers: number } {
-  const assemblies = new Set<string>();
-  let meetings = 0;
-  let volunteers = 0;
-  data.forEach((row: MeetingRow) => {
-    if (row["assembly name"]) assemblies.add(row["assembly name"]);
-    meetings++;
-    if ((row["recommended position"] || "").toLowerCase() === "india volunteer") volunteers++;
+// Interface for homepage card metrics
+interface DashboardCardMetrics {
+  wtmSlpMetrics: WtmSlpSummary | null;
+  isLoading: boolean;
+}
+
+export default function HomePage() {
+  const [user, authLoading, authError] = useAuthState(auth);
+  const [metrics, setMetrics] = useState<DashboardCardMetrics>({
+    wtmSlpMetrics: null,
+    isLoading: true
   });
-  return {
-    assemblies: assemblies.size,
-    meetings,
-    volunteers,
-  };
-}
+  
+  // Fetch data based on user role when user auth state changes
+  useEffect(() => {
+    // Skip if not authenticated yet
+    if (!user) return;
+    
+    async function fetchDashboardData() {
+      try {
+        console.log('[HomePage] Fetching dashboard data based on user role');
+        setMetrics(prev => ({ ...prev, isLoading: true }));
+        
+        // Get user role and assigned assemblies
+        const adminUser = await getCurrentAdminUser(user?.uid || "");
+        console.log('[HomePage] Admin user data:', adminUser);
+        
+        let assembliesFilter: string[] | undefined;
+        
+        // Determine which assemblies to filter by based on user role
+        if (adminUser?.role === 'admin') {
+          // Admin sees all assemblies (no filter)
+          assembliesFilter = undefined;
+          console.log('[HomePage] Admin user - fetching summary for all assemblies');
+        } else if (adminUser?.role === 'zonal-incharge' && adminUser.assemblies?.length > 0) {
+          // Zonal Incharge sees only their assigned assemblies
+          assembliesFilter = adminUser.assemblies;
+          console.log(`[HomePage] Zonal Incharge - fetching summary for assemblies: ${assembliesFilter.join(', ')}`);
+        } else {
+          // Other roles or no assemblies assigned
+          assembliesFilter = [];
+          console.log('[HomePage] Other role or no assemblies - showing empty data');
+        }
+        
+        // Fetch WTM-SLP summary for all time (no date parameters)
+        const wtmSlpSummary = await getWtmSlpSummary(undefined, undefined, assembliesFilter);
+        console.log('[HomePage] WTM-SLP summary data:', wtmSlpSummary);
+        
+        // Update metrics state with fetched data
+        setMetrics({
+          wtmSlpMetrics: wtmSlpSummary,
+          isLoading: false
+        });
+        
+      } catch (error) {
+        console.error('[HomePage] Error fetching dashboard data:', error);
+        setMetrics({
+          wtmSlpMetrics: null,
+          isLoading: false
+        });
+      }
+    }
+    
+    fetchDashboardData();
+  }, [user]);
+  
+  // Auth loading state
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
-function getLast3WeeksData(data: MeetingRow[]) {
-  // Group by week (ISO week number)
-  const now = new Date();
-  const weeks: { [week: string]: { meetings: number; assemblies: Set<string>; volunteers: number } } = {};
-  data.forEach((row) => {
-    const dateStr = row["date"];
-    if (!dateStr) return;
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return;
-    // Get ISO week number
-    const year = d.getFullYear();
-    const week = getWeekNumber(d);
-    const key = `${year}-W${week}`;
-    if (!weeks[key]) weeks[key] = { meetings: 0, assemblies: new Set(), volunteers: 0 };
-    weeks[key].meetings++;
-    if (row["assembly name"]) weeks[key].assemblies.add(row["assembly name"]);
-    if ((row["recommended position"] || "").toLowerCase() === "india volunteer") weeks[key].volunteers++;
-  });
-  // Get last 3 weeks (sorted)
-  const weekKeys = Object.keys(weeks).sort().slice(-3);
-  return weekKeys.map((key, idx) => ({
-    label: `week_${idx + 1}`,
-    meetings: weeks[key].meetings,
-    assemblies: weeks[key].assemblies.size,
-    volunteers: weeks[key].volunteers,
-  }));
-}
-
-// Helper: ISO week number
-function getWeekNumber(d: Date) {
-  d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil((((d as any) - (yearStart as any)) / 86400000 + 1) / 7);
-}
-
-export default async function HomePage() {
-  const data = await fetchSheetData();
-  const wtmSlpMetrics = getWTMSLPMetrics(data);
-
+  // Auth error state
+  if (authError) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          {authError.message}
+        </div>
+      </div>
+    );
+  }
+  
   // Dept. Head cards with pastel colors and metrics (all 0 for now)
   const DEPT_CARDS = [
     {
@@ -72,6 +108,7 @@ export default async function HomePage() {
         { label: "Total Registrations (MBY)", value: 0 },
       ],
     },
+    // Other department cards remain unchanged
     {
       key: "wtm-shakti-club",
       title: "WTM-SHAKTI CLUB",
@@ -118,7 +155,12 @@ export default async function HomePage() {
 
   return (
     <div className="max-w-5xl mx-auto p-8 grid gap-8">
-      <h1 className="text-3xl font-bold mb-6 text-center">WTM Dashboard</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-center flex-grow">WTM Dashboard</h1>
+        <div className="flex-shrink-0">
+          <LogoutButton />
+        </div>
+      </div>
       <div className="flex justify-center mb-6">
         <Link href="/map">
           <button className="px-6 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition font-semibold text-lg">
@@ -140,18 +182,34 @@ export default async function HomePage() {
             </span>
           </div>
           <div className="flex flex-col gap-2 mt-2">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-700">Assemblies Covered:</span>
-              <span className="text-gray-900 dark:text-gray-100 font-bold">{wtmSlpMetrics.assemblies}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-700">Meetings:</span>
-              <span className="text-gray-900 dark:text-gray-100 font-bold">{wtmSlpMetrics.meetings}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-700">Volunteers:</span>
-              <span className="text-gray-900 dark:text-gray-100 font-bold">{wtmSlpMetrics.volunteers}</span>
-            </div>
+            {metrics.isLoading ? (
+              // Loading state
+              <div className="flex justify-center items-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-red-500"></div>
+              </div>
+            ) : (
+              // Data display
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-700">Total Meetings:</span>
+                  <span className="text-gray-900 dark:text-gray-100 font-bold">
+                    {metrics.wtmSlpMetrics?.totalMeetings || 0}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-700">SLPs:</span>
+                  <span className="text-gray-900 dark:text-gray-100 font-bold">
+                    {metrics.wtmSlpMetrics?.totalSlps || 0}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-700">Onboarded:</span>
+                  <span className="text-gray-900 dark:text-gray-100 font-bold">
+                    {metrics.wtmSlpMetrics?.totalOnboarded || 0}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </Link>
         {/* Other department cards */}

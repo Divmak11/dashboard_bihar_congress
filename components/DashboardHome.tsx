@@ -1,9 +1,29 @@
 "use client";
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import type { MeetingRow } from "../app/utils/fetchSheetData";
+import LogoutButton from "./LogoutButton";
+import { WtmSlpSummary } from "../models/types";
 
 interface DashboardHomeProps {
   data: MeetingRow[];
+  coordinators?: { name: string; assembly: string; uid: string; role?: string; handler_id?: string }[];
+  onCoordinatorSelect?: (uid: string | null) => void;
+  selectedCoordinator?: string | null;
+  coordinatorDetails?: any | null;
+  loadingCoordinator?: boolean;
+  startDate?: string;
+  endDate?: string;
+  onDateChange?: (start: string, end: string) => void;
+  // New assembly-related props
+  assemblies?: { name: string; value: string | null }[];
+  selectedAssembly?: string | null;
+  onAssemblySelect?: (assembly: string | null) => void;
+  // New summary props
+  overallSummary?: WtmSlpSummary | null;
+  isSummaryLoading?: boolean;
+  // New member activities props
+  memberActivities?: any[];
+  isMembersLoading?: boolean;
 }
 
 // Normalized keys
@@ -29,13 +49,16 @@ function parseDate(dateStr: string) {
 }
 
 const getUniqueCoordinators = (data: MeetingRow[]) => {
-  // Map: normalized FC name -> { name, assembly }
-  const map = new Map<string, { name: string; assembly: string }>();
+  // Map: normalized FC name -> { name, assembly, uid, role }
+  const map = new Map<string, { name: string; assembly: string; uid: string; role?: string }>();
   data.forEach((row) => {
     const raw = row[KEY_COORDINATOR] || "";
     const norm = normalize(raw);
     const assembly = row[KEY_ASSEMBLY] || "";
-    if (norm && !map.has(norm)) map.set(norm, { name: raw.trim(), assembly });
+    if (norm && !map.has(norm)) {
+      // Use normalized name as the internal UID only when necessary
+      map.set(norm, { name: raw.trim(), assembly, uid: norm, role: "Unknown" });
+    }
   });
   return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
 };
@@ -51,35 +74,156 @@ const DATE_FILTERS = [
 
 function getDateRange(option: string) {
   const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  today.setHours(23, 59, 59, 999); // Set to end of today
+  
+  let start: Date | null = null;
+  let end: Date | null = today;
+  
   switch (option) {
     case "lastDay":
-      return [new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1), now];
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      start.setHours(0, 0, 0, 0); // Start of yesterday
+      break;
     case "lastWeek":
-      return [new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7), now];
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+      start.setHours(0, 0, 0, 0); // Start of day 7 days ago
+      break;
     case "last3Months":
-      return [new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()), now];
+      start = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+      start.setHours(0, 0, 0, 0); // Start of day 3 months ago
+      break;
     default:
-      return [null, null];
+      start = null;
+      end = null;
   }
+  
+  console.log(`[getDateRange] Option: ${option}, Start: ${start ? start.toISOString() : 'null'}, End: ${end ? end.toISOString() : 'null'}`);
+  return [start, end];
 }
 
-export default function DashboardHome({ data }: DashboardHomeProps) {
+export default function DashboardHome({ 
+  data, 
+  coordinators: externalCoordinators, 
+  onCoordinatorSelect,
+  selectedCoordinator: externalSelectedUid,
+  coordinatorDetails,
+  loadingCoordinator,
+  startDate,
+  endDate,
+  onDateChange,
+  // New assembly-related props
+  assemblies,
+  selectedAssembly,
+  onAssemblySelect,
+  // New summary props
+  overallSummary,
+  isSummaryLoading,
+  // New member activities props
+  memberActivities,
+  isMembersLoading = false
+}: DashboardHomeProps) {
+  console.log('[DashboardHome] Rendering with data length:', data.length);
+  console.log('[DashboardHome] External props:', {
+    hasCoordinators: !!externalCoordinators,
+    coordinatorsCount: externalCoordinators?.length,
+    selectedCoordinator: externalSelectedUid,
+    hasCoordinatorDetails: !!coordinatorDetails,
+    loadingCoordinator,
+    startDate,
+    endDate,
+    hasAssemblies: !!assemblies,
+    assembliesCount: assemblies?.length,
+    selectedAssembly
+  });
+
   // --- Global Date Filter State ---
   const [globalDateOption, setGlobalDateOption] = useState("all");
-  const [globalStart, setGlobalStart] = useState<string>("");
-  const [globalEnd, setGlobalEnd] = useState<string>("");
+  const [globalStart, setGlobalStart] = useState<string>(startDate || "");
+  const [globalEnd, setGlobalEnd] = useState<string>(endDate || "");
+  
+  // Update global date when external dates change
+  useEffect(() => {
+    if (startDate) {
+      console.log(`[DashboardHome] Updating globalStart from prop: ${startDate}`);
+      setGlobalStart(startDate);
+    }
+    if (endDate) {
+      console.log(`[DashboardHome] Updating globalEnd from prop: ${endDate}`);
+      setGlobalEnd(endDate);
+    }
+  }, [startDate, endDate]);
+
+  // Call external onDateChange when our internal dates change, but only if they've actually changed
+  useEffect(() => {
+    if (onDateChange && globalStart && globalEnd) {
+      // Only trigger the callback if the values are different from props (to prevent update loops)
+      const hasChanged = globalStart !== startDate || globalEnd !== endDate;
+      
+      if (hasChanged) {
+        console.log(`[DashboardHome] Calling onDateChange with: ${globalStart} to ${globalEnd}`);
+        onDateChange(globalStart, globalEnd);
+      } else {
+        console.log(`[DashboardHome] Skipping onDateChange - dates haven't changed`);
+      }
+    }
+  }, [globalStart, globalEnd, startDate, endDate, onDateChange]);
+
+  // NEW: Listen for globalDateOption changes and trigger date changes for presets
+  useEffect(() => {
+    console.log(`[DashboardHome] Date option changed to: ${globalDateOption}`);
+    
+    // Skip for custom option as it's handled separately by direct date inputs
+    if (globalDateOption !== 'custom') {
+      const [start, end] = getDateRange(globalDateOption);
+      
+      if (start) {
+        const startStr = start.toISOString().split('T')[0];
+        console.log(`[DashboardHome] Setting globalStart from option: ${startStr}`);
+        setGlobalStart(startStr);
+      }
+      
+      if (end) {
+        const endStr = end.toISOString().split('T')[0];
+        console.log(`[DashboardHome] Setting globalEnd from option: ${endStr}`);
+        setGlobalEnd(endStr);
+      }
+    }
+  }, [globalDateOption]);
 
   // --- Global Date Filtering ---
   const globalDateRange = useMemo(() => {
+    console.log(`[DashboardHome] Computing globalDateRange. Option: ${globalDateOption}, Start: ${globalStart}, End: ${globalEnd}`);
     if (globalDateOption === "custom") {
-      return [globalStart ? new Date(globalStart) : null, globalEnd ? new Date(globalEnd) : null];
+      const start = globalStart ? new Date(globalStart) : null;
+      const end = globalEnd ? new Date(globalEnd) : null;
+      
+      // Normalize the dates to beginning/end of day
+      if (start) start.setHours(0, 0, 0, 0);
+      if (end) end.setHours(23, 59, 59, 999);
+      
+      return [start, end];
     }
     if (globalDateOption === "all") return [null, null];
     return getDateRange(globalDateOption);
   }, [globalDateOption, globalStart, globalEnd]);
 
+  // Handle assembly selection
+  const handleAssemblyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    console.log(`[DashboardHome] Assembly dropdown changed to: ${value}`);
+    
+    // Convert empty string to null, otherwise use the value
+    const assemblyValue = value === "" ? null : value;
+    
+    if (onAssemblySelect) {
+      onAssemblySelect(assemblyValue);
+    }
+  };
+
   const filteredData = useMemo(() => {
     const [start, end] = globalDateRange;
+    console.log(`[DashboardHome] Filtering data by date range. Start: ${start}, End: ${end}, Data length: ${data.length}`);
     if (!start && !end) return data;
     return data.filter((row) => {
       const d = parseDate(row[KEY_DATE]);
@@ -92,34 +236,77 @@ export default function DashboardHome({ data }: DashboardHomeProps) {
 
   // Print first 5 rows of the data for debugging
   useEffect(() => {
-    console.log("First 5 rows of data:", data.slice(0, 5));
+    console.log("[DashboardHome] First 5 rows of data:", data.slice(0, 5));
     const uniquePositions = Array.from(
       new Set(data.map((row) => row[KEY_RECOMMENDED_POSITION]))
     );
-    console.log("Unique 'Recommended Position' values:", uniquePositions);
+    console.log("[DashboardHome] Unique 'Recommended Position' values:", uniquePositions);
 
     // Print all unique normalized recommended position values
     const uniqueNormalizedPositions = Array.from(
       new Set(data.map((row) => normalize(row[KEY_RECOMMENDED_POSITION])))
     );
-    console.log("Unique normalized 'Recommended Position' values:", uniqueNormalizedPositions);
+    console.log("[DashboardHome] Unique normalized 'Recommended Position' values:", uniqueNormalizedPositions);
 
     // Print first 20 rows being counted as SLP
     const slpRows = data.filter(
       (row) => normalize(row[KEY_RECOMMENDED_POSITION]) === "slp"
     );
-    console.log("First 20 rows counted as SLP:", slpRows.slice(0, 20));
-    console.log("Total rows counted as SLP:", slpRows.length);
+    console.log("[DashboardHome] First few rows counted as SLP:", slpRows.slice(0, 5));
+    console.log("[DashboardHome] Total rows counted as SLP:", slpRows.length);
   }, [data]);
 
-  // --- FC Search/Dropdown ---
-  const coordinators = useMemo(() => getUniqueCoordinators(data), [data]);
+  // --- Coordinator handling ---
+  // Use internally generated coordinators if no external ones provided
+  const internalCoordinators = useMemo(() => {
+    console.log("[DashboardHome] Computing internal coordinators from data");
+    return getUniqueCoordinators(data);
+  }, [data]);
+  
+  const displayCoordinators = externalCoordinators || internalCoordinators;
+  console.log("[DashboardHome] Using coordinators:", {
+    source: externalCoordinators ? "external" : "internal", 
+    count: displayCoordinators.length
+  });
+  
+  // Allow selection via UID if external coordinators provided, or via name if using internal
+  const [selectedName, setSelectedName] = useState<string | null>(null);
+  
+  // If using external coordinators and we have a selected UID, find the name
+  useEffect(() => {
+    if (externalCoordinators && externalSelectedUid) {
+      const selectedCoord = externalCoordinators.find(c => c.uid === externalSelectedUid);
+      if (selectedCoord) {
+        console.log(`[DashboardHome] Found coordinator name "${selectedCoord.name}" for UID ${externalSelectedUid}`);
+        setSelectedName(selectedCoord.name);
+      } else {
+        console.log(`[DashboardHome] No coordinator found for UID ${externalSelectedUid}`);
+        setSelectedName(null);
+      }
+    }
+  }, [externalCoordinators, externalSelectedUid]);
+  
+  // For dropdown and filtering
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<string | null>(null);
   const filteredCoordinators = useMemo(() => {
-    if (!search) return coordinators;
-    return coordinators.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
-  }, [coordinators, search]);
+    console.log(`[DashboardHome] Filtering coordinators by search term: "${search}"`);
+    if (!search) return displayCoordinators;
+    return displayCoordinators.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+  }, [displayCoordinators, search]);
+
+  // Handle coordinator selection - either by name (internal) or UID (external)
+  const handleCoordinatorSelect = (name: string | null) => {
+    console.log(`[DashboardHome] handleCoordinatorSelect called with name: ${name}`);
+    setSelectedName(name);
+    
+    if (onCoordinatorSelect) {
+      // Find the UID for this name
+      const selectedCoord = name ? displayCoordinators.find(c => c.name === name) : null;
+      const uid = selectedCoord?.uid || null;
+      console.log(`[DashboardHome] Calling external onCoordinatorSelect with UID: ${uid}`);
+      onCoordinatorSelect(uid);
+    }
+  };
 
   // --- FC-specific Date Filter ---
   const [fcDateOption, setFcDateOption] = useState("all");
@@ -127,7 +314,14 @@ export default function DashboardHome({ data }: DashboardHomeProps) {
   const [fcEnd, setFcEnd] = useState<string>("");
   const fcDateRange = useMemo(() => {
     if (fcDateOption === "custom") {
-      return [fcStart ? new Date(fcStart) : null, fcEnd ? new Date(fcEnd) : null];
+      const start = fcStart ? new Date(fcStart) : null;
+      const end = fcEnd ? new Date(fcEnd) : null;
+      
+      // Normalize the dates to beginning/end of day
+      if (start) start.setHours(0, 0, 0, 0);
+      if (end) end.setHours(23, 59, 59, 999);
+      
+      return [start, end];
     }
     if (fcDateOption === "all") return [null, null];
     return getDateRange(fcDateOption);
@@ -135,8 +329,21 @@ export default function DashboardHome({ data }: DashboardHomeProps) {
 
   // --- Coordinator Data & Filtering ---
   const coordinatorData = useMemo(() => {
-    if (!selected) return [];
-    let rows = data.filter((row) => normalize(row[KEY_COORDINATOR]) === normalize(selected));
+    // If we have external coordinator details, no need to filter from data
+    if (externalCoordinators && coordinatorDetails) {
+      console.log("[DashboardHome] Using external coordinator data");
+      return []; // The data for this coordinator is passed directly via props
+    }
+    
+    // Otherwise filter from the data
+    if (!selectedName) {
+      console.log("[DashboardHome] No coordinator selected, returning empty array");
+      return [];
+    }
+    console.log(`[DashboardHome] Filtering data for coordinator: ${selectedName}`);
+    let rows = data.filter((row) => normalize(row[KEY_COORDINATOR]) === normalize(selectedName));
+    console.log(`[DashboardHome] Found ${rows.length} rows for this coordinator`);
+    
     const [start, end] = fcDateRange;
     if (start || end) {
       rows = rows.filter((row) => {
@@ -146,40 +353,124 @@ export default function DashboardHome({ data }: DashboardHomeProps) {
         if (end && d > end) return false;
         return true;
       });
+      console.log(`[DashboardHome] After date filtering: ${rows.length} rows`);
     }
     return rows;
-  }, [data, selected, fcDateRange]);
+  }, [data, selectedName, fcDateRange, externalCoordinators, coordinatorDetails]);
 
   // --- FC Name & Assembly ---
-  const selectedAssembly = useMemo(() => {
-    if (!selected) return "";
-    const found = coordinators.find((c) => normalize(c.name) === normalize(selected));
+  const coordinatorAssembly = useMemo(() => {
+    console.log(`[DashboardHome] Computing selected assembly for: ${selectedName}`);
+    
+    if (coordinatorDetails && coordinatorDetails.personalInfo) {
+      console.log("[DashboardHome] Using assembly from coordinator details:", coordinatorDetails.personalInfo.assembly);
+      return coordinatorDetails.personalInfo.assembly || "";
+    }
+    
+    if (!selectedName) return "";
+    const found = displayCoordinators.find((c) => normalize(c.name) === normalize(selectedName));
+    console.log("[DashboardHome] Found assembly from coordinators list:", found?.assembly);
     return found?.assembly || "";
-  }, [selected, coordinators]);
+  }, [selectedName, displayCoordinators, coordinatorDetails]);
 
   // --- Summary Stats ---
-  const totalMeetings = filteredData.length;
-  const totalSLPs = useMemo(() => filteredData.filter((row) => normalize(row[KEY_RECOMMENDED_POSITION]) === "slp").length, [filteredData]);
-  const totalOnboarded = useMemo(() => filteredData.filter((row) => normalize(row[KEY_ONBOARDING_STATUS]) === "onboarded").length, [filteredData]);
+  // Directly use the aggregated values from the overallSummary prop.
+  const totalMeetings = overallSummary?.totalMeetings ?? 0;
+  const totalSLPs = overallSummary?.totalSlps ?? 0;
+  const totalOnboarded = overallSummary?.totalOnboarded ?? 0;
 
   // --- FC Summary Stats ---
-  const coordinatorMeetings = coordinatorData.length;
-  const coordinatorOnboarded = coordinatorData.filter((row) => normalize(row[KEY_ONBOARDING_STATUS]) === "onboarded").length;
-  const coordinatorSLPs = coordinatorData.filter((row) => normalize(row[KEY_RECOMMENDED_POSITION]) === "slp").length;
+  // Apply date filtering for coordinator data
+  const dateFilteredCoordinatorMeetings = useMemo(() => {
+    if (!coordinatorDetails?.detailedMeetings) return coordinatorData;
+    
+    const [start, end] = fcDateRange;
+    if (!start && !end) return coordinatorDetails.detailedMeetings;
+    
+    return coordinatorDetails.detailedMeetings.filter((row: MeetingRow) => {
+      const d = parseDate(row["date"]);
+      if (!d) return false;
+      if (start && d < start) return false;
+      if (end && d > end) return false;
+      return true;
+    });
+  }, [coordinatorDetails, fcDateRange, coordinatorData]);
+  
+  // Use the date-filtered data to calculate summary stats
+  const coordinatorMeetings = dateFilteredCoordinatorMeetings.length;
+    
+  const coordinatorSLPs = dateFilteredCoordinatorMeetings.filter(
+    (row: MeetingRow) => normalize(row[KEY_RECOMMENDED_POSITION]) === "slp"
+  ).length;
+    
+  const coordinatorOnboarded = dateFilteredCoordinatorMeetings.filter(
+    (row: MeetingRow) => normalize(row[KEY_ONBOARDING_STATUS]) === "onboarded"
+  ).length;
+  
+  console.log("[DashboardHome] Coordinator summary stats:", {
+    meetings: coordinatorMeetings,
+    slps: coordinatorSLPs,
+    onboarded: coordinatorOnboarded
+  });
 
   // --- FC Summary Card Filtering ---
   const [fcFilter, setFcFilter] = useState<null | "meetings" | "onboarded" | "slp">(null);
   const filteredCoordinatorData = useMemo(() => {
-    if (!fcFilter) return coordinatorData;
-    if (fcFilter === "meetings") return coordinatorData;
-    if (fcFilter === "onboarded") return coordinatorData.filter((row) => normalize(row[KEY_ONBOARDING_STATUS]) === "onboarded");
-    if (fcFilter === "slp") return coordinatorData.filter((row) => normalize(row[KEY_RECOMMENDED_POSITION]) === "slp");
-    return coordinatorData;
-  }, [coordinatorData, fcFilter]);
+    console.log(`[DashboardHome] Filtering coordinator data by: ${fcFilter || 'none'}`);
+    
+    // Apply date filtering first
+    const filterByFcDate = (rows: MeetingRow[]) => {
+      const [start, end] = fcDateRange;
+      if (!start && !end) return rows;
+      
+      return rows.filter(row => {
+        const d = parseDate(row["date"]);
+        if (!d) return false;
+        if (start && d < start) return false;
+        if (end && d > end) return false;
+        return true;
+      });
+    };
+    
+    // If we have coordinator details with detailed meetings from Firebase, use that
+    if (coordinatorDetails?.detailedMeetings) {
+      console.log(`[DashboardHome] Using detailed meetings from coordinatorDetails (${coordinatorDetails.detailedMeetings.length} meetings)`);
+      
+      // First filter by date
+      let meetings = filterByFcDate(coordinatorDetails.detailedMeetings);
+      console.log(`[DashboardHome] After date filtering: ${meetings.length} meetings`);
+      
+      // Then apply the card filter
+      if (fcFilter === "onboarded") {
+        return meetings.filter((row: MeetingRow) => normalize(row[KEY_ONBOARDING_STATUS]) === "onboarded");
+      }
+      if (fcFilter === "slp") {
+        return meetings.filter((row: MeetingRow) => normalize(row[KEY_RECOMMENDED_POSITION]) === "slp");
+      }
+      return meetings;
+    }
+    
+    // Otherwise fall back to the local data filtering
+    const dateFilteredData = filterByFcDate(coordinatorData);
+    
+    if (!fcFilter) return dateFilteredData;
+    if (fcFilter === "meetings") return dateFilteredData;
+    if (fcFilter === "onboarded") return dateFilteredData.filter((row) => normalize(row[KEY_ONBOARDING_STATUS]) === "onboarded");
+    if (fcFilter === "slp") return dateFilteredData.filter((row) => normalize(row[KEY_RECOMMENDED_POSITION]) === "slp");
+    return dateFilteredData;
+  }, [coordinatorData, fcFilter, coordinatorDetails, fcDateRange]);
 
   // --- UI ---
   return (
-    <div className="max-w-6xl mx-auto p-4 space-y-8">
+    <div className="w-full mx-auto p-2 space-y-6">
+      {/* Header with Logout Button */}
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">WTM-SLP Dashboard</h1>
+        <div className="flex-shrink-0">
+          <LogoutButton />
+        </div>
+      </div>
+      
       {/* Global Date Filter */}
       <DateFilter
         label="Filter by Date"
@@ -193,39 +484,68 @@ export default function DashboardHome({ data }: DashboardHomeProps) {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <SummaryCard label="Total Meetings Done" value={totalMeetings} />
-        <SummaryCard label="Total SLPs" value={totalSLPs} />
-        <SummaryCard label="Total Onboarded" value={totalOnboarded} />
+        <SummaryCard label="Total Meetings Done" value={totalMeetings} isLoading={isSummaryLoading} />
+        <SummaryCard label="Total SLPs" value={totalSLPs} isLoading={isSummaryLoading} />
+        <SummaryCard label="Total Onboarded" value={totalOnboarded} isLoading={isSummaryLoading} />
       </div>
 
-      {/* Coordinator Search/Select */}
+      {/* Assembly Dropdown */}
+      {assemblies && assemblies.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center gap-4 mb-4">
+          <div className="w-full max-w-xs">
+            <label htmlFor="assembly-select" className="block text-sm font-medium text-gray-700 mb-1">
+              Select Assembly
+            </label>
+            <select
+              id="assembly-select"
+              className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+              value={selectedAssembly || ""}
+              onChange={handleAssemblyChange}
+            >
+              {assemblies.map((assembly, index) => (
+                <option key={index} value={assembly.value || ""}>
+                  {assembly.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* Coordinator Search/Select - Always enabled if coordinators are available */}
       <div className="flex flex-col sm:flex-row items-center gap-4">
+        {externalCoordinators && externalCoordinators.length > 0 ? (
         <CoordinatorSearchDropdown
           coordinators={filteredCoordinators}
           search={search}
           setSearch={setSearch}
-          selected={selected}
-          setSelected={setSelected}
+          selected={selectedName}
+          setSelected={handleCoordinatorSelect}
         />
+        ) : (
+          <div className="w-full max-w-xs text-gray-500 italic">
+            No coordinators available
+          </div>
+        )}
       </div>
 
       {/* Coordinator Summary */}
-      {selected && (
+      {selectedName && (
         <div className="space-y-4">
           {/* Assembly (left) and FC Name (right) */}
           <div className="flex items-center justify-between mb-2">
-            {selectedAssembly && (
+            {coordinatorAssembly && (
               <div className="flex items-center gap-2">
                 <span className="text-lg font-semibold text-primary">Assembly:</span>
                 <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-800 font-medium shadow-sm border border-blue-200">
-                  {selectedAssembly}
+                  {coordinatorAssembly}
                 </span>
               </div>
             )}
             <div className="flex items-center gap-2">
               <span className="text-lg font-semibold text-primary">Coordinator:</span>
               <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-800 font-medium shadow-sm border border-gray-200">
-                {selected}
+                {selectedName}
               </span>
             </div>
           </div>
@@ -239,33 +559,76 @@ export default function DashboardHome({ data }: DashboardHomeProps) {
             end={fcEnd}
             setEnd={setFcEnd}
           />
+          
+          {/* Loading indicator for coordinator details */}
+          {loadingCoordinator && (
+            <div className="flex justify-center my-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          )}
+          
           {/* FC Summary Cards (tappable) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <SummaryCard
-              label="Meetings Done"
-              value={coordinatorMeetings}
-              tappable
-              selected={fcFilter === "meetings"}
-              onClick={() => setFcFilter(fcFilter === "meetings" ? null : "meetings")}
-            />
-            <SummaryCard
-              label="Leaders Onboarded"
-              value={coordinatorOnboarded}
-              tappable
-              selected={fcFilter === "onboarded"}
-              onClick={() => setFcFilter(fcFilter === "onboarded" ? null : "onboarded")}
-            />
-            <SummaryCard
-              label="SLPs Made"
-              value={coordinatorSLPs}
-              tappable
-              selected={fcFilter === "slp"}
-              onClick={() => setFcFilter(fcFilter === "slp" ? null : "slp")}
-            />
-          </div>
-          <LeaderCardList data={filteredCoordinatorData} fcFilter={fcFilter} />
+          {!loadingCoordinator && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <SummaryCard
+                  label="Meetings Done"
+                  value={coordinatorMeetings}
+                  tappable
+                  selected={fcFilter === "meetings"}
+                  onClick={() => setFcFilter(fcFilter === "meetings" ? null : "meetings")}
+                />
+                <SummaryCard
+                  label="SLPs Added"
+                  value={coordinatorSLPs}
+                  tappable
+                  selected={fcFilter === "slp"}
+                  onClick={() => setFcFilter(fcFilter === "slp" ? null : "slp")}
+                />
+                <SummaryCard
+                  label="Onboarded"
+                  value={coordinatorOnboarded}
+                  tappable
+                  selected={fcFilter === "onboarded"}
+                  onClick={() => setFcFilter(fcFilter === "onboarded" ? null : "onboarded")}
+                />
+              </div>
+
+              {/* Leader Cards List (visible when a card is selected) */}
+              {fcFilter && (
+                <>
+                  {/* Debug info */}
+                  {console.log('[DEBUG] filteredCoordinatorData:', {
+                    length: filteredCoordinatorData.length,
+                    firstItem: filteredCoordinatorData[0] || null,
+                    hasLeaderName: filteredCoordinatorData[0]?.["leader name"] || false
+                  })}
+                  <LeaderCardList data={filteredCoordinatorData} fcFilter={fcFilter} />
+                </>
+              )}
+            </>
+          )}
         </div>
       )}
+
+      {/* Display either member activities or leader data based on what was loaded */}
+      {memberActivities && memberActivities.length > 0 ? (
+        <div className="mt-4">
+          <h2 className="text-xl font-semibold mb-4">Member Activities</h2>
+          <MembersList members={memberActivities} isLoading={isMembersLoading} />
+        </div>
+      ) : coordinatorDetails ? (
+        <div className="mt-4">
+          <h2 className="text-xl font-semibold mb-4">Meetings & Recommendations</h2>
+          {coordinatorDetails.detailedMeetings ? (
+            <LeaderCardList data={coordinatorDetails.detailedMeetings} fcFilter={null} />
+          ) : (
+            <div className="text-center py-16">
+              <p className="text-gray-500">No meeting data available</p>
+            </div>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -312,7 +675,7 @@ function DateFilter({ label, dateOption, setDateOption, start, setStart, end, se
 }
 
 function CoordinatorSearchDropdown({ coordinators, search, setSearch, selected, setSelected }: {
-  coordinators: { name: string; assembly: string }[];
+  coordinators: { name: string; assembly: string; uid: string; role?: string }[];
   search: string;
   setSearch: (v: string) => void;
   selected: string | null;
@@ -369,33 +732,71 @@ function CoordinatorSearchDropdown({ coordinators, search, setSearch, selected, 
     setDropdownOpen(false);
   }
 
+  // Helper to get role display text
+  function getRoleDisplay(role: string | undefined): string {
+    if (!role) return '';
+    
+    // Convert to standard role display text
+    if (role === 'Assembly Coordinator') return 'AC';
+    if (role === 'SLP') return 'SLP';
+    if (role === 'ASLP') return 'ASLP';
+    
+    return role;
+  }
+  
+  // Helper to get role badge color styling
+  function getRoleBadgeStyle(role: string | undefined): string {
+    if (!role) return 'bg-gray-100 text-gray-800';
+    
+    // Different colors for each role type
+    if (role === 'Assembly Coordinator' || role === 'AC') 
+      return 'bg-green-100 text-green-800'; // Green for AC
+    
+    if (role === 'SLP') 
+      return 'bg-purple-100 text-purple-800'; // Purple for SLP
+    
+    if (role === 'ASLP') 
+      return 'bg-blue-100 text-blue-800'; // Blue for ASLP
+    
+    // Default styling for other/unknown roles
+    return 'bg-gray-100 text-gray-800';
+  }
+
   return (
     <div className="relative w-full max-w-xs">
-      <input
-        ref={inputRef}
-        type="text"
-        placeholder="Search Field Coordinator..."
-        className="input input-bordered w-full pr-10"
-        value={selected && !dropdownOpen ? selected : search}
-        onFocus={handleFocus}
-        onChange={handleChange}
-        autoComplete="off"
-        onBlur={() => setTimeout(() => setDropdownOpen(false), 100)}
-      />
+      <div className="relative">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Search Field Coordinator..."
+          className="input input-bordered w-full pl-10 pr-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          value={selected && !dropdownOpen ? selected : search}
+          onFocus={handleFocus}
+          onChange={handleChange}
+          autoComplete="off"
+          onBlur={() => setTimeout(() => setDropdownOpen(false), 100)}
+        />
+      </div>
       {dropdownOpen && (
         <div
           ref={dropdownRef}
-          className="absolute z-10 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded shadow mt-1 max-h-60 overflow-y-auto"
+          className="absolute z-10 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto"
         >
           {coordinators.length === 0 && (
-            <div className="p-2 text-gray-500">No coordinators found.</div>
+            <div className="p-4 text-gray-500 text-center">No coordinators found.</div>
           )}
           {coordinators.map((c) => {
             const matchIdx = c.name.toLowerCase().indexOf(search.toLowerCase());
+            const roleDisplay = getRoleDisplay(c.role);
+            const roleBadgeStyle = getRoleBadgeStyle(c.role);
+            
             return (
               <div
-                key={c.name}
-                className={`flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900 ${selected === c.name ? "bg-blue-100 dark:bg-blue-800" : ""}`}
+                key={c.uid}
+                className={`flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900 ${selected === c.name ? "bg-blue-100 dark:bg-blue-800" : ""} border-b border-gray-100`}
                 onClick={() => handleSelect(c.name)}
               >
                 <span className="font-medium">
@@ -411,9 +812,9 @@ function CoordinatorSearchDropdown({ coordinators, search, setSearch, selected, 
                     c.name
                   )}
                 </span>
-                {c.assembly && (
-                  <span className="ml-auto px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs font-semibold border border-blue-200">
-                    {c.assembly}
+                {roleDisplay && (
+                  <span className={`px-3 py-1 rounded-full ${roleBadgeStyle} text-xs font-semibold ml-2`}>
+                    {roleDisplay}
                   </span>
                 )}
               </div>
@@ -425,12 +826,13 @@ function CoordinatorSearchDropdown({ coordinators, search, setSearch, selected, 
   );
 }
 
-function SummaryCard({ label, value, tappable, selected, onClick }: {
+function SummaryCard({ label, value, tappable, selected, onClick, isLoading }: {
   label: string;
   value: number;
   tappable?: boolean;
   selected?: boolean;
   onClick?: () => void;
+  isLoading?: boolean;
 }) {
   return (
     <div
@@ -439,7 +841,15 @@ function SummaryCard({ label, value, tappable, selected, onClick }: {
         ${selected ? "bg-blue-100 border-blue-400 shadow-lg" : "border-gray-200 dark:border-gray-800"}`}
       onClick={tappable ? onClick : undefined}
     >
-      <div className="text-3xl font-bold mb-2">{value}</div>
+      <div className="text-3xl font-bold mb-2">
+        {isLoading ? (
+          <div className="flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+          </div>
+        ) : (
+          value
+        )}
+      </div>
       <div className="text-sm text-gray-600 dark:text-gray-300">{label}</div>
     </div>
   );
@@ -459,30 +869,57 @@ function LeaderCardList({ data, fcFilter }: { data: MeetingRow[]; fcFilter?: str
 function LeaderCard({ row, fcFilter }: { row: MeetingRow; fcFilter?: string | null }) {
   const [expanded, setExpanded] = useState(false);
   const isSLP = normalize(row[KEY_RECOMMENDED_POSITION]) === "slp";
+  const isInactive = normalize(row["activity status"]) === "inactive";
+  
+  // Card style based on activity status
+  const cardStyle = isInactive 
+    ? "bg-red-50 dark:bg-red-900 rounded-xl shadow border border-red-200 dark:border-red-800 p-4 flex flex-col gap-2 hover:shadow-lg transition-shadow"
+    : "bg-white dark:bg-gray-900 rounded-xl shadow border border-gray-200 dark:border-gray-800 p-4 flex flex-col gap-2 hover:shadow-lg transition-shadow";
+  
+  // Activity status tag style
+  const activityStatusStyle = isInactive
+    ? "px-2 py-0.5 rounded bg-red-100 text-red-800 text-xs font-semibold border border-red-200"
+    : "px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs font-semibold border border-green-200";
+  
+  // Position tag style based on role
+  const getPositionTagStyle = (position: string) => {
+    const normalizedPosition = normalize(position);
+    
+    if (normalizedPosition === 'assembly coordinator' || normalizedPosition === 'ac')
+      return "px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs font-semibold border border-green-200";
+    
+    if (normalizedPosition === 'slp')
+      return "px-2 py-0.5 rounded bg-purple-100 text-purple-800 text-xs font-semibold border border-purple-200";
+    
+    if (normalizedPosition === 'aslp')
+      return "px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs font-semibold border border-blue-200";
+    
+    // Default style
+    return "px-2 py-0.5 rounded bg-gray-100 text-gray-800 text-xs font-semibold border border-gray-200";
+  };
+  
   return (
-    <div
-      className="bg-white dark:bg-gray-900 rounded-xl shadow border border-gray-200 dark:border-gray-800 p-4 flex flex-col gap-2 hover:shadow-lg transition-shadow"
-    >
+    <div className={cardStyle}>
       {/* Overview Row */}
       <div className="flex flex-wrap items-center gap-2 mb-1">
         <span className="text-lg font-bold text-primary">
           {row["leader name"]}
         </span>
-        {row["caste"] && (
-          <span className="px-2 py-0.5 rounded bg-yellow-100 text-yellow-800 text-xs font-semibold border border-yellow-200">
-            {row["caste"]}
+        
+        {/* Position tag */}
+        {row["recommended position"] && (
+          <span className={getPositionTagStyle(row["recommended position"])}>
+            {row["recommended position"]}
           </span>
         )}
-        {row["level of influence"] && (
-          <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 text-xs font-semibold border border-purple-200">
-            {row["level of influence"]}
-          </span>
-        )}
+        
+        {/* Activity status tag with conditional styling */}
         {row["activity status"] && (
-          <span className="px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs font-semibold border border-green-200">
+          <span className={activityStatusStyle}>
             {row["activity status"]}
           </span>
         )}
+        
         <span className="ml-auto flex items-center gap-2">
           {row["phone number"] && (
             <span className="text-sm text-blue-700 font-mono bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
@@ -503,47 +940,209 @@ function LeaderCard({ row, fcFilter }: { row: MeetingRow; fcFilter?: string | nu
           )}
         </span>
       </div>
-      {/* Overview Details Row */}
+      
+      {/* Overview Details Row - Enhanced with separate location fields */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
         <div className="flex flex-col">
           <span className="font-semibold text-gray-600">Location</span>
-          <span className="text-gray-800 dark:text-gray-200">
-            {row["village"] || "-"}, {row["panchayat"] || "-"}, {row["block"] || "-"}
-          </span>
+          <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
+            {row["village"] && <span>Village: {row["village"]}</span>}
+            {row["panchayat"] && <span>Panchayat: {row["panchayat"]}</span>}
+            {row["block"] && <span>Block: {row["block"]}</span>}
+            {row["assembly name"] && <span>Assembly: {row["assembly name"]}</span>}
+          </div>
         </div>
         <div className="flex flex-col">
           <span className="font-semibold text-gray-600">Date</span>
           <span className="text-gray-800 dark:text-gray-200">{row["date"] || "-"}</span>
         </div>
       </div>
-      {/* Expandable Details */}
+      
+      {/* Expandable Details - Enhanced with additional fields */}
       {expanded && (
         <div className="mt-2 border-t pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4 transition-all">
           <div className="flex flex-col gap-1">
             <span className="font-semibold text-gray-600">Demographics</span>
-            <span className="text-gray-800 dark:text-gray-200">
-              Gender: {row["gender"] || "-"}, Age: {row["age"] || "-"}, Category: {row["category"] || "-"}
-            </span>
+            <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
+              {row["gender"] && <span>Gender: {row["gender"]}</span>}
+              {row["age"] && <span>Age: {row["age"]}</span>}
+              {row["category"] && <span>Category: {row["category"]}</span>}
+              {row["caste"] && <span>Caste: {row["caste"]}</span>}
+            </div>
           </div>
+          
           <div className="flex flex-col gap-1">
             <span className="font-semibold text-gray-600">Profile</span>
-            <span className="text-gray-800 dark:text-gray-200">
-              Profession: {row["leader's current profession"] || "-"}
-            </span>
-            <span className="text-xs text-gray-500">
-              {row["leader's detailed profile"] || "-"}
-            </span>
+            <div className="grid grid-cols-1 gap-1">
+              {row["leader's current profession"] && (
+                <span className="text-gray-800 dark:text-gray-200">
+                  Profession: {row["leader's current profession"]}
+                </span>
+              )}
+              {row["leader's detailed profile"] && (
+                <span className="text-xs text-gray-500">
+                  {row["leader's detailed profile"]}
+                </span>
+              )}
+            </div>
           </div>
+          
           <div className="flex flex-col gap-1">
-            <span className="font-semibold text-gray-600">Remark</span>
-            <span className="text-gray-800 dark:text-gray-200">{row["remark"] || "-"}</span>
+            <span className="font-semibold text-gray-600">Political Information</span>
+            <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
+              {row["level of influence"] && <span>Level of Influence: {row["level of influence"]}</span>}
+              {row["party inclination"] && <span>Party Inclination: {row["party inclination"]}</span>}
+            </div>
           </div>
+          
           <div className="flex flex-col gap-1">
-            <span className="font-semibold text-gray-600">Email</span>
-            <span className="text-gray-800 dark:text-gray-200">{row["email address"] || "-"}</span>
+            <span className="font-semibold text-gray-600">Contact</span>
+            <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
+              {row["email address"] && <span>Email: {row["email address"]}</span>}
+              {row["remark"] && <span>Remark: {row["remark"]}</span>}
+            </div>
           </div>
         </div>
       )}
+    </div>
+  );
+} 
+
+function MemberCard({ member }: { member: any }) {
+  const [expanded, setExpanded] = useState(false);
+  
+  // Determine if the member is active/inactive
+  const isInactive = member.status === "Inactive";
+  
+  // Card style based on activity status
+  const cardStyle = isInactive 
+    ? "bg-red-50 dark:bg-red-900 rounded-xl shadow border border-red-200 dark:border-red-800 p-4 flex flex-col gap-2 hover:shadow-lg transition-shadow"
+    : "bg-white dark:bg-gray-900 rounded-xl shadow border border-gray-200 dark:border-gray-800 p-4 flex flex-col gap-2 hover:shadow-lg transition-shadow";
+  
+  return (
+    <div className={cardStyle}>
+      {/* Overview Row */}
+      <div className="flex flex-wrap items-center gap-2 mb-1">
+        <span className="text-lg font-bold text-primary">
+          {member.name || "Unknown Member"}
+        </span>
+        
+        {/* Tags section */}
+        <div className="flex flex-wrap gap-1">
+          {member.gender && (
+            <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 text-xs font-semibold border border-purple-200">
+              {member.gender}
+            </span>
+          )}
+          
+          {member.category && (
+            <span className="px-2 py-0.5 rounded bg-yellow-100 text-yellow-800 text-xs font-semibold border border-yellow-200">
+              {member.category}
+            </span>
+          )}
+          
+          {member.profession && (
+            <span className="px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs font-semibold border border-green-200">
+              {member.profession}
+            </span>
+          )}
+        </div>
+        
+        <span className="ml-auto flex items-center gap-2">
+          {(member.phoneNumber || member.mobileNumber) && (
+            <span className="text-sm text-blue-700 font-mono bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+              {member.phoneNumber || member.mobileNumber}
+            </span>
+          )}
+          <button
+            className={`btn btn-xs btn-outline cursor-pointer transition-colors ${expanded ? "bg-blue-100 text-blue-800" : ""}`}
+            onClick={() => setExpanded((e) => !e)}
+            aria-label={expanded ? "Collapse details" : "Expand details"}
+          >
+            {expanded ? "Hide Details" : "Show Details"}
+          </button>
+        </span>
+      </div>
+      
+      {/* Overview Details Row - Location information */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+        <div className="flex flex-col">
+          <span className="font-semibold text-gray-600">Location</span>
+          <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
+            {member.village && <span>Village: {member.village}</span>}
+            {member.panchayat && <span>Panchayat: {member.panchayat}</span>}
+            {member.block && <span>Block: {member.block}</span>}
+            {member.assembly && <span>Assembly: {member.assembly}</span>}
+          </div>
+        </div>
+        <div className="flex flex-col">
+          <span className="font-semibold text-gray-600">Contact</span>
+          <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
+            {member.phoneNumber && <span>Phone: {member.phoneNumber}</span>}
+            {member.email && <span>Email: {member.email}</span>}
+          </div>
+        </div>
+      </div>
+      
+      {/* Expandable Details */}
+      {expanded && (
+        <div className="mt-2 border-t pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4 transition-all">
+          {/* Additional details when expanded */}
+          <div className="flex flex-col gap-1">
+            <span className="font-semibold text-gray-600">Demographics</span>
+            <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
+              {member.age && <span>Age: {member.age}</span>}
+              {member.gender && <span>Gender: {member.gender}</span>}
+              {member.category && <span>Category: {member.category}</span>}
+              {member.caste && <span>Caste: {member.caste}</span>}
+            </div>
+          </div>
+          
+          {/* Notes section */}
+          {(member.notes || member.remarks || member.additionalDetails) && (
+            <div className="flex flex-col gap-1">
+              <span className="font-semibold text-gray-600">Notes</span>
+              <div className="grid grid-cols-1 gap-1">
+                {member.notes && (
+                  <span className="text-gray-800 dark:text-gray-200">{member.notes}</span>
+                )}
+                {member.remarks && (
+                  <span className="text-gray-800 dark:text-gray-200">{member.remarks}</span>
+                )}
+                {member.additionalDetails && (
+                  <span className="text-gray-800 dark:text-gray-200">{member.additionalDetails}</span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MembersList({ members, isLoading }: { members: any[]; isLoading: boolean }) {
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-16">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (!members || members.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <p className="text-gray-500 dark:text-gray-400">No member data available</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      {members.map((member) => (
+        <MemberCard key={member.id} member={member} />
+      ))}
     </div>
   );
 } 

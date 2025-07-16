@@ -182,13 +182,9 @@ export default function BiharMapPage() {
     // Initial tooltip
     const tooltipHtml = `
       <div class='font-semibold text-base mb-1'>${assemblyName || "Constituency"}</div>
-      <div class='flex flex-col gap-1'>
-        ${overlayMetrics
-          .map(
-            (m) => `<div class='flex items-center gap-2'><span class='font-semibold text-gray-700'>${m.label}:</span> <span class='text-gray-900 font-bold'>${m.value}</span></div>`
-          )
-          .join("")}
-      </div>
+      <div>Total Meetings: <b>${stats.meetings}</b></div>
+      <div>Total SLP: <b>${stats.slp}</b></div>
+      <div>Total Onboarded: <b>${stats.onboarded}</b></div>
     `;
     layer.bindTooltip(tooltipHtml, {
       direction: "top",
@@ -196,6 +192,28 @@ export default function BiharMapPage() {
       className: "leaflet-tooltip leaflet-tooltip-custom",
     });
   }
+
+  // Refactor: create a GeoJsonLayer component to keep the map page clean
+  const GeoJsonLayer = () => {
+    return (
+      <GeoJSON
+        data={geoData}
+        style={(feature: any) => {
+          const id = feature.properties?.AC_NO;
+          const isHovered = hoveredId === id;
+          return {
+            fillColor: isHovered ? regionColors[id]?.vibrant || "#eee" : regionColors[id]?.pastel || "#eee",
+            weight: isHovered ? 0 : 2.5,
+            opacity: 1,
+            color: isHovered ? "rgba(0,0,0,0)" : "#fff",
+            fillOpacity: isHovered ? 1 : 0.85,
+            interactive: true,
+          };
+        }}
+        onEachFeature={onEachFeature}
+      />
+    );
+  };
 
   const isDataReady = geoData && Object.keys(assemblyStats).length > 0;
 
@@ -218,24 +236,7 @@ export default function BiharMapPage() {
           >
             <MapResizer />
             <FitBoundsHandler geoData={geoData} />
-            <GeoJSON
-              data={geoData}
-              style={(feature: any) => {
-                const id = feature.properties?.AC_NO;
-                const isHovered = hoveredId === id;
-                return {
-                  fillColor: isHovered
-                    ? regionColors[id]?.vibrant || "#eee"
-                    : regionColors[id]?.pastel || "#eee",
-                  weight: isHovered ? 0 : 2.5,
-                  opacity: 1,
-                  color: isHovered ? "rgba(0,0,0,0)" : "#fff",
-                  fillOpacity: isHovered ? 1 : 0.85,
-                  interactive: true,
-                };
-              }}
-              onEachFeature={onEachFeature}
-            />
+            <GeoJsonLayer />
           </MapContainer>
         )}
       </div>
