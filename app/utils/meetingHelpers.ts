@@ -1,4 +1,4 @@
-import { WtmSlpEntry } from "../../models/types";
+import { WtmSlpEntry, MemberActivity } from "../../models/types";
 
 /**
  * Interface representing the standardized format for meeting data in the UI
@@ -139,5 +139,68 @@ export function convertToMeetingRow(meeting: MeetingDisplayData): Record<string,
     "recommended position": meeting.recommendedPosition,
     "onboarding status": meeting.onboardingStatus,
     "document id": meeting.documentId
+  };
+} 
+
+/**
+ * Converts a MemberActivity (raw data from Firebase) to a standardized MeetingDisplayData format
+ * for consistent display in the UI, similar to how meetings are displayed
+ * 
+ * @param member - The raw member activity data from Firebase
+ * @param slpName - The name of the SLP (optional)
+ * @param assemblyName - The name of the assembly (optional)
+ * @returns A standardized meeting object for display
+ */
+export function formatMemberActivityForDisplay(
+  member: MemberActivity,
+  slpName?: string,
+  assemblyName?: string
+): MeetingDisplayData {
+  return {
+    // Coordinator and assembly information
+    coordinatorName: slpName || "--",
+    assemblyName: assemblyName || member.assembly || "--",
+    
+    // Leader personal information - treat the member as the "leader"
+    leaderName: member.name || "--",
+    phoneNumber: member.phone || member.phoneNumber || member.mobileNumber || "--",
+    caste: member.caste || "--",
+    levelOfInfluence: "--",  // Not typically available for members
+    activityStatus: "Active",  // Default to Active since status isn't available
+    
+    // Location information
+    village: member.village || "--",
+    panchayat: member.panchayat || "--",
+    block: member.block || "--",
+    district: "--",  // Not typically available for members
+    
+    // Date information - use dateOfVisit as primary source
+    meetingDate: member.dateOfVisit || 
+                (typeof member.createdAt === 'number' 
+                  ? new Date(member.createdAt).toISOString().split('T')[0] 
+                  : member.createdAt || "--"),
+    
+    // Demographics
+    gender: member.gender || "--",
+    age: "--",  // Not typically available for members
+    category: member.category || "--",
+    
+    // Professional information
+    profession: member.profession || "--",
+    profileDetails: member.additionalDetails || "--",
+    
+    // Political information
+    partyInclination: "--",  // Not typically available for members
+    
+    // Additional information
+    remark: member.remarks || member.notes || "--",
+    email: "--",
+    
+    // Classification - these are not typically available for members
+    recommendedPosition: "--",
+    onboardingStatus: "--",
+    
+    // Original document ID
+    documentId: member.id
   };
 } 

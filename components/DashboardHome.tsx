@@ -9,6 +9,7 @@ interface DashboardHomeProps {
   coordinators?: { name: string; assembly: string; uid: string; role?: string; handler_id?: string }[];
   onCoordinatorSelect?: (uid: string | null) => void;
   selectedCoordinator?: string | null;
+  selectedCoordinatorObject?: { name: string; assembly: string; uid: string; role: string; handler_id?: string } | null;
   coordinatorDetails?: any | null;
   loadingCoordinator?: boolean;
   startDate?: string;
@@ -107,6 +108,7 @@ export default function DashboardHome({
   coordinators: externalCoordinators, 
   onCoordinatorSelect,
   selectedCoordinator: externalSelectedUid,
+  selectedCoordinatorObject,
   coordinatorDetails,
   loadingCoordinator,
   startDate,
@@ -286,14 +288,6 @@ export default function DashboardHome({
     }
   }, [externalCoordinators, externalSelectedUid]);
   
-  // For dropdown and filtering
-  const [search, setSearch] = useState("");
-  const filteredCoordinators = useMemo(() => {
-    console.log(`[DashboardHome] Filtering coordinators by search term: "${search}"`);
-    if (!search) return displayCoordinators;
-    return displayCoordinators.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
-  }, [displayCoordinators, search]);
-
   // Handle coordinator selection - either by name (internal) or UID (external)
   const handleCoordinatorSelect = (name: string | null) => {
     console.log(`[DashboardHome] handleCoordinatorSelect called with name: ${name}`);
@@ -362,16 +356,24 @@ export default function DashboardHome({
   const coordinatorAssembly = useMemo(() => {
     console.log(`[DashboardHome] Computing selected assembly for: ${selectedName}`);
     
+    // First, check if we have the selectedCoordinatorObject with assembly info
+    if (selectedCoordinatorObject && selectedCoordinatorObject.assembly) {
+      console.log("[DashboardHome] Using assembly from selectedCoordinatorObject:", selectedCoordinatorObject.assembly);
+      return selectedCoordinatorObject.assembly;
+    }
+    
+    // Then check coordinator details from Firebase
     if (coordinatorDetails && coordinatorDetails.personalInfo) {
       console.log("[DashboardHome] Using assembly from coordinator details:", coordinatorDetails.personalInfo.assembly);
       return coordinatorDetails.personalInfo.assembly || "";
     }
     
+    // Finally, fall back to finding it in the coordinators list
     if (!selectedName) return "";
     const found = displayCoordinators.find((c) => normalize(c.name) === normalize(selectedName));
     console.log("[DashboardHome] Found assembly from coordinators list:", found?.assembly);
     return found?.assembly || "";
-  }, [selectedName, displayCoordinators, coordinatorDetails]);
+  }, [selectedName, displayCoordinators, coordinatorDetails, selectedCoordinatorObject]);
 
   // --- Summary Stats ---
   // Directly use the aggregated values from the overallSummary prop.
@@ -440,12 +442,27 @@ export default function DashboardHome({
       let meetings = filterByFcDate(coordinatorDetails.detailedMeetings);
       console.log(`[DashboardHome] After date filtering: ${meetings.length} meetings`);
       
+      // Check if this is SLP/ASLP data (which won't have recommendedPosition or onboardingStatus)
+      const isSLPData = selectedCoordinatorObject?.role === 'SLP' || selectedCoordinatorObject?.role === 'ASLP';
+      
       // Then apply the card filter
       if (fcFilter === "onboarded") {
-        return meetings.filter((row: MeetingRow) => normalize(row[KEY_ONBOARDING_STATUS]) === "onboarded");
+        if (isSLPData) {
+          // For SLP/ASLP data, we treat all entries as "active" since there's no onboarding concept
+          return meetings;
+        } else {
+          // For AC data, filter by onboarding status
+          return meetings.filter((row: MeetingRow) => normalize(row[KEY_ONBOARDING_STATUS]) === "onboarded");
+        }
       }
       if (fcFilter === "slp") {
-        return meetings.filter((row: MeetingRow) => normalize(row[KEY_RECOMMENDED_POSITION]) === "slp");
+        if (isSLPData) {
+          // For SLP/ASLP data, we treat all entries as "members" since there's no SLP concept
+          return meetings;
+        } else {
+          // For AC data, filter by recommended position
+          return meetings.filter((row: MeetingRow) => normalize(row[KEY_RECOMMENDED_POSITION]) === "slp");
+        }
       }
       return meetings;
     }
@@ -462,7 +479,7 @@ export default function DashboardHome({
 
   // --- UI ---
   return (
-    <div className="w-full mx-auto p-2 space-y-6">
+    <div className="w-full mx-auto p-4 md:p-6 lg:p-8 space-y-6">
       {/* Header with Logout Button */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">WTM-SLP Dashboard</h1>
@@ -516,9 +533,7 @@ export default function DashboardHome({
       <div className="flex flex-col sm:flex-row items-center gap-4">
         {externalCoordinators && externalCoordinators.length > 0 ? (
         <CoordinatorSearchDropdown
-          coordinators={filteredCoordinators}
-          search={search}
-          setSearch={setSearch}
+          coordinators={displayCoordinators}
           selected={selectedName}
           setSelected={handleCoordinatorSelect}
         />
@@ -572,21 +587,21 @@ export default function DashboardHome({
             <>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <SummaryCard
-                  label="Meetings Done"
+                  label={selectedCoordinatorObject?.role === 'Assembly Coordinator' ? "Meetings Done" : "Members Logged"}
                   value={coordinatorMeetings}
                   tappable
                   selected={fcFilter === "meetings"}
                   onClick={() => setFcFilter(fcFilter === "meetings" ? null : "meetings")}
                 />
                 <SummaryCard
-                  label="SLPs Added"
+                  label={selectedCoordinatorObject?.role === 'Assembly Coordinator' ? "SLPs Added" : "Active Members"}
                   value={coordinatorSLPs}
                   tappable
                   selected={fcFilter === "slp"}
                   onClick={() => setFcFilter(fcFilter === "slp" ? null : "slp")}
                 />
                 <SummaryCard
-                  label="Onboarded"
+                  label={selectedCoordinatorObject?.role === 'Assembly Coordinator' ? "Onboarded" : "Total Members"}
                   value={coordinatorOnboarded}
                   tappable
                   selected={fcFilter === "onboarded"}
@@ -617,17 +632,27 @@ export default function DashboardHome({
           <h2 className="text-xl font-semibold mb-4">Member Activities</h2>
           <MembersList members={memberActivities} isLoading={isMembersLoading} />
         </div>
-      ) : coordinatorDetails ? (
-        <div className="mt-4">
-          <h2 className="text-xl font-semibold mb-4">Meetings & Recommendations</h2>
-          {coordinatorDetails.detailedMeetings ? (
-            <LeaderCardList data={coordinatorDetails.detailedMeetings} fcFilter={null} />
-          ) : (
-            <div className="text-center py-16">
-              <p className="text-gray-500">No meeting data available</p>
-            </div>
-          )}
-        </div>
+      ) : selectedName && coordinatorDetails ? (
+        // Only show this section if no fcFilter is active to avoid duplicates
+        // This section only displays when no filter is applied from the summary cards
+        !fcFilter && (
+          <div className="mt-4">
+            <h2 className="text-xl font-semibold mb-4">
+              {selectedCoordinatorObject?.role === 'Assembly Coordinator' ? "All Meetings" : "All Member Activities"}
+            </h2>
+            {coordinatorDetails.detailedMeetings && coordinatorDetails.detailedMeetings.length > 0 ? (
+              <LeaderCardList data={coordinatorDetails.detailedMeetings} fcFilter={null} />
+            ) : (
+              <div className="text-center py-16">
+                <p className="text-gray-500">
+                  {selectedCoordinatorObject?.role === 'Assembly Coordinator' 
+                    ? "No meeting data available" 
+                    : "No member activities available"}
+                </p>
+              </div>
+            )}
+          </div>
+        )
       ) : null}
     </div>
   );
@@ -674,16 +699,25 @@ function DateFilter({ label, dateOption, setDateOption, start, setStart, end, se
   );
 }
 
-function CoordinatorSearchDropdown({ coordinators, search, setSearch, selected, setSelected }: {
+function CoordinatorSearchDropdown({ coordinators, selected, setSelected }: {
   coordinators: { name: string; assembly: string; uid: string; role?: string }[];
-  search: string;
-  setSearch: (v: string) => void;
   selected: string | null;
   setSelected: (v: string | null) => void;
 }) {
+  // Manage search state internally instead of receiving from parent
+  const [search, setSearch] = useState(selected || "");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isFiltering, setIsFiltering] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Update internal search when selected changes from parent
+  useEffect(() => {
+    if (selected !== null) {
+      setSearch(selected);
+      setIsFiltering(false);
+    }
+  }, [selected]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -705,32 +739,38 @@ function CoordinatorSearchDropdown({ coordinators, search, setSearch, selected, 
     return () => document.removeEventListener("mousedown", handleClick);
   }, [dropdownOpen]);
 
-  // When selected changes, update input and close dropdown
-  useEffect(() => {
-    if (selected !== null) {
-      setSearch(selected);
-      setDropdownOpen(false);
-    }
-  }, [selected, setSearch]);
-
-  // When input is focused, open dropdown
+  // When input is focused, open dropdown and show all options
   function handleFocus() {
     setDropdownOpen(true);
-    setSearch("");
+    setIsFiltering(false);
   }
 
-  // When user types, open dropdown
+  // When user types, enable filtering mode
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setSearch(e.target.value);
+    setIsFiltering(true);
     setDropdownOpen(true);
   }
 
   // On selection, set selected and close dropdown
   function handleSelect(name: string) {
-    setSelected(name + ""); // force new string instance
+    setSelected(name);
     setSearch(name);
+    setIsFiltering(false);
     setDropdownOpen(false);
   }
+
+  // Get the list of coordinators to display
+  const displayCoordinators = useMemo(() => {
+    if (!isFiltering) {
+      // When not filtering, show all coordinators
+      return coordinators;
+    }
+    // When filtering, only show coordinators that match the search
+    return coordinators.filter(c => 
+      c.name.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [coordinators, search, isFiltering]);
 
   // Helper to get role display text
   function getRoleDisplay(role: string | undefined): string {
@@ -753,7 +793,7 @@ function CoordinatorSearchDropdown({ coordinators, search, setSearch, selected, 
       return 'bg-green-100 text-green-800'; // Green for AC
     
     if (role === 'SLP') 
-      return 'bg-purple-100 text-purple-800'; // Purple for SLP
+      return 'bg-orange-100 text-orange-800'; // Orange for SLP
     
     if (role === 'ASLP') 
       return 'bg-blue-100 text-blue-800'; // Blue for ASLP
@@ -773,11 +813,14 @@ function CoordinatorSearchDropdown({ coordinators, search, setSearch, selected, 
           type="text"
           placeholder="Search Field Coordinator..."
           className="input input-bordered w-full pl-10 pr-4 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          value={selected && !dropdownOpen ? selected : search}
+          value={search}
           onFocus={handleFocus}
           onChange={handleChange}
           autoComplete="off"
-          onBlur={() => setTimeout(() => setDropdownOpen(false), 100)}
+          onClick={() => {
+            setDropdownOpen(true);
+            setIsFiltering(false);
+          }}
         />
       </div>
       {dropdownOpen && (
@@ -785,11 +828,11 @@ function CoordinatorSearchDropdown({ coordinators, search, setSearch, selected, 
           ref={dropdownRef}
           className="absolute z-10 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto"
         >
-          {coordinators.length === 0 && (
+          {displayCoordinators.length === 0 && (
             <div className="p-4 text-gray-500 text-center">No coordinators found.</div>
           )}
-          {coordinators.map((c) => {
-            const matchIdx = c.name.toLowerCase().indexOf(search.toLowerCase());
+          {displayCoordinators.map((c) => {
+            const matchIdx = isFiltering ? c.name.toLowerCase().indexOf(search.toLowerCase()) : -1;
             const roleDisplay = getRoleDisplay(c.role);
             const roleBadgeStyle = getRoleBadgeStyle(c.role);
             
@@ -856,9 +899,17 @@ function SummaryCard({ label, value, tappable, selected, onClick, isLoading }: {
 }
 
 function LeaderCardList({ data, fcFilter }: { data: MeetingRow[]; fcFilter?: string | null }) {
-  if (data.length === 0) return <div className="text-center text-gray-500">No leaders found.</div>;
+  // Check if we're displaying SLP/ASLP data
+  const isSLPData = data.length > 0 && (!data[0][KEY_RECOMMENDED_POSITION] || data[0][KEY_RECOMMENDED_POSITION] === "--");
+  
+  if (data.length === 0) return (
+    <div className="text-center text-gray-500">
+      {isSLPData ? "No members found." : "No leaders found."}
+    </div>
+  );
+  
   return (
-    <div className="grid gap-4 max-h-[600px] overflow-y-auto py-2">
+    <div className="flex flex-col gap-4 max-h-[600px] overflow-y-auto py-2">
       {data.map((row, i) => (
         <LeaderCard key={i} row={row} fcFilter={fcFilter} />
       ))}
@@ -867,9 +918,16 @@ function LeaderCardList({ data, fcFilter }: { data: MeetingRow[]; fcFilter?: str
 }
 
 function LeaderCard({ row, fcFilter }: { row: MeetingRow; fcFilter?: string | null }) {
+  // Debug information
+  console.log('[LeaderCard] Rendering with row data:', row);
+  
   const [expanded, setExpanded] = useState(false);
   const isSLP = normalize(row[KEY_RECOMMENDED_POSITION]) === "slp";
   const isInactive = normalize(row["activity status"]) === "inactive";
+  
+  // Check if this is a member activity (from SLP/ASLP) rather than a meeting (from AC)
+  // Member activities won't have a recommended position
+  const isMemberActivity = !row[KEY_RECOMMENDED_POSITION] && row["leader name"];
   
   // Card style based on activity status
   const cardStyle = isInactive 
@@ -897,34 +955,58 @@ function LeaderCard({ row, fcFilter }: { row: MeetingRow; fcFilter?: string | nu
     // Default style
     return "px-2 py-0.5 rounded bg-gray-100 text-gray-800 text-xs font-semibold border border-gray-200";
   };
+
+  // Onboarding status tag style
+  const getOnboardingStatusStyle = (status: string) => {
+    const normalizedStatus = normalize(status);
+    
+    if (normalizedStatus === 'onboarded')
+      return "px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs font-semibold border border-green-200";
+    
+    if (normalizedStatus === 'in process' || normalizedStatus === 'in progress')
+      return "px-2 py-0.5 rounded bg-yellow-100 text-yellow-800 text-xs font-semibold border border-yellow-200";
+    
+    // Default styling for not onboarded or other statuses
+    return "px-2 py-0.5 rounded bg-gray-100 text-gray-800 text-xs font-semibold border border-gray-200";
+  };
   
   return (
     <div className={cardStyle}>
-      {/* Overview Row */}
-      <div className="flex flex-wrap items-center gap-2 mb-1">
+      {/* Header Row with Name, Position, Status */}
+      <div className="flex flex-wrap items-center gap-2 mb-2">
         <span className="text-lg font-bold text-primary">
           {row["leader name"]}
         </span>
         
-        {/* Position tag */}
-        {row["recommended position"] && (
-          <span className={getPositionTagStyle(row["recommended position"])}>
-            {row["recommended position"]}
-          </span>
-        )}
+        <div className="flex flex-wrap gap-2 items-center">
+          {/* Position tag */}
+          {row["recommended position"] && (
+            <span className={getPositionTagStyle(row["recommended position"])}>
+              {row["recommended position"]}
+            </span>
+          )}
+          
+          {/* Activity status tag with conditional styling */}
+          {row["activity status"] && (
+            <span className={activityStatusStyle}>
+              {row["activity status"]}
+            </span>
+          )}
+          
+          {/* Onboarding status tag */}
+          {row["onboarding status"] && (
+            <span className={getOnboardingStatusStyle(row["onboarding status"])}>
+              {row["onboarding status"]}
+            </span>
+          )}
+        </div>
         
-        {/* Activity status tag with conditional styling */}
-        {row["activity status"] && (
-          <span className={activityStatusStyle}>
-            {row["activity status"]}
-          </span>
-        )}
-        
+        {/* Phone number and buttons */}
         <span className="ml-auto flex items-center gap-2">
           {row["phone number"] && (
-            <span className="text-sm text-blue-700 font-mono bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+            <a href={`tel:${row["phone number"]}`} className="text-sm text-blue-700 font-mono bg-blue-50 px-2 py-0.5 rounded border border-blue-100 hover:bg-blue-100 transition-colors">
               {row["phone number"]}
-            </span>
+            </a>
           )}
           <button
             className={`btn btn-xs btn-outline cursor-pointer transition-colors ${expanded ? "bg-blue-100 text-blue-800" : ""}`}
@@ -933,7 +1015,7 @@ function LeaderCard({ row, fcFilter }: { row: MeetingRow; fcFilter?: string | nu
           >
             {expanded ? "Hide Details" : "Show Details"}
           </button>
-          {isSLP && (
+          {isSLP && !isMemberActivity && (
             <button className="btn btn-xs btn-primary ml-2 cursor-pointer transition-colors hover:bg-blue-700 hover:text-white active:bg-blue-900 active:text-white focus:bg-blue-700 focus:text-white">
               Show Members
             </button>
@@ -941,8 +1023,9 @@ function LeaderCard({ row, fcFilter }: { row: MeetingRow; fcFilter?: string | nu
         </span>
       </div>
       
-      {/* Overview Details Row - Enhanced with separate location fields */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+      {/* Overview Details Row - Location and Date */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+        {/* Location information */}
         <div className="flex flex-col">
           <span className="font-semibold text-gray-600">Location</span>
           <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
@@ -950,63 +1033,90 @@ function LeaderCard({ row, fcFilter }: { row: MeetingRow; fcFilter?: string | nu
             {row["panchayat"] && <span>Panchayat: {row["panchayat"]}</span>}
             {row["block"] && <span>Block: {row["block"]}</span>}
             {row["assembly name"] && <span>Assembly: {row["assembly name"]}</span>}
+            {row["district"] && !row["assembly name"] && <span>District: {row["district"]}</span>}
           </div>
         </div>
+        
+        {/* Date and Coordinator information */}
         <div className="flex flex-col">
-          <span className="font-semibold text-gray-600">Date</span>
-          <span className="text-gray-800 dark:text-gray-200">{row["date"] || "-"}</span>
+          <span className="font-semibold text-gray-600">Meeting Details</span>
+          <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
+            {row["date"] && <span>Date: {row["date"]}</span>}
+            {row["assembly field coordinator"] && (
+              <span>Coordinator: {row["assembly field coordinator"]}</span>
+            )}
+          </div>
+        </div>
+        
+        {/* Demographic Preview */}
+        <div className="flex flex-col">
+          <span className="font-semibold text-gray-600">Demographics</span>
+          <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
+            {row["gender"] && <span>Gender: {row["gender"]}</span>}
+            {row["category"] && <span>Category: {row["category"]}</span>}
+            {row["leader's current profession"] && (
+              <span>Profession: {row["leader's current profession"]}</span>
+            )}
+          </div>
         </div>
       </div>
       
-      {/* Expandable Details - Enhanced with additional fields */}
+      {/* Expandable Details */}
       {expanded && (
-        <div className="mt-2 border-t pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4 transition-all">
-          <div className="flex flex-col gap-1">
-            <span className="font-semibold text-gray-600">Demographics</span>
+        <div className="mt-3 border-t pt-3 grid grid-cols-1 sm:grid-cols-2 gap-4 transition-all">
+          {/* Detailed Demographics */}
+          <div className="flex flex-col gap-2">
+            <span className="font-semibold text-gray-600">Detailed Demographics</span>
             <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
-              {row["gender"] && <span>Gender: {row["gender"]}</span>}
               {row["age"] && <span>Age: {row["age"]}</span>}
-              {row["category"] && <span>Category: {row["category"]}</span>}
               {row["caste"] && <span>Caste: {row["caste"]}</span>}
-            </div>
-          </div>
-          
-          <div className="flex flex-col gap-1">
-            <span className="font-semibold text-gray-600">Profile</span>
-            <div className="grid grid-cols-1 gap-1">
-              {row["leader's current profession"] && (
-                <span className="text-gray-800 dark:text-gray-200">
-                  Profession: {row["leader's current profession"]}
-                </span>
-              )}
-              {row["leader's detailed profile"] && (
-                <span className="text-xs text-gray-500">
-                  {row["leader's detailed profile"]}
-                </span>
-              )}
-            </div>
-          </div>
-          
-          <div className="flex flex-col gap-1">
-            <span className="font-semibold text-gray-600">Political Information</span>
-            <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
               {row["level of influence"] && <span>Level of Influence: {row["level of influence"]}</span>}
               {row["party inclination"] && <span>Party Inclination: {row["party inclination"]}</span>}
             </div>
           </div>
           
-          <div className="flex flex-col gap-1">
-            <span className="font-semibold text-gray-600">Contact</span>
-            <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
-              {row["email address"] && <span>Email: {row["email address"]}</span>}
-              {row["remark"] && <span>Remark: {row["remark"]}</span>}
+          {/* Profile Details */}
+          <div className="flex flex-col gap-2">
+            <span className="font-semibold text-gray-600">Profile</span>
+            <div className="grid grid-cols-1 gap-1">
+              {row["leader's detailed profile"] ? (
+                <p className="text-sm text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700">
+                  {row["leader's detailed profile"]}
+                </p>
+              ) : (
+                <span className="text-sm text-gray-500">No profile information available</span>
+              )}
             </div>
+          </div>
+          
+          {/* Contact Information */}
+          <div className="flex flex-col gap-2">
+            <span className="font-semibold text-gray-600">Contact Information</span>
+            <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
+              {row["phone number"] && <span>Phone: {row["phone number"]}</span>}
+              {row["email address"] && <span>Email: {row["email address"]}</span>}
+              {row["document id"] && (
+                <span className="text-xs text-gray-500">ID: {row["document id"]}</span>
+              )}
+            </div>
+          </div>
+          
+          {/* Remarks */}
+          <div className="flex flex-col gap-2">
+            <span className="font-semibold text-gray-600">Remarks</span>
+            {row["remark"] ? (
+              <p className="text-sm text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700">
+                {row["remark"]}
+              </p>
+            ) : (
+              <span className="text-sm text-gray-500">No remarks provided</span>
+            )}
           </div>
         </div>
       )}
     </div>
   );
-} 
+}
 
 function MemberCard({ member }: { member: any }) {
   const [expanded, setExpanded] = useState(false);

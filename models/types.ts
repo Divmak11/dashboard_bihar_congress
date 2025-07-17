@@ -106,8 +106,9 @@ export interface MemberActivity {
   type?: 'members' | string;
   handler_id?: string;
   name?: string;
-  phoneNumber?: string;
-  mobileNumber?: string;
+  phone?: string;          // Updated to match sample data
+  phoneNumber?: string;    // Keep for backward compatibility
+  mobileNumber?: string;   // Keep for backward compatibility
   assembly?: string;
   block?: string;
   panchayat?: string;
@@ -118,10 +119,16 @@ export interface MemberActivity {
   gender?: string;
   notes?: string;
   remarks?: string;
-  createdAt?: string;
+  createdAt?: string | number;  // Updated to handle both string and number
   updatedAt?: string;
   created_at?: number;
   additionalDetails?: string;
+  status?: string;
+  
+  // New fields from the sample data
+  dateOfVisit?: string;    // Date in YYYY-MM-DD format
+  boothNo?: number;        // Booth number
+  lateEntry?: boolean;     // Whether this was a late entry
 }
 
 /**
@@ -140,4 +147,6 @@ export interface CoordinatorDetails {
   whatsappGroups: WtmSlpEntry[];
   // New field for member activities
   members?: MemberActivity[];
+  // New field for detailed meetings with additional processing
+  detailedMeetings?: WtmSlpEntry[] | Record<string, string>[];
 } 

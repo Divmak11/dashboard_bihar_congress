@@ -458,10 +458,10 @@ This phase addresses critical UI/UX issues and data presentation bugs to improve
                 2. Compare its structure and CSS classes to other, correctly styled lists within the application.
                 3. Refactor the card component for each member. Adjust the `div` structure, `className` attributes, and element layout to match the application's standard design for such lists.
 
-- [ ] **Task 7.3: Restore Assembly Constituency (AC) Data Functionality**
+- [x] **Task 7.3: Restore Assembly Constituency (AC) Data Functionality**
     - **Description:** This is a critical fix to resolve the broken data flow for Assembly Constituency information. The coordinator's assigned assembly currently shows "Unknown," and filtering is not working as intended.
     - **Sub-tasks:**
-        - [ ] **Sub-task 7.3.1: Fix "Unknown" Assembly for Selected Coordinator**
+        - [x] **Sub-task 7.3.1: Fix "Unknown" Assembly for Selected Coordinator**
             - **Description:** When a coordinator is selected, their primary assembly is not displayed correctly because only their ID is being stored, not their full profile.
             - **File to Modify:** `app/wtm-slp/page.tsx`
             - **Implementation Steps:**
@@ -471,7 +471,7 @@ This phase addresses critical UI/UX issues and data presentation bugs to improve
                 4. Update the `setSelectedCoordinator` state with the entire `user` object, not just the `uid`.
                 5. Update the UI element that displays the assembly to render `selectedCoordinator?.assembly || 'N/A'`. This will now display the correct assembly name.
 
-        - [ ] **Sub-task 7.3.2: Ensure Coordinator Metrics are Filtered by Assembly**
+        - [x] **Sub-task 7.3.2: Ensure Coordinator Metrics are Filtered by Assembly**
             - **Description:** The metrics for a selected coordinator (meetings, SLPs added, etc.) are not being filtered by the assembly selected in the "Select Assembly" dropdown.
             - **File to Modify:** `app/wtm-slp/page.tsx`
             - **Implementation Steps:**

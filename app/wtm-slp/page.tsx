@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import DashboardHome from "../../components/DashboardHome";
 import { getWtmSlpSummary, getWtmSlpStakeholders, getCoordinatorDetails, getCurrentAdminUser, getAssociatedSlps, getSlpMemberActivity } from "../utils/fetchFirebaseData";
 import { WtmSlpSummary, User, CoordinatorDetails, AdminUser, MemberActivity } from "../../models/types";
 import LogoutButton from "../../components/LogoutButton";
 import { auth } from "../utils/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
+import { formatMeetingForDisplay, convertToMeetingRow, formatMemberActivityForDisplay } from "../utils/meetingHelpers";
 
 // Create a type that matches the expected MeetingRow structure used by DashboardHome
 type MeetingRow = {
@@ -68,12 +69,53 @@ export default function WTMSLPPage() {
   const [coordinators, setCoordinators] = useState<User[]>([]);
   const [associatedSlps, setAssociatedSlps] = useState<AssociatedSlp[]>([]);
   const [selectedCoordinatorUid, setSelectedCoordinatorUid] = useState<string | null>(null);
+  const [selectedCoordinator, setSelectedCoordinator] = useState<FormattedCoordinator | null>(null);
   const [coordinatorDetails, setCoordinatorDetails] = useState<CoordinatorDetails | null>(null);
   const [loadingCoordinator, setLoadingCoordinator] = useState<boolean>(false);
   
   // State for member activities
   const [memberActivities, setMemberActivities] = useState<MemberActivity[]>([]);
   const [isMembersLoading, setIsMembersLoading] = useState<boolean>(false);
+
+  // Create formatted coordinators list for dropdown - using useMemo to ensure consistent hook ordering
+  const formattedCoordinators = useMemo(() => {
+    // First create separate arrays for each role
+    const assemblyCoordinators = coordinators
+      .filter(coordinator => coordinator.role === 'Assembly Coordinator')
+      .map(coordinator => ({
+        name: coordinator.name || "Unknown",
+        assembly: coordinator.assembly || "Unknown",
+        uid: coordinator.uid,
+        role: coordinator.role // Include the role for display in the dropdown
+      }));
+    
+    const individualSLPs = coordinators
+      .filter(coordinator => coordinator.role === 'SLP')
+      .map(coordinator => ({
+        name: coordinator.name || "Unknown",
+        assembly: coordinator.assembly || "Unknown",
+        uid: coordinator.uid,
+        role: coordinator.role
+      }));
+    
+    const associatedSLPs = associatedSlps.map(slp => ({
+      name: slp.name || "Unknown",
+      assembly: selectedAssembly || "Unknown",
+      uid: slp.uid,
+      handler_id: slp.handler_id, // Include handler_id for ASLPs
+      role: "ASLP" // Mark associated SLPs with a distinct role identifier
+    }));
+    
+    // Concatenate in desired order: ACs first, then SLPs, then ASLPs
+    return [...assemblyCoordinators, ...individualSLPs, ...associatedSLPs];
+  }, [coordinators, associatedSlps, selectedAssembly]);
+  
+  // Prepare assemblies for dropdown - using useMemo for consistent hook ordering
+  const displayAssemblies = useMemo(() => {
+    return isAdmin && allAssemblies.length > 0 ? 
+      [{ name: "All Assemblies", value: null }, ...allAssemblies.map(a => ({ name: a, value: a }))] : 
+      [{ name: "All Assemblies", value: null }, ...userAssemblies.map(a => ({ name: a, value: a }))];
+  }, [isAdmin, allAssemblies, userAssemblies]);
 
   // Fetch user role and assemblies
   useEffect(() => {
@@ -113,7 +155,7 @@ export default function WTMSLPPage() {
     fetchUserData();
   }, [user]);
 
-  // Fetch overall summary data - independent from assembly selection
+  // Fetch overall summary data based on date range but independent of assembly selection
   useEffect(() => {
     console.log('[WTMSLPPage] Overall summary data effect triggered');
     
@@ -122,11 +164,25 @@ export default function WTMSLPPage() {
       try {
         setIsSummaryLoading(true);
         
-        // Fetch summary data from Firebase WITHOUT any assembly filter
-        console.log(`[WTMSLPPage] Calling getWtmSlpSummary with dates: ${startDate} to ${endDate} (no assembly filter)`);
+        // Determine which assemblies to use for filtering based ONLY on user role
+        let assembliesFilter: string[] | undefined = undefined;
         
-        // Never filter by assembly for the overall summary
-        const summaryResult: WtmSlpSummary = await getWtmSlpSummary(startDate, endDate, undefined);
+        // Never filter by selectedAssembly for overall summary cards
+        // Only filter by zonal-incharge assigned assemblies if applicable
+        if (adminUser && adminUser.role === 'zonal-incharge' && adminUser.assemblies?.length > 0) {
+          // For zonal incharges, always use their assigned assemblies regardless of selection
+          assembliesFilter = adminUser.assemblies;
+          console.log(`[WTMSLPPage] Filtering overall summary by zonal incharge assemblies: ${adminUser.assemblies.join(', ')}`);
+        } else if (adminUser && adminUser.role === 'admin') {
+          // For admins, never apply assembly filter - show all data
+          assembliesFilter = undefined;
+          console.log('[WTMSLPPage] Admin user - showing all assemblies data in overall summary');
+        }
+        
+        console.log(`[WTMSLPPage] Calling getWtmSlpSummary with dates: ${startDate} to ${endDate}`);
+        console.log(`[WTMSLPPage] Assembly filter for overall summary: ${assembliesFilter ? (assembliesFilter.length > 0 ? assembliesFilter.join(', ') : 'empty array') : 'undefined'}`);
+        
+        const summaryResult: WtmSlpSummary = await getWtmSlpSummary(startDate, endDate, assembliesFilter);
         console.log('[WTMSLPPage] Overall summary data received:', summaryResult);
         
         // Store the summary
@@ -140,7 +196,7 @@ export default function WTMSLPPage() {
     }
     
     fetchOverallSummaryData();
-  }, [startDate, endDate]); // Only depends on date range, not assembly selection
+  }, [startDate, endDate, adminUser]); // Remove selectedAssembly dependency
 
   // Fetch assembly-dependent data when assembly selection changes
   useEffect(() => {
@@ -195,13 +251,13 @@ export default function WTMSLPPage() {
             if (adminUser.role === 'admin') {
               // Admin users: fetch all stakeholders across all assemblies
               console.log('[WTMSLPPage] Admin user, fetching all coordinators');
-              const stakeholders = await getWtmSlpStakeholders();
+              const stakeholders = await getWtmSlpStakeholders(); // No assembly filter
               console.log(`[WTMSLPPage] Admin view: Received ${stakeholders.length} stakeholders`);
               setCoordinators(stakeholders);
               
               // Now fetch all associated SLPs for admins
               console.log('[WTMSLPPage] Admin user, fetching all associated SLPs');
-              const allSlps = await getAssociatedSlps();
+              const allSlps = await getAssociatedSlps(); // No assembly filter
               console.log(`[WTMSLPPage] Admin view: Received ${allSlps.length} associated SLPs`);
               setAssociatedSlps(allSlps);
               
@@ -245,10 +301,30 @@ export default function WTMSLPPage() {
     setSelectedAssembly(assembly);
   };
 
-  // Handle coordinator selection
+  // Handle coordinator selection - fix selection issue
   const handleCoordinatorSelect = (uid: string | null) => {
     console.log(`[WTMSLPPage] Coordinator selected: ${uid}`);
+    
+    // Clear previous data immediately to indicate change
+    setCoordinatorDetails(null);
+    setMemberActivities([]);
+    
+    // Update selected UID
     setSelectedCoordinatorUid(uid);
+    
+    // Find and store the complete coordinator object
+    if (uid) {
+      const coordinator = formattedCoordinators.find(c => c.uid === uid);
+      if (coordinator) {
+        console.log(`[WTMSLPPage] Found coordinator: ${coordinator.name}, Assembly: ${coordinator.assembly}, Role: ${coordinator.role}`);
+        setSelectedCoordinator(coordinator);
+      } else {
+        console.log(`[WTMSLPPage] Could not find coordinator with UID: ${uid}`);
+        setSelectedCoordinator(null);
+      }
+    } else {
+      setSelectedCoordinator(null);
+    }
   };
 
   // Handle date change
@@ -257,6 +333,190 @@ export default function WTMSLPPage() {
     setStartDate(start);
     setEndDate(end);
   };
+
+  // Fetch coordinator/member details when a coordinator is selected
+  useEffect(() => {
+    console.log('[WTMSLPPage] Coordinator details effect triggered');
+    console.log(`[WTMSLPPage] Selected coordinator UID: ${selectedCoordinatorUid}`);
+    
+    async function fetchCoordinatorData() {
+      if (!selectedCoordinatorUid || !selectedCoordinator) {
+        console.log('[WTMSLPPage] No coordinator selected, clearing details');
+        setCoordinatorDetails(null);
+        setMemberActivities([]);
+        return;
+      }
+      
+      try {
+        setLoadingCoordinator(true);
+        setIsMembersLoading(true);
+        console.log(`[WTMSLPPage] Fetching details for coordinator ${selectedCoordinatorUid}`);
+        
+        console.log(`[WTMSLPPage] Selected coordinator role: ${selectedCoordinator.role}`);
+        
+        // Different behavior based on role
+        if (selectedCoordinator.role === 'Assembly Coordinator') {
+          // For Assembly Coordinators, fetch coordinator details
+          // Always use the coordinator's assembly from their details, NOT the selectedAssembly
+          // This ensures we get all their data even if "All Assemblies" is selected
+          const coordinatorAssembly = selectedCoordinator.assembly;
+          
+          console.log(`[WTMSLPPage] Fetching coordinator details with their assembly: ${coordinatorAssembly}`);
+          
+          const details = await getCoordinatorDetails(
+            selectedCoordinatorUid, 
+            startDate, 
+            endDate,
+            coordinatorAssembly // Always pass the coordinator's specific assembly
+          );
+          
+          console.log('[WTMSLPPage] Coordinator details received:', details);
+          
+          // Make sure meetings data exists for rendering in component
+          if (details) {
+            // Format each meeting for display using the helper functions
+            const formattedMeetings = details.meetings.map(meeting => {
+              // Log the raw meeting data
+              console.log('[WTMSLPPage] Raw meeting data:', meeting);
+              
+              // Format the meeting data
+              const displayData = formatMeetingForDisplay(meeting, selectedCoordinator.name, coordinatorAssembly);
+              
+              // Convert to the row format expected by DashboardHome
+              const meetingRow = convertToMeetingRow(displayData);
+              
+              // Ensure all critical fields are present
+              if (!meetingRow["leader name"]) {
+                meetingRow["leader name"] = meeting.name || "Unknown Leader";
+              }
+              if (!meetingRow["phone number"]) {
+                meetingRow["phone number"] = meeting.mobileNumber || "";
+              }
+              if (!meetingRow["assembly name"]) {
+                meetingRow["assembly name"] = coordinatorAssembly || meeting.assembly || "";
+              }
+              if (!meetingRow["assembly field coordinator"]) {
+                meetingRow["assembly field coordinator"] = selectedCoordinator.name || "";
+              }
+              if (!meetingRow["recommended position"]) {
+                meetingRow["recommended position"] = meeting.recommendedPosition || "";
+              }
+              if (!meetingRow["onboarding status"]) {
+                meetingRow["onboarding status"] = meeting.onboardingStatus || "";
+              }
+              
+              return meetingRow;
+            });
+
+            // Log a sample formatted meeting to see what fields are available
+            if (formattedMeetings.length > 0) {
+              console.log('[WTMSLPPage] Sample formatted meeting:', formattedMeetings[0]);
+            }
+
+            console.log(`[WTMSLPPage] Formatted ${formattedMeetings.length} meetings for display`);
+            
+            // Ensure the coordinator's meetings are accessible in DashboardHome as detailedMeetings
+            details.detailedMeetings = formattedMeetings;
+            setCoordinatorDetails(details);
+          } else {
+            setCoordinatorDetails(null);
+          }
+          
+          setMemberActivities([]); // No member activities for ACs
+        } else if (selectedCoordinator.role === 'SLP' || selectedCoordinator.role === 'ASLP') {
+          // For SLPs and ASLPs, fetch member activities
+          console.log(`[WTMSLPPage] Fetching member activities for ${selectedCoordinator.role}`);
+          
+          const memberData = await getSlpMemberActivity({
+            uid: selectedCoordinatorUid,
+            role: selectedCoordinator.role,
+            handler_id: selectedCoordinator.handler_id
+          });
+          
+          // --- Add debug logging for SLP/ASLP member data ---
+          console.log(`[DEBUG] Raw SLP/ASLP Activity Data for ${selectedCoordinator.name}:`, JSON.stringify(memberData.slice(0, 2), null, 2));
+          if (memberData.length > 0) {
+            console.log(`[DEBUG] Sample member activity fields:`, Object.keys(memberData[0]));
+            console.log(`[DEBUG] Sample member activity data:`, memberData[0]);
+          }
+          // --- End of debug logging ---
+          
+          console.log(`[WTMSLPPage] Received ${memberData.length} member activities`);
+          
+          // De-duplicate member activities by name
+          const uniqueMembersMap = new Map();
+          memberData.forEach(member => {
+            if (member.name) {
+              uniqueMembersMap.set(member.name, member);
+            }
+          });
+          
+          const uniqueMembers = Array.from(uniqueMembersMap.values());
+          console.log(`[WTMSLPPage] After de-duplication: ${uniqueMembers.length} unique members`);
+          
+          // Format member activities into the same format as meetings
+          const formattedMemberActivities = uniqueMembers.map(member => {
+            const displayData = formatMemberActivityForDisplay(member, selectedCoordinator.name, selectedCoordinator.assembly);
+            return convertToMeetingRow(displayData);
+          });
+
+          console.log(`[WTMSLPPage] Formatted ${formattedMemberActivities.length} member activities for display`);
+
+          // Calculate summary stats for member activities
+          const totalMembers = formattedMemberActivities.length;
+          
+          // For SLPs, we don't have a direct equivalent to "SLPs added" or "onboarded"
+          // Instead, we'll count active members (not marked as inactive)
+          const activeMembers = uniqueMembers.filter(
+            member => !member.status || member.status.toLowerCase() !== 'inactive'
+          ).length;
+          
+          console.log(`[WTMSLPPage] Member activity summary: totalMembers=${totalMembers}, activeMembers=${activeMembers}`);
+
+          // Create a CoordinatorDetails object for member activities
+          const memberDetails: CoordinatorDetails = {
+            personalInfo: {
+              uid: selectedCoordinatorUid,
+              name: selectedCoordinator.name,
+              assembly: selectedCoordinator.assembly,
+              role: selectedCoordinator.role,
+              departmentHead: "Mr. Ravi Pandit - WTM-SLP"
+            },
+            meetingsSummary: {
+              meetings: totalMembers,
+              slpsAdded: activeMembers, // Use active members as the equivalent of "SLPs added"
+              onboarded: activeMembers  // Use active members as the equivalent of "onboarded"
+            },
+            meetings: [], // Empty array as these aren't actual meetings
+            activities: [], // Empty array as these aren't activities
+            whatsappGroups: [], // Empty array as these aren't WhatsApp groups
+            members: uniqueMembers, // Store the original member data
+            detailedMeetings: formattedMemberActivities // Store the formatted member activities
+          };
+
+          // Set both coordinatorDetails for the summary cards and formatted list view
+          // and memberActivities for the original member data display
+          setCoordinatorDetails(memberDetails);
+          // Clear memberActivities to prevent the grid view from showing
+          // This ensures only the list view (LeaderCardList) is displayed
+          setMemberActivities([]);
+        }
+      } catch (err) {
+        console.error("[WTMSLPPage] Error fetching coordinator/member data:", err);
+        setCoordinatorDetails(null);
+        setMemberActivities([]);
+      } finally {
+        setLoadingCoordinator(false);
+        setIsMembersLoading(false);
+        console.log('[WTMSLPPage] Coordinator/member data fetch complete');
+      }
+    }
+    
+    fetchCoordinatorData();
+  }, [selectedCoordinatorUid, selectedCoordinator, startDate, endDate, selectedAssembly]);
+
+  console.log(`[WTMSLPPage] Formatted ${formattedCoordinators.length} coordinators for dropdown`);
+  console.log('[WTMSLPPage] Rendering main component');
 
   // Loading state
   if (authLoading) {
@@ -280,117 +540,6 @@ export default function WTMSLPPage() {
     );
   }
 
-  // Create formatted coordinators list for dropdown
-  const formattedCoordinators = [...coordinators.map(coordinator => ({
-    name: coordinator.name || "Unknown",
-    assembly: coordinator.assembly || "Unknown",
-    uid: coordinator.uid,
-    role: coordinator.role // Include the role for display in the dropdown
-  })), ...associatedSlps.map(slp => ({
-    name: slp.name || "Unknown",
-    assembly: selectedAssembly || "Unknown",
-    uid: slp.uid,
-    handler_id: slp.handler_id, // Include handler_id for ASLPs
-    role: "ASLP" // Mark associated SLPs with a distinct role identifier
-  }))];
-  
-  // Prepare assemblies for dropdown
-  const displayAssemblies = isAdmin && allAssemblies.length > 0 ? 
-    [{ name: "All Assemblies", value: null }, ...allAssemblies.map(a => ({ name: a, value: a }))] : 
-    [{ name: "All Assemblies", value: null }, ...userAssemblies.map(a => ({ name: a, value: a }))];
-  
-  console.log(`[WTMSLPPage] Formatted ${formattedCoordinators.length} coordinators for dropdown`);
-  console.log('[WTMSLPPage] Rendering main component');
-
-  // Fetch coordinator/member details when a coordinator is selected
-  useEffect(() => {
-    console.log('[WTMSLPPage] Coordinator details effect triggered');
-    console.log(`[WTMSLPPage] Selected coordinator UID: ${selectedCoordinatorUid}`);
-    
-    // Store current list of coordinators in a ref to avoid dependency issues
-    const currentCoordinators: FormattedCoordinator[] = formattedCoordinators;
-    
-    async function fetchCoordinatorData() {
-      if (!selectedCoordinatorUid) {
-        console.log('[WTMSLPPage] No coordinator selected, clearing details');
-        setCoordinatorDetails(null);
-        setMemberActivities([]);
-        return;
-      }
-      
-      try {
-        setLoadingCoordinator(true);
-        setIsMembersLoading(true);
-        console.log(`[WTMSLPPage] Fetching details for coordinator ${selectedCoordinatorUid}`);
-        
-        // Find the selected coordinator from the saved list
-        const selectedCoordinator = currentCoordinators.find(
-          coord => coord.uid === selectedCoordinatorUid
-        );
-        
-        if (!selectedCoordinator) {
-          console.error(`[WTMSLPPage] Could not find selected coordinator with UID: ${selectedCoordinatorUid}`);
-          setCoordinatorDetails(null);
-          setMemberActivities([]);
-          return;
-        }
-        
-        console.log(`[WTMSLPPage] Selected coordinator role: ${selectedCoordinator.role}`);
-        
-        // Different behavior based on role
-        if (selectedCoordinator.role === 'Assembly Coordinator') {
-          // For Assembly Coordinators, fetch coordinator details as before
-          const details = await getCoordinatorDetails(
-            selectedCoordinatorUid, 
-            startDate, 
-            endDate,
-            selectedAssembly || undefined
-          );
-          
-          console.log('[WTMSLPPage] Coordinator details received:', details);
-          setCoordinatorDetails(details);
-          setMemberActivities([]); // No member activities for ACs
-        } else if (selectedCoordinator.role === 'SLP' || selectedCoordinator.role === 'ASLP') {
-          // For SLPs and ASLPs, fetch member activities
-          console.log(`[WTMSLPPage] Fetching member activities for ${selectedCoordinator.role}`);
-          
-          const memberData = await getSlpMemberActivity({
-            uid: selectedCoordinatorUid,
-            role: selectedCoordinator.role,
-            handler_id: selectedCoordinator.handler_id
-          });
-          
-          console.log(`[WTMSLPPage] Received ${memberData.length} member activities`);
-          
-          // De-duplicate member activities by name
-          const uniqueMembersMap = new Map();
-          memberData.forEach(member => {
-            if (member.name) {
-              uniqueMembersMap.set(member.name, member);
-            }
-          });
-          
-          const uniqueMembers = Array.from(uniqueMembersMap.values());
-          console.log(`[WTMSLPPage] After de-duplication: ${uniqueMembers.length} unique members`);
-          
-          setMemberActivities(uniqueMembers);
-          setCoordinatorDetails(null); // Set coordinator details to null for SLPs
-        }
-      } catch (err) {
-        console.error("[WTMSLPPage] Error fetching coordinator/member data:", err);
-        setCoordinatorDetails(null);
-        setMemberActivities([]);
-      } finally {
-        setLoadingCoordinator(false);
-        setIsMembersLoading(false);
-        console.log('[WTMSLPPage] Coordinator/member data fetch complete');
-      }
-    }
-    
-    fetchCoordinatorData();
-    // Remove formattedCoordinators from the dependency array to prevent infinite loops
-  }, [selectedCoordinatorUid, startDate, endDate, selectedAssembly]);
-
   return (
     <div className="flex flex-col min-h-screen">
       <DashboardHome
@@ -401,6 +550,7 @@ export default function WTMSLPPage() {
         coordinators={formattedCoordinators}
         onCoordinatorSelect={handleCoordinatorSelect}
         selectedCoordinator={selectedCoordinatorUid}
+        selectedCoordinatorObject={selectedCoordinator}
         coordinatorDetails={coordinatorDetails}
         loadingCoordinator={loadingCoordinator}
         startDate={startDate}

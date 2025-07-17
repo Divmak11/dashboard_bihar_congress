@@ -136,15 +136,7 @@ export default function AuthPage() {
 
           {view === 'signIn' ? (
             <>
-              <button
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                onClick={() => setView('signIn')}
-                disabled={loading}
-              >
-                Sign in with Email
-              </button>
-              
-              <form className="space-y-6 mt-6" onSubmit={handleSignIn}>
+              <form className="space-y-6" onSubmit={handleSignIn}>
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                     Email address

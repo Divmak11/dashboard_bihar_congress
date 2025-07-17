@@ -85,62 +85,64 @@ export async function getWtmSlpSummary(
     const wtmSlpCollection = collection(db, 'wtm-slp');
     console.log('[getWtmSlpSummary] Collection reference created');
     
-    // Base queries
-    let formTypeQuery;
-    let typeQuery;
+    // Arrays to store queries
+    const queries = [];
     
     // If assemblies are provided, add the assembly filter
     if (assemblies && assemblies.length > 0) {
-      formTypeQuery = query(
-        wtmSlpCollection,
-        where('form_type', '==', 'meeting'),
-        where('assembly', 'in', assemblies)
-      );
-      
-      typeQuery = query(
-        wtmSlpCollection,
-        where('type', '==', 'meeting'),
-        where('assembly', 'in', assemblies)
+      // Only use singular form with assembly filter
+      queries.push(
+        query(
+          wtmSlpCollection,
+          where('form_type', '==', 'meeting'),
+          where('assembly', 'in', assemblies)
+        ),
+        query(
+          wtmSlpCollection,
+          where('type', '==', 'meeting'),
+          where('assembly', 'in', assemblies)
+        )
       );
       
       console.log(`[getWtmSlpSummary] Added assembly filter for ${assemblies.length} assemblies`);
     } else {
-      // No assembly filter
-      formTypeQuery = query(
-      wtmSlpCollection,
-      where('form_type', '==', 'meeting')
-    );
-    
-      typeQuery = query(
-      wtmSlpCollection,
-      where('type', '==', 'meeting')
-    );
+      // No assembly filter - only use singular form
+      queries.push(
+        query(
+          wtmSlpCollection,
+          where('form_type', '==', 'meeting')
+        ),
+        query(
+          wtmSlpCollection,
+          where('type', '==', 'meeting')
+        )
+      );
       
       console.log('[getWtmSlpSummary] No assembly filter applied');
     }
 
-    console.log('[getWtmSlpSummary] Executing queries...');
-    // Execute both queries in parallel
-    const [formTypeSnapshot, typeSnapshot] = await Promise.all([
-      getDocs(formTypeQuery),
-      getDocs(typeQuery)
-    ]);
-    console.log(`[getWtmSlpSummary] Queries executed. Form type docs: ${formTypeSnapshot.size}, Type docs: ${typeSnapshot.size}`);
+    console.log(`[getWtmSlpSummary] Executing ${queries.length} queries...`);
+    
+    // Execute all queries in parallel
+    const snapshots = await Promise.all(queries.map(q => getDocs(q)));
+    
+    console.log(`[getWtmSlpSummary] Queries executed. Total documents across all queries: ${
+      snapshots.reduce((total, snapshot) => total + snapshot.size, 0)
+    }`);
 
     // Combine results, ensuring no duplicates
     const documentMap = new Map<string, WtmSlpEntry>();
     
-    formTypeSnapshot.forEach((doc) => {
-      const data = doc.data() as WtmSlpEntry;
-      documentMap.set(doc.id, { ...data, id: doc.id });
+    // Process all snapshots
+    snapshots.forEach((snapshot) => {
+      snapshot.forEach((doc) => {
+        if (!documentMap.has(doc.id)) {
+          const data = doc.data() as WtmSlpEntry;
+          documentMap.set(doc.id, { ...data, id: doc.id });
+        }
+      });
     });
     
-    typeSnapshot.forEach((doc) => {
-      if (!documentMap.has(doc.id)) {
-        const data = doc.data() as WtmSlpEntry;
-        documentMap.set(doc.id, { ...data, id: doc.id });
-      }
-    });
     console.log(`[getWtmSlpSummary] Total unique documents: ${documentMap.size}`);
     
     // Log a sample of the data
@@ -311,87 +313,87 @@ export async function getAssociatedSlps(assemblies?: string | string[]): Promise
   try {
     const wtmSlpCollection = collection(db, 'wtm-slp');
     
-    // Base queries
-    let formTypeQuery;
-    let typeQuery;
+    // Arrays to store queries
+    const queries = [];
     
     if (assemblies) {
       if (Array.isArray(assemblies) && assemblies.length > 0) {
-        // Query for SLPs from form_type with multiple assemblies
-        formTypeQuery = query(
-          wtmSlpCollection,
-          where('assembly', 'in', assemblies),
-          where('recommendedPosition', '==', 'SLP'),
-          where('form_type', '==', 'meeting')
-        );
-        
-        // Query for SLPs from type (older documents) with multiple assemblies
-        typeQuery = query(
-          wtmSlpCollection,
-          where('assembly', 'in', assemblies),
-          where('recommendedPosition', '==', 'SLP'),
-          where('type', '==', 'meeting')
+        // Multiple assemblies - only use singular form
+        queries.push(
+          query(
+            wtmSlpCollection,
+            where('assembly', 'in', assemblies),
+            where('recommendedPosition', '==', 'SLP'),
+            where('form_type', '==', 'meeting')
+          ),
+          query(
+            wtmSlpCollection,
+            where('assembly', 'in', assemblies),
+            where('recommendedPosition', '==', 'SLP'),
+            where('type', '==', 'meeting')
+          )
         );
       } else if (typeof assemblies === 'string') {
-        // Single assembly string
-        // Query for SLPs from form_type
-        formTypeQuery = query(
-          wtmSlpCollection,
-          where('assembly', '==', assemblies),
-          where('recommendedPosition', '==', 'SLP'),
-          where('form_type', '==', 'meeting')
-        );
-        
-        // Query for SLPs from type (older documents)
-        typeQuery = query(
-          wtmSlpCollection,
-          where('assembly', '==', assemblies),
-          where('recommendedPosition', '==', 'SLP'),
-          where('type', '==', 'meeting')
+        // Single assembly string - only use singular form
+        queries.push(
+          query(
+            wtmSlpCollection,
+            where('assembly', '==', assemblies),
+            where('recommendedPosition', '==', 'SLP'),
+            where('form_type', '==', 'meeting')
+          ),
+          query(
+            wtmSlpCollection,
+            where('assembly', '==', assemblies),
+            where('recommendedPosition', '==', 'SLP'),
+            where('type', '==', 'meeting')
+          )
         );
       } else {
         // Empty array - fall back to no assembly filter
-        formTypeQuery = query(
-          wtmSlpCollection,
-          where('recommendedPosition', '==', 'SLP'),
-          where('form_type', '==', 'meeting')
-        );
-        
-        typeQuery = query(
-          wtmSlpCollection,
-          where('recommendedPosition', '==', 'SLP'),
-          where('type', '==', 'meeting')
+        queries.push(
+          query(
+            wtmSlpCollection,
+            where('recommendedPosition', '==', 'SLP'),
+            where('form_type', '==', 'meeting')
+          ),
+          query(
+            wtmSlpCollection,
+            where('recommendedPosition', '==', 'SLP'),
+            where('type', '==', 'meeting')
+          )
         );
       }
     } else {
       // No assembly filter - fetch all SLPs
-      formTypeQuery = query(
-        wtmSlpCollection,
-        where('recommendedPosition', '==', 'SLP'),
-        where('form_type', '==', 'meeting')
-      );
-      
-      typeQuery = query(
-        wtmSlpCollection,
-        where('recommendedPosition', '==', 'SLP'),
-        where('type', '==', 'meeting')
+      queries.push(
+        query(
+          wtmSlpCollection,
+          where('recommendedPosition', '==', 'SLP'),
+          where('form_type', '==', 'meeting')
+        ),
+        query(
+          wtmSlpCollection,
+          where('recommendedPosition', '==', 'SLP'),
+          where('type', '==', 'meeting')
+        )
       );
     }
     
-    // Execute both queries in parallel
-    const [formTypeSnapshot, typeSnapshot] = await Promise.all([
-      getDocs(formTypeQuery),
-      getDocs(typeQuery)
-    ]);
+    // Execute all queries in parallel
+    console.log(`[getAssociatedSlps] Executing ${queries.length} queries...`);
+    const snapshots = await Promise.all(queries.map(q => getDocs(q)));
     
-    console.log(`[getAssociatedSlps] Queries executed. Form type docs: ${formTypeSnapshot.size}, Type docs: ${typeSnapshot.size}`);
+    console.log(`[getAssociatedSlps] Queries executed. Total documents across all queries: ${
+      snapshots.reduce((total, snapshot) => total + snapshot.size, 0)
+    }`);
     
     // Process results, ensuring no duplicates by name
     const slpsMap = new Map<string, { name: string; uid: string; handler_id?: string }>();
     
-    // Helper function to process snapshots
-    const processSnapshot = (snapshot: any) => {
-      snapshot.forEach((doc: any) => {
+    // Process each snapshot
+    snapshots.forEach((snapshot) => {
+      snapshot.forEach((doc) => {
         const data = doc.data();
         if (data.name) {
           // Use name as key to avoid duplicates
@@ -402,11 +404,7 @@ export async function getAssociatedSlps(assemblies?: string | string[]): Promise
           });
         }
       });
-    };
-    
-    // Process both snapshots
-    processSnapshot(formTypeSnapshot);
-    processSnapshot(typeSnapshot);
+    });
     
     const associatedSlps = Array.from(slpsMap.values());
     console.log(`[getAssociatedSlps] Found ${associatedSlps.length} unique associated SLPs`);
@@ -461,175 +459,156 @@ export async function getCoordinatorDetails(
     const wtmSlpCollection = collection(db, 'wtm-slp');
     console.log('[getCoordinatorDetails] WTM-SLP collection reference created');
     
-    // Base queries
-    let meetingsFormTypeQuery;
-    let meetingsTypeQuery;
-    let activitiesFormTypeQuery;
-    let activitiesTypeQuery;
-    let whatsappFormTypeQuery;
-    let whatsappTypeQuery;
+    // Arrays to store queries
+    const meetingsQueries = [];
+    const activitiesQueries = [];
+    const whatsappQueries = [];
     
     // If assembly is provided, add the assembly filter
     if (assembly) {
-      // Query for meetings (both form_type and type) with assembly filter
-      meetingsFormTypeQuery = query(
-        wtmSlpCollection,
-        where('handler_id', '==', uid),
-        where('form_type', '==', 'meeting'),
-        where('assembly', '==', assembly)
+      // Meetings
+      meetingsQueries.push(
+        query(
+          wtmSlpCollection,
+          where('handler_id', '==', uid),
+          where('form_type', '==', 'meeting'),
+          where('assembly', '==', assembly)
+        ),
+        query(
+          wtmSlpCollection,
+          where('handler_id', '==', uid),
+          where('type', '==', 'meeting'),
+          where('assembly', '==', assembly)
+        )
       );
       
-      meetingsTypeQuery = query(
-        wtmSlpCollection,
-        where('handler_id', '==', uid),
-        where('type', '==', 'meeting'),
-        where('assembly', '==', assembly)
+      // Activities
+      activitiesQueries.push(
+        query(
+          wtmSlpCollection,
+          where('handler_id', '==', uid),
+          where('form_type', '==', 'activity'),
+          where('assembly', '==', assembly)
+        ),
+        query(
+          wtmSlpCollection,
+          where('handler_id', '==', uid),
+          where('type', '==', 'activity'),
+          where('assembly', '==', assembly)
+        )
       );
       
-      // Query for activities with assembly filter
-      activitiesFormTypeQuery = query(
-        wtmSlpCollection,
-        where('handler_id', '==', uid),
-        where('form_type', '==', 'activity'),
-        where('assembly', '==', assembly)
-      );
-      
-      activitiesTypeQuery = query(
-        wtmSlpCollection,
-        where('handler_id', '==', uid),
-        where('type', '==', 'activity'),
-        where('assembly', '==', assembly)
-      );
-      
-      // Query for WhatsApp groups with assembly filter
-      whatsappFormTypeQuery = query(
-        wtmSlpCollection,
-        where('handler_id', '==', uid),
-        where('form_type', '==', 'assembly-wa'),
-        where('assembly', '==', assembly)
-      );
-      
-      whatsappTypeQuery = query(
-        wtmSlpCollection,
-        where('handler_id', '==', uid),
-        where('type', '==', 'assembly-wa'),
-        where('assembly', '==', assembly)
+      // WhatsApp groups
+      whatsappQueries.push(
+        query(
+          wtmSlpCollection,
+          where('handler_id', '==', uid),
+          where('form_type', '==', 'assembly-wa'),
+          where('assembly', '==', assembly)
+        ),
+        query(
+          wtmSlpCollection,
+          where('handler_id', '==', uid),
+          where('type', '==', 'assembly-wa'),
+          where('assembly', '==', assembly)
+        )
       );
       
       console.log(`[getCoordinatorDetails] Added assembly filter: ${assembly}`);
     } else {
-      // No assembly filter
-    // Query for meetings (both form_type and type)
-      meetingsFormTypeQuery = query(
-      wtmSlpCollection,
-      where('handler_id', '==', uid),
-      where('form_type', '==', 'meeting')
-    );
-    
-      meetingsTypeQuery = query(
-      wtmSlpCollection,
-      where('handler_id', '==', uid),
-      where('type', '==', 'meeting')
-    );
-    
-    // Query for activities
-      activitiesFormTypeQuery = query(
-      wtmSlpCollection,
-      where('handler_id', '==', uid),
-      where('form_type', '==', 'activity')
-    );
-    
-      activitiesTypeQuery = query(
-      wtmSlpCollection,
-      where('handler_id', '==', uid),
-      where('type', '==', 'activity')
-    );
-    
-    // Query for WhatsApp groups
-      whatsappFormTypeQuery = query(
-      wtmSlpCollection,
-      where('handler_id', '==', uid),
-      where('form_type', '==', 'assembly-wa')
-    );
-    
-      whatsappTypeQuery = query(
-      wtmSlpCollection,
-      where('handler_id', '==', uid),
-      where('type', '==', 'assembly-wa')
-    );
+      // No assembly filter - Query only by handler_id
+      
+      // Meetings
+      meetingsQueries.push(
+        query(
+          wtmSlpCollection,
+          where('handler_id', '==', uid),
+          where('form_type', '==', 'meeting')
+        ),
+        query(
+          wtmSlpCollection,
+          where('handler_id', '==', uid),
+          where('type', '==', 'meeting')
+        )
+      );
+      
+      // Activities
+      activitiesQueries.push(
+        query(
+          wtmSlpCollection,
+          where('handler_id', '==', uid),
+          where('form_type', '==', 'activity')
+        ),
+        query(
+          wtmSlpCollection,
+          where('handler_id', '==', uid),
+          where('type', '==', 'activity')
+        )
+      );
+      
+      // WhatsApp groups
+      whatsappQueries.push(
+        query(
+          wtmSlpCollection,
+          where('handler_id', '==', uid),
+          where('form_type', '==', 'assembly-wa')
+        ),
+        query(
+          wtmSlpCollection,
+          where('handler_id', '==', uid),
+          where('type', '==', 'assembly-wa')
+        )
+      );
       
       console.log('[getCoordinatorDetails] No assembly filter applied');
     }
     
     // Execute all queries in parallel
     console.log('[getCoordinatorDetails] Executing all queries in parallel...');
-    const [
-      meetingsFormTypeSnapshot,
-      meetingsTypeSnapshot,
-      activitiesFormTypeSnapshot,
-      activitiesTypeSnapshot,
-      whatsappFormTypeSnapshot,
-      whatsappTypeSnapshot
-    ] = await Promise.all([
-      getDocs(meetingsFormTypeQuery),
-      getDocs(meetingsTypeQuery),
-      getDocs(activitiesFormTypeQuery),
-      getDocs(activitiesTypeQuery),
-      getDocs(whatsappFormTypeQuery),
-      getDocs(whatsappTypeQuery)
-    ]);
+    
+    // Execute meetings queries
+    const meetingsSnapshots = await Promise.all(meetingsQueries.map(q => getDocs(q)));
+    
+    // Execute activities queries
+    const activitiesSnapshots = await Promise.all(activitiesQueries.map(q => getDocs(q)));
+    
+    // Execute WhatsApp group queries
+    const whatsappSnapshots = await Promise.all(whatsappQueries.map(q => getDocs(q)));
+    
     console.log('[getCoordinatorDetails] All queries executed');
-    console.log(`[getCoordinatorDetails] Documents retrieved:
-      - Meetings (form_type): ${meetingsFormTypeSnapshot.size}
-      - Meetings (type): ${meetingsTypeSnapshot.size}
-      - Activities (form_type): ${activitiesFormTypeSnapshot.size}
-      - Activities (type): ${activitiesTypeSnapshot.size}
-      - WhatsApp (form_type): ${whatsappFormTypeSnapshot.size}
-      - WhatsApp (type): ${whatsappTypeSnapshot.size}`);
+    console.log(`[getCoordinatorDetails] Documents retrieved from queries:
+      - Meetings: ${meetingsSnapshots.reduce((total, snapshot) => total + snapshot.size, 0)}
+      - Activities: ${activitiesSnapshots.reduce((total, snapshot) => total + snapshot.size, 0)}
+      - WhatsApp: ${whatsappSnapshots.reduce((total, snapshot) => total + snapshot.size, 0)}`);
     
     // Process meetings data
     const meetingsMap = new Map<string, WtmSlpEntry>();
     
-    meetingsFormTypeSnapshot.forEach((doc) => {
-      const data = doc.data() as WtmSlpEntry;
-      meetingsMap.set(doc.id, { ...data, id: doc.id });
-    });
-    
-    meetingsTypeSnapshot.forEach((doc) => {
-      if (!meetingsMap.has(doc.id)) {
+    meetingsSnapshots.forEach(snapshot => {
+      snapshot.forEach(doc => {
         const data = doc.data() as WtmSlpEntry;
         meetingsMap.set(doc.id, { ...data, id: doc.id });
-      }
+      });
     });
     
     // Process activities data
     const activitiesMap = new Map<string, WtmSlpEntry>();
     
-    activitiesFormTypeSnapshot.forEach((doc) => {
-      const data = doc.data() as WtmSlpEntry;
-      activitiesMap.set(doc.id, { ...data, id: doc.id });
-    });
-    
-    activitiesTypeSnapshot.forEach((doc) => {
-      if (!activitiesMap.has(doc.id)) {
+    activitiesSnapshots.forEach(snapshot => {
+      snapshot.forEach(doc => {
         const data = doc.data() as WtmSlpEntry;
         activitiesMap.set(doc.id, { ...data, id: doc.id });
-      }
+      });
     });
     
     // Process WhatsApp groups data
     const whatsappMap = new Map<string, WtmSlpEntry>();
     
-    whatsappFormTypeSnapshot.forEach((doc) => {
-      const data = doc.data() as WtmSlpEntry;
-      whatsappMap.set(doc.id, { ...data, id: doc.id });
-    });
-    
-    whatsappTypeSnapshot.forEach((doc) => {
-      if (!whatsappMap.has(doc.id)) {
+    whatsappSnapshots.forEach(snapshot => {
+      snapshot.forEach(doc => {
         const data = doc.data() as WtmSlpEntry;
         whatsappMap.set(doc.id, { ...data, id: doc.id });
-      }
+      });
     });
     
     console.log(`[getCoordinatorDetails] Total unique documents:
