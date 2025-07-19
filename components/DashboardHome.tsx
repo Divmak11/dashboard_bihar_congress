@@ -2,7 +2,21 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import type { MeetingRow } from "../app/utils/fetchSheetData";
 import LogoutButton from "./LogoutButton";
-import { WtmSlpSummary } from "../models/types";
+import { 
+  WtmSlpSummary, 
+  SlpTrainingActivity, 
+  PanchayatWaActivity, 
+  MaiBahinYojnaActivity, 
+  LocalIssueVideoActivity,
+  MemberActivity 
+} from "../models/types";
+import {
+  getSlpTrainingActivity,
+  getSlpPanchayatWaActivity,
+  getSlpMaiBahinYojnaActivity,
+  getSlpLocalIssueVideoActivity,
+  getSlpMemberActivity
+} from "../app/utils/fetchFirebaseData";
 
 interface DashboardHomeProps {
   data: MeetingRow[];
@@ -25,6 +39,12 @@ interface DashboardHomeProps {
   // New member activities props
   memberActivities?: any[];
   isMembersLoading?: boolean;
+  // SLP Activity props
+  slpTrainingActivities?: SlpTrainingActivity[];
+  slpPanchayatWaActivities?: PanchayatWaActivity[];
+  slpMaiBahinYojnaActivities?: MaiBahinYojnaActivity[];
+  slpLocalIssueVideoActivities?: LocalIssueVideoActivity[];
+  isSlpActivitiesLoading?: boolean;
 }
 
 // Normalized keys
@@ -123,7 +143,13 @@ export default function DashboardHome({
   isSummaryLoading,
   // New member activities props
   memberActivities,
-  isMembersLoading = false
+  isMembersLoading = false,
+  // SLP Activity props
+  slpTrainingActivities = [],
+  slpPanchayatWaActivities = [],
+  slpMaiBahinYojnaActivities = [],
+  slpLocalIssueVideoActivities = [],
+  isSlpActivitiesLoading = false
 }: DashboardHomeProps) {
   console.log('[DashboardHome] Rendering with data length:', data.length);
   console.log('[DashboardHome] External props:', {
@@ -417,6 +443,9 @@ export default function DashboardHome({
 
   // --- FC Summary Card Filtering ---
   const [fcFilter, setFcFilter] = useState<null | "meetings" | "onboarded" | "slp">(null);
+  
+  // --- SLP Activity States ---
+  const [activeTab, setActiveTab] = useState<string>('members');
   const filteredCoordinatorData = useMemo(() => {
     console.log(`[DashboardHome] Filtering coordinator data by: ${fcFilter || 'none'}`);
     
@@ -475,7 +504,7 @@ export default function DashboardHome({
     if (fcFilter === "onboarded") return dateFilteredData.filter((row) => normalize(row[KEY_ONBOARDING_STATUS]) === "onboarded");
     if (fcFilter === "slp") return dateFilteredData.filter((row) => normalize(row[KEY_RECOMMENDED_POSITION]) === "slp");
     return dateFilteredData;
-  }, [coordinatorData, fcFilter, coordinatorDetails, fcDateRange]);
+  }, [coordinatorData, fcFilter, coordinatorDetails, fcDateRange, selectedCoordinatorObject?.role]);
 
   // --- UI ---
   return (
@@ -582,35 +611,82 @@ export default function DashboardHome({
             </div>
           )}
           
-          {/* FC Summary Cards (tappable) */}
+          {/* Conditional Summary Cards based on role */}
           {!loadingCoordinator && (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <SummaryCard
-                  label={selectedCoordinatorObject?.role === 'Assembly Coordinator' ? "Meetings Done" : "Members Logged"}
-                  value={coordinatorMeetings}
-                  tappable
-                  selected={fcFilter === "meetings"}
-                  onClick={() => setFcFilter(fcFilter === "meetings" ? null : "meetings")}
-                />
-                <SummaryCard
-                  label={selectedCoordinatorObject?.role === 'Assembly Coordinator' ? "SLPs Added" : "Active Members"}
-                  value={coordinatorSLPs}
-                  tappable
-                  selected={fcFilter === "slp"}
-                  onClick={() => setFcFilter(fcFilter === "slp" ? null : "slp")}
-                />
-                <SummaryCard
-                  label={selectedCoordinatorObject?.role === 'Assembly Coordinator' ? "Onboarded" : "Total Members"}
-                  value={coordinatorOnboarded}
-                  tappable
-                  selected={fcFilter === "onboarded"}
-                  onClick={() => setFcFilter(fcFilter === "onboarded" ? null : "onboarded")}
-                />
-              </div>
-
-              {/* Leader Cards List (visible when a card is selected) */}
-              {fcFilter && (
+              {selectedCoordinatorObject?.role === 'Assembly Coordinator' ? (
+                // Assembly Coordinator View (existing)
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <SummaryCard
+                    label="Meetings Done"
+                    value={coordinatorMeetings}
+                    tappable
+                    selected={fcFilter === "meetings"}
+                    onClick={() => setFcFilter(fcFilter === "meetings" ? null : "meetings")}
+                  />
+                  <SummaryCard
+                    label="SLPs Added"
+                    value={coordinatorSLPs}
+                    tappable
+                    selected={fcFilter === "slp"}
+                    onClick={() => setFcFilter(fcFilter === "slp" ? null : "slp")}
+                  />
+                  <SummaryCard
+                    label="Onboarded"
+                    value={coordinatorOnboarded}
+                    tappable
+                    selected={fcFilter === "onboarded"}
+                    onClick={() => setFcFilter(fcFilter === "onboarded" ? null : "onboarded")}
+                  />
+                </div>
+              ) : (
+                // SLP/ASLP Activity Tabs View (new)
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                  <SummaryCard
+                    label="Members Logged"
+                    value={memberActivities?.length || 0}
+                    tappable
+                    selected={activeTab === 'members'}
+                    onClick={() => setActiveTab('members')}
+                    isLoading={isMembersLoading || isSlpActivitiesLoading}
+                  />
+                  <SummaryCard
+                    label="Trainings"
+                    value={slpTrainingActivities?.length || 0}
+                    tappable
+                    selected={activeTab === 'training'}
+                    onClick={() => setActiveTab('training')}
+                    isLoading={isSlpActivitiesLoading}
+                  />
+                  <SummaryCard
+                    label="WhatsApp Groups"
+                    value={slpPanchayatWaActivities?.length || 0}
+                    tappable
+                    selected={activeTab === 'whatsapp'}
+                    onClick={() => setActiveTab('whatsapp')}
+                    isLoading={isSlpActivitiesLoading}
+                  />
+                  <SummaryCard
+                    label="Local Issue Videos"
+                    value={slpLocalIssueVideoActivities?.length || 0}
+                    tappable
+                    selected={activeTab === 'videos'}
+                    onClick={() => setActiveTab('videos')}
+                    isLoading={isSlpActivitiesLoading}
+                  />
+                  <SummaryCard
+                    label="Mai Bahin Forms"
+                    value={slpMaiBahinYojnaActivities?.length || 0}
+                    tappable
+                    selected={activeTab === 'forms'}
+                    onClick={() => setActiveTab('forms')}
+                    isLoading={isSlpActivitiesLoading}
+                  />
+                </div>
+              )}
+              
+              {/* Leader Cards List (visible when a card is selected) - Only for Assembly Coordinators */}
+              {selectedCoordinatorObject?.role === 'Assembly Coordinator' && fcFilter && (
                 <>
                   {/* Debug info */}
                   {console.log('[DEBUG] filteredCoordinatorData:', {
@@ -626,34 +702,252 @@ export default function DashboardHome({
         </div>
       )}
 
-      {/* Display either member activities or leader data based on what was loaded */}
-      {memberActivities && memberActivities.length > 0 ? (
-        <div className="mt-4">
-          <h2 className="text-xl font-semibold mb-4">Member Activities</h2>
-          <MembersList members={memberActivities} isLoading={isMembersLoading} />
-        </div>
-      ) : selectedName && coordinatorDetails ? (
-        // Only show this section if no fcFilter is active to avoid duplicates
-        // This section only displays when no filter is applied from the summary cards
-        !fcFilter && (
-          <div className="mt-4">
-            <h2 className="text-xl font-semibold mb-4">
-              {selectedCoordinatorObject?.role === 'Assembly Coordinator' ? "All Meetings" : "All Member Activities"}
-            </h2>
-            {coordinatorDetails.detailedMeetings && coordinatorDetails.detailedMeetings.length > 0 ? (
-              <LeaderCardList data={coordinatorDetails.detailedMeetings} fcFilter={null} />
-            ) : (
-              <div className="text-center py-16">
-                <p className="text-gray-500">
-                  {selectedCoordinatorObject?.role === 'Assembly Coordinator' 
-                    ? "No meeting data available" 
-                    : "No member activities available"}
-                </p>
+      {/* Dynamic Content Display based on role and active tab */}
+      {selectedCoordinatorObject?.role === 'Assembly Coordinator' ? (
+        // Assembly Coordinator View (existing logic)
+        <>
+          {memberActivities && memberActivities.length > 0 ? (
+            <div className="mt-4">
+              <h2 className="text-xl font-semibold mb-4">Member Activities</h2>
+              <div className="space-y-4">
+                {memberActivities && memberActivities.length > 0 ? (
+                  memberActivities.map((member: MemberActivity, index: number) => (
+                    <div key={member.id || index} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+                      <div className="flex justify-between items-start mb-3">
+                        <h3 className="text-lg font-semibold text-gray-900">{member.name || 'Member'}</h3>
+                        <span className="bg-green-100 text-green-800 text-sm font-medium px-2.5 py-0.5 rounded">
+                          {member.dateOfVisit || (member.createdAt ? new Date(member.createdAt).toLocaleDateString() : 'Unknown Date')}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                        <div><span className="font-medium">Village:</span> {member.village || 'N/A'}</div>
+                        <div><span className="font-medium">Assembly:</span> {member.assembly || 'N/A'}</div>
+                        <div><span className="font-medium">Contact:</span> {member.phone || member.phoneNumber || member.mobileNumber || 'N/A'}</div>
+                        <div><span className="font-medium">Category:</span> {member.category || member.caste || 'N/A'}</div>
+                        <div><span className="font-medium">Gender:</span> {member.gender || 'N/A'}</div>
+                        <div><span className="font-medium">Profession:</span> {member.profession || 'N/A'}</div>
+                      </div>
+                      {member.remarks && (
+                        <div className="mt-3">
+                          <span className="font-medium text-gray-700">Remarks:</span>
+                          <p className="text-gray-600 mt-1">{member.remarks}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-16">
+                    <p className="text-gray-500">No member activities available</p>
+                  </div>
+                )}
               </div>
+            </div>
+          ) : selectedName && coordinatorDetails ? (
+            // Only show this section if no fcFilter is active to avoid duplicates
+            // This section only displays when no filter is applied from the summary cards
+            !fcFilter && (
+              <div className="mt-4">
+                <h2 className="text-xl font-semibold mb-4">All Meetings</h2>
+                {coordinatorDetails.detailedMeetings && coordinatorDetails.detailedMeetings.length > 0 ? (
+                  <LeaderCardList data={coordinatorDetails.detailedMeetings} fcFilter={null} />
+                ) : (
+                  <div className="text-center py-16">
+                    <p className="text-gray-500">No meeting data available</p>
+                  </div>
+                )}
+              </div>
+            )
+          ) : null}
+        </>
+      ) : (
+        // SLP/ASLP View (new dynamic content based on active tab)
+        selectedName && (
+          <div className="mt-4">
+            {activeTab === 'members' && (
+              <>
+                <h2 className="text-xl font-semibold mb-4">Member Activities</h2>
+                <div className="space-y-4">
+                  {memberActivities && memberActivities.length > 0 ? (
+                    memberActivities.map((member: MemberActivity, index: number) => (
+                      <div key={member.id || index} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+                        <div className="flex justify-between items-start mb-3">
+                          <h3 className="text-lg font-semibold text-gray-900">{member.name || 'Member'}</h3>
+                          <span className="bg-green-100 text-green-800 text-sm font-medium px-2.5 py-0.5 rounded">
+                            {member.dateOfVisit || (member.createdAt ? new Date(member.createdAt).toLocaleDateString() : 'Unknown Date')}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                          <div><span className="font-medium">Village:</span> {member.village || 'N/A'}</div>
+                          <div><span className="font-medium">Assembly:</span> {member.assembly || 'N/A'}</div>
+                          <div><span className="font-medium">Contact:</span> {member.phone || member.phoneNumber || member.mobileNumber || 'N/A'}</div>
+                          <div><span className="font-medium">Category:</span> {member.category || member.caste || 'N/A'}</div>
+                          <div><span className="font-medium">Gender:</span> {member.gender || 'N/A'}</div>
+                          <div><span className="font-medium">Profession:</span> {member.profession || 'N/A'}</div>
+                        </div>
+                        {member.remarks && (
+                          <div className="mt-3">
+                            <span className="font-medium text-gray-700">Remarks:</span>
+                            <p className="text-gray-600 mt-1">{member.remarks}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-16">
+                      <p className="text-gray-500">No member activities available</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+            
+            {activeTab === 'training' && (
+              <>
+                <h2 className="text-xl font-semibold mb-4">Training Activities</h2>
+                {/* TODO: Replace with TrainingList component */}
+                <div className="space-y-4">
+                  {slpTrainingActivities && slpTrainingActivities.length > 0 ? (
+                    slpTrainingActivities.map((training: SlpTrainingActivity, index: number) => (
+                      <div key={training.id || index} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+                        <div className="flex justify-between items-start mb-3">
+                          <h3 className="text-lg font-semibold text-gray-900">Training Session</h3>
+                          <span className="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded">
+                            {training.dateOfTraining}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                          <div><span className="font-medium">Location:</span> {training.location}</div>
+                          <div><span className="font-medium">Assembly:</span> {training.assembly}</div>
+                          <div><span className="font-medium text-green-600">Expected:</span> <span className="font-bold">{training.expectedParticipants}</span></div>
+                          <div><span className="font-medium text-blue-600">Actual:</span> <span className="font-bold">{training.actualParticipants}</span></div>
+                        </div>
+                        {training.summary && (
+                          <div className="mt-3">
+                            <span className="font-medium text-gray-700">Summary:</span>
+                            <p className="text-gray-600 mt-1">{training.summary}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-16">
+                      <p className="text-gray-500">No training activities available</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+            
+            {activeTab === 'whatsapp' && (
+              <>
+                <h2 className="text-xl font-semibold mb-4">WhatsApp Group Activities</h2>
+                <div className="space-y-4">
+                  {slpPanchayatWaActivities && slpPanchayatWaActivities.length > 0 ? (
+                    slpPanchayatWaActivities.map((wa: PanchayatWaActivity, index: number) => (
+                      <div key={wa.id || index} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+                        <div className="flex justify-between items-start mb-3">
+                          <h3 className="text-lg font-semibold text-gray-900">{wa.groupName || 'Panchayat WhatsApp Group'}</h3>
+                          <span className="bg-green-100 text-green-800 text-sm font-medium px-2.5 py-0.5 rounded">
+                            {wa.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                          <div><span className="font-medium">Assembly:</span> {wa.assembly}</div>
+                          <div><span className="font-medium">Panchayat:</span> {wa.panchayat}</div>
+                          <div><span className="font-medium text-blue-600">Members:</span> <span className="font-bold">{wa.members}</span></div>
+                          <div><span className="font-medium">Status:</span> <span className={`px-2 py-1 rounded text-xs font-medium ${wa.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{wa.status}</span></div>
+                        </div>
+                        {wa.link && (
+                          <div className="mt-3">
+                            <a href={wa.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">
+                              View Group
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-16">
+                      <p className="text-gray-500">No WhatsApp group activities available</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+            
+            {activeTab === 'videos' && (
+              <>
+                <h2 className="text-xl font-semibold mb-4">Local Issue Video Activities</h2>
+                <div className="space-y-4">
+                  {slpLocalIssueVideoActivities && slpLocalIssueVideoActivities.length > 0 ? (
+                    slpLocalIssueVideoActivities.map((video: LocalIssueVideoActivity, index: number) => (
+                      <div key={video.id || index} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+                        <div className="flex justify-between items-start mb-3">
+                          <h3 className="text-lg font-semibold text-gray-900">Local Issue Video</h3>
+                          <span className="bg-red-100 text-red-800 text-sm font-medium px-2.5 py-0.5 rounded">
+                            {video.date_submitted}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                          <div><span className="font-medium">Assembly:</span> {video.assembly}</div>
+                          <div><span className="font-medium">Storage Path:</span> {video.storage_path}</div>
+                        </div>
+                        {video.description && (
+                          <div className="mt-3">
+                            <span className="font-medium text-gray-700">Issue:</span>
+                            <p className="text-gray-600 mt-1">{video.description}</p>
+                          </div>
+                        )}
+                        {video.video_link && (
+                          <div className="mt-3">
+                            <a href={video.video_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">
+                              View Video
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-16">
+                      <p className="text-gray-500">No video activities available</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+            
+            {activeTab === 'forms' && (
+              <>
+                <h2 className="text-xl font-semibold mb-4">Mai Bahin Yojna Form Activities</h2>
+                <div className="space-y-4">
+                  {slpMaiBahinYojnaActivities && slpMaiBahinYojnaActivities.length > 0 ? (
+                    slpMaiBahinYojnaActivities.map((form: MaiBahinYojnaActivity, index: number) => (
+                      <div key={form.id || index} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+                        <div className="flex justify-between items-start mb-3">
+                          <h3 className="text-lg font-semibold text-gray-900">Mai Bahin Yojna Form</h3>
+                          <span className="bg-purple-100 text-purple-800 text-sm font-medium px-2.5 py-0.5 rounded">
+                            {form.date}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                          <div><span className="font-medium">Assembly:</span> {form.assembly}</div>
+                          <div><span className="font-medium text-green-600">Forms Distributed:</span> <span className="font-bold">{form.formsDistributed}</span></div>
+                          <div><span className="font-medium text-blue-600">Forms Collected:</span> <span className="font-bold">{form.formsCollected}</span></div>
+                          <div><span className="font-medium">Late Entry:</span> <span className={`px-2 py-1 rounded text-xs font-medium ${form.late_entry ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>{form.late_entry ? 'Yes' : 'No'}</span></div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-16">
+                      <p className="text-gray-500">No form activities available</p>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         )
-      ) : null}
+      )}
     </div>
   );
 }
@@ -1117,142 +1411,3 @@ function LeaderCard({ row, fcFilter }: { row: MeetingRow; fcFilter?: string | nu
     </div>
   );
 }
-
-function MemberCard({ member }: { member: any }) {
-  const [expanded, setExpanded] = useState(false);
-  
-  // Determine if the member is active/inactive
-  const isInactive = member.status === "Inactive";
-  
-  // Card style based on activity status
-  const cardStyle = isInactive 
-    ? "bg-red-50 dark:bg-red-900 rounded-xl shadow border border-red-200 dark:border-red-800 p-4 flex flex-col gap-2 hover:shadow-lg transition-shadow"
-    : "bg-white dark:bg-gray-900 rounded-xl shadow border border-gray-200 dark:border-gray-800 p-4 flex flex-col gap-2 hover:shadow-lg transition-shadow";
-  
-  return (
-    <div className={cardStyle}>
-      {/* Overview Row */}
-      <div className="flex flex-wrap items-center gap-2 mb-1">
-        <span className="text-lg font-bold text-primary">
-          {member.name || "Unknown Member"}
-        </span>
-        
-        {/* Tags section */}
-        <div className="flex flex-wrap gap-1">
-          {member.gender && (
-            <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 text-xs font-semibold border border-purple-200">
-              {member.gender}
-            </span>
-          )}
-          
-          {member.category && (
-            <span className="px-2 py-0.5 rounded bg-yellow-100 text-yellow-800 text-xs font-semibold border border-yellow-200">
-              {member.category}
-            </span>
-          )}
-          
-          {member.profession && (
-            <span className="px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs font-semibold border border-green-200">
-              {member.profession}
-            </span>
-          )}
-        </div>
-        
-        <span className="ml-auto flex items-center gap-2">
-          {(member.phoneNumber || member.mobileNumber) && (
-            <span className="text-sm text-blue-700 font-mono bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-              {member.phoneNumber || member.mobileNumber}
-            </span>
-          )}
-          <button
-            className={`btn btn-xs btn-outline cursor-pointer transition-colors ${expanded ? "bg-blue-100 text-blue-800" : ""}`}
-            onClick={() => setExpanded((e) => !e)}
-            aria-label={expanded ? "Collapse details" : "Expand details"}
-          >
-            {expanded ? "Hide Details" : "Show Details"}
-          </button>
-        </span>
-      </div>
-      
-      {/* Overview Details Row - Location information */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-        <div className="flex flex-col">
-          <span className="font-semibold text-gray-600">Location</span>
-          <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
-            {member.village && <span>Village: {member.village}</span>}
-            {member.panchayat && <span>Panchayat: {member.panchayat}</span>}
-            {member.block && <span>Block: {member.block}</span>}
-            {member.assembly && <span>Assembly: {member.assembly}</span>}
-          </div>
-        </div>
-        <div className="flex flex-col">
-          <span className="font-semibold text-gray-600">Contact</span>
-          <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
-            {member.phoneNumber && <span>Phone: {member.phoneNumber}</span>}
-            {member.email && <span>Email: {member.email}</span>}
-          </div>
-        </div>
-      </div>
-      
-      {/* Expandable Details */}
-      {expanded && (
-        <div className="mt-2 border-t pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4 transition-all">
-          {/* Additional details when expanded */}
-          <div className="flex flex-col gap-1">
-            <span className="font-semibold text-gray-600">Demographics</span>
-            <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
-              {member.age && <span>Age: {member.age}</span>}
-              {member.gender && <span>Gender: {member.gender}</span>}
-              {member.category && <span>Category: {member.category}</span>}
-              {member.caste && <span>Caste: {member.caste}</span>}
-            </div>
-          </div>
-          
-          {/* Notes section */}
-          {(member.notes || member.remarks || member.additionalDetails) && (
-            <div className="flex flex-col gap-1">
-              <span className="font-semibold text-gray-600">Notes</span>
-              <div className="grid grid-cols-1 gap-1">
-                {member.notes && (
-                  <span className="text-gray-800 dark:text-gray-200">{member.notes}</span>
-                )}
-                {member.remarks && (
-                  <span className="text-gray-800 dark:text-gray-200">{member.remarks}</span>
-                )}
-                {member.additionalDetails && (
-                  <span className="text-gray-800 dark:text-gray-200">{member.additionalDetails}</span>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function MembersList({ members, isLoading }: { members: any[]; isLoading: boolean }) {
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center py-16">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (!members || members.length === 0) {
-    return (
-      <div className="text-center py-16">
-        <p className="text-gray-500 dark:text-gray-400">No member data available</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-      {members.map((member) => (
-        <MemberCard key={member.id} member={member} />
-      ))}
-    </div>
-  );
-} 

@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import DashboardHome from "../../components/DashboardHome";
-import { getWtmSlpSummary, getWtmSlpStakeholders, getCoordinatorDetails, getCurrentAdminUser, getAssociatedSlps, getSlpMemberActivity } from "../utils/fetchFirebaseData";
-import { WtmSlpSummary, User, CoordinatorDetails, AdminUser, MemberActivity } from "../../models/types";
+import { getWtmSlpSummary, getWtmSlpStakeholders, getCoordinatorDetails, getCurrentAdminUser, getAssociatedSlps, getSlpMemberActivity, getSlpTrainingActivity, getSlpPanchayatWaActivity, getSlpLocalIssueVideoActivity, getSlpMaiBahinYojnaActivity } from "../utils/fetchFirebaseData";
+import { WtmSlpSummary, User, CoordinatorDetails, AdminUser, MemberActivity, SlpTrainingActivity, PanchayatWaActivity, LocalIssueVideoActivity, MaiBahinYojnaActivity } from "../../models/types";
 import LogoutButton from "../../components/LogoutButton";
 import { auth } from "../utils/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -76,6 +76,13 @@ export default function WTMSLPPage() {
   // State for member activities
   const [memberActivities, setMemberActivities] = useState<MemberActivity[]>([]);
   const [isMembersLoading, setIsMembersLoading] = useState<boolean>(false);
+
+  // State for SLP activities
+  const [slpTrainingActivities, setSlpTrainingActivities] = useState<SlpTrainingActivity[]>([]);
+  const [slpPanchayatWaActivities, setSlpPanchayatWaActivities] = useState<PanchayatWaActivity[]>([]);
+  const [slpLocalIssueVideoActivities, setSlpLocalIssueVideoActivities] = useState<LocalIssueVideoActivity[]>([]);
+  const [slpMaiBahinYojnaActivities, setSlpMaiBahinYojnaActivities] = useState<MaiBahinYojnaActivity[]>([]);
+  const [isSlpActivitiesLoading, setIsSlpActivitiesLoading] = useState<boolean>(false);
 
   // Create formatted coordinators list for dropdown - using useMemo to ensure consistent hook ordering
   const formattedCoordinators = useMemo(() => {
@@ -423,6 +430,13 @@ export default function WTMSLPPage() {
           }
           
           setMemberActivities([]); // No member activities for ACs
+          
+          // Clear SLP activities for Assembly Coordinators
+          setSlpTrainingActivities([]);
+          setSlpPanchayatWaActivities([]);
+          setSlpLocalIssueVideoActivities([]);
+          setSlpMaiBahinYojnaActivities([]);
+          setIsSlpActivitiesLoading(false);
         } else if (selectedCoordinator.role === 'SLP' || selectedCoordinator.role === 'ASLP') {
           // For SLPs and ASLPs, fetch member activities
           console.log(`[WTMSLPPage] Fetching member activities for ${selectedCoordinator.role}`);
@@ -497,14 +511,61 @@ export default function WTMSLPPage() {
           // Set both coordinatorDetails for the summary cards and formatted list view
           // and memberActivities for the original member data display
           setCoordinatorDetails(memberDetails);
-          // Clear memberActivities to prevent the grid view from showing
-          // This ensures only the list view (LeaderCardList) is displayed
-          setMemberActivities([]);
+          // Set memberActivities for SLP activity tabs display
+          setMemberActivities(uniqueMembers);
+          
+          // Fetch all SLP activities in parallel
+          console.log(`[WTMSLPPage] Fetching all SLP activities for ${selectedCoordinator.role}`);
+          setIsSlpActivitiesLoading(true);
+          
+          try {
+            const slpObj = {
+              uid: selectedCoordinatorUid,
+              role: selectedCoordinator.role,
+              handler_id: selectedCoordinator.handler_id
+            };
+            
+            const [trainingData, panchayatWaData, localIssueVideoData, maiBahinYojnaData] = await Promise.all([
+              getSlpTrainingActivity(slpObj),
+              getSlpPanchayatWaActivity(slpObj),
+              getSlpLocalIssueVideoActivity(slpObj),
+              getSlpMaiBahinYojnaActivity(slpObj)
+            ]);
+            
+            console.log(`[WTMSLPPage] SLP activities fetched:`, {
+              training: trainingData.length,
+              panchayatWa: panchayatWaData.length,
+              localIssueVideo: localIssueVideoData.length,
+              maiBahinYojna: maiBahinYojnaData.length
+            });
+            
+            // Update state with fetched activities
+            setSlpTrainingActivities(trainingData);
+            setSlpPanchayatWaActivities(panchayatWaData);
+            setSlpLocalIssueVideoActivities(localIssueVideoData);
+            setSlpMaiBahinYojnaActivities(maiBahinYojnaData);
+          } catch (error) {
+            console.error('[WTMSLPPage] Error fetching SLP activities:', error);
+            // Clear activities on error
+            setSlpTrainingActivities([]);
+            setSlpPanchayatWaActivities([]);
+            setSlpLocalIssueVideoActivities([]);
+            setSlpMaiBahinYojnaActivities([]);
+          } finally {
+            setIsSlpActivitiesLoading(false);
+          }
         }
       } catch (err) {
         console.error("[WTMSLPPage] Error fetching coordinator/member data:", err);
         setCoordinatorDetails(null);
         setMemberActivities([]);
+        
+        // Clear SLP activities on error
+        setSlpTrainingActivities([]);
+        setSlpPanchayatWaActivities([]);
+        setSlpLocalIssueVideoActivities([]);
+        setSlpMaiBahinYojnaActivities([]);
+        setIsSlpActivitiesLoading(false);
       } finally {
         setLoadingCoordinator(false);
         setIsMembersLoading(false);
@@ -560,6 +621,11 @@ export default function WTMSLPPage() {
         isSummaryLoading={isSummaryLoading}
         memberActivities={memberActivities}
         isMembersLoading={isMembersLoading}
+        slpTrainingActivities={slpTrainingActivities}
+        slpPanchayatWaActivities={slpPanchayatWaActivities}
+        slpLocalIssueVideoActivities={slpLocalIssueVideoActivities}
+        slpMaiBahinYojnaActivities={slpMaiBahinYojnaActivities}
+        isSlpActivitiesLoading={isSlpActivitiesLoading}
       />
     </div>
   );

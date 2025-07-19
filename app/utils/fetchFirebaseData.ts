@@ -1,6 +1,16 @@
 import { collection, query, where, getDocs, doc, getDoc, Timestamp, limit } from 'firebase/firestore';
 import { db } from './firebase';
-import { User, WtmSlpEntry, WtmSlpSummary, CoordinatorDetails, AdminUser } from '../../models/types';
+import { 
+  User, 
+  WtmSlpEntry, 
+  WtmSlpSummary, 
+  CoordinatorDetails, 
+  AdminUser,
+  SlpTrainingActivity,
+  PanchayatWaActivity,
+  MaiBahinYojnaActivity,
+  LocalIssueVideoActivity
+} from '../../models/types';
 
 /**
  * Debug function to fetch raw documents from a collection
@@ -803,6 +813,334 @@ export async function getSlpMemberActivity(slp: {
     }
   } catch (error) {
     console.error('[getSlpMemberActivity] Error fetching member activities:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetches panchayat WhatsApp group activities for a selected SLP or Associated SLP
+ * @param slp - Object containing slp.uid and optionally slp.handler_id, and slp.role
+ * @returns Promise resolving to array of panchayat WhatsApp group activity objects
+ */
+export async function getSlpPanchayatWaActivity(slp: {
+  uid: string;
+  role: string;
+  handler_id?: string;
+}): Promise<PanchayatWaActivity[]> {
+  console.log(`[getSlpPanchayatWaActivity] Fetching panchayat WhatsApp activities for ${slp.role}: ${slp.uid}`);
+  
+  try {
+    const slpActivityCollection = collection(db, 'slp-activity');
+    
+    // Arrays to store queries
+    const queries = [];
+    
+    if (slp.role === 'SLP') {
+      // Individual SLP - search by uid
+      queries.push(
+        query(
+          slpActivityCollection,
+          where('handler_id', '==', slp.uid),
+          where('form_type', '==', 'panchayat-wa')
+        ),
+        query(
+          slpActivityCollection,
+          where('handler_id', '==', slp.uid),
+          where('type', '==', 'panchayat-wa')
+        )
+      );
+    } else {
+      // Associated SLP - search by handler_id
+      if (slp.handler_id) {
+        queries.push(
+          query(
+            slpActivityCollection,
+            where('handler_id', '==', slp.handler_id),
+            where('form_type', '==', 'panchayat-wa')
+          ),
+          query(
+            slpActivityCollection,
+            where('handler_id', '==', slp.handler_id),
+            where('type', '==', 'panchayat-wa')
+          )
+        );
+      }
+    }
+    
+    console.log(`[getSlpPanchayatWaActivity] Executing ${queries.length} queries...`);
+    
+    // Execute all queries in parallel
+    const snapshots = await Promise.all(queries.map(q => getDocs(q)));
+    
+    console.log(`[getSlpPanchayatWaActivity] Queries executed. Total documents across all queries: ${
+      snapshots.reduce((total, snapshot) => total + snapshot.size, 0)
+    }`);
+    
+    // Process results, ensuring no duplicates
+    const activitiesMap = new Map<string, PanchayatWaActivity>();
+    
+    snapshots.forEach(snapshot => {
+      snapshot.forEach(doc => {
+        activitiesMap.set(doc.id, {
+          id: doc.id,
+          ...doc.data()
+        } as PanchayatWaActivity);
+      });
+    });
+    
+    const activities = Array.from(activitiesMap.values());
+    console.log(`[getSlpPanchayatWaActivity] Found ${activities.length} panchayat WhatsApp activities`);
+    console.log('[getSlpPanchayatWaActivity] Documents:', JSON.stringify(activities, null, 2));
+    
+    return activities;
+  } catch (error) {
+    console.error('[getSlpPanchayatWaActivity] Error fetching panchayat WhatsApp activities:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetches local issue video activities for a selected SLP or Associated SLP
+ * @param slp - Object containing slp.uid and optionally slp.handler_id, and slp.role
+ * @returns Promise resolving to array of local issue video activity objects
+ */
+export async function getSlpLocalIssueVideoActivity(slp: {
+  uid: string;
+  role: string;
+  handler_id?: string;
+}): Promise<LocalIssueVideoActivity[]> {
+  console.log(`[getSlpLocalIssueVideoActivity] Fetching local issue video activities for ${slp.role}: ${slp.uid}`);
+  
+  try {
+    const slpActivityCollection = collection(db, 'slp-activity');
+    
+    // Arrays to store queries
+    const queries = [];
+    
+    if (slp.role === 'SLP') {
+      // Individual SLP - search by uid
+      queries.push(
+        query(
+          slpActivityCollection,
+          where('handler_id', '==', slp.uid),
+          where('form_type', '==', 'local-issue-video')
+        ),
+        query(
+          slpActivityCollection,
+          where('handler_id', '==', slp.uid),
+          where('type', '==', 'local-issue-video')
+        )
+      );
+    } else {
+      // Associated SLP - search by handler_id
+      if (slp.handler_id) {
+        queries.push(
+          query(
+            slpActivityCollection,
+            where('handler_id', '==', slp.handler_id),
+            where('form_type', '==', 'local-issue-video')
+          ),
+          query(
+            slpActivityCollection,
+            where('handler_id', '==', slp.handler_id),
+            where('type', '==', 'local-issue-video')
+          )
+        );
+      }
+    }
+    
+    console.log(`[getSlpLocalIssueVideoActivity] Executing ${queries.length} queries...`);
+    
+    // Execute all queries in parallel
+    const snapshots = await Promise.all(queries.map(q => getDocs(q)));
+    
+    console.log(`[getSlpLocalIssueVideoActivity] Queries executed. Total documents across all queries: ${
+      snapshots.reduce((total, snapshot) => total + snapshot.size, 0)
+    }`);
+    
+    // Process results, ensuring no duplicates
+    const activitiesMap = new Map<string, LocalIssueVideoActivity>();
+    
+    snapshots.forEach(snapshot => {
+      snapshot.forEach(doc => {
+        activitiesMap.set(doc.id, {
+          id: doc.id,
+          ...doc.data()
+        } as LocalIssueVideoActivity);
+      });
+    });
+    
+    const activities = Array.from(activitiesMap.values());
+    console.log(`[getSlpLocalIssueVideoActivity] Found ${activities.length} local issue video activities`);
+    console.log('[getSlpLocalIssueVideoActivity] Documents:', JSON.stringify(activities, null, 2));
+    
+    return activities;
+  } catch (error) {
+    console.error('[getSlpLocalIssueVideoActivity] Error fetching local issue video activities:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetches Mai Bahin Yojna form activities for a selected SLP or Associated SLP
+ * @param slp - Object containing slp.uid and optionally slp.handler_id, and slp.role
+ * @returns Promise resolving to array of Mai Bahin Yojna form activity objects
+ */
+export async function getSlpMaiBahinYojnaActivity(slp: {
+  uid: string;
+  role: string;
+  handler_id?: string;
+}): Promise<MaiBahinYojnaActivity[]> {
+  console.log(`[getSlpMaiBahinYojnaActivity] Fetching Mai Bahin Yojna activities for ${slp.role}: ${slp.uid}`);
+  
+  try {
+    const slpActivityCollection = collection(db, 'slp-activity');
+    
+    // Arrays to store queries
+    const queries = [];
+    
+    if (slp.role === 'SLP') {
+      // Individual SLP - search by uid
+      queries.push(
+        query(
+          slpActivityCollection,
+          where('handler_id', '==', slp.uid),
+          where('form_type', '==', 'mai-bahin-yojna')
+        ),
+        query(
+          slpActivityCollection,
+          where('handler_id', '==', slp.uid),
+          where('type', '==', 'mai-bahin-yojna')
+        )
+      );
+    } else {
+      // Associated SLP - search by handler_id
+      if (slp.handler_id) {
+        queries.push(
+          query(
+            slpActivityCollection,
+            where('handler_id', '==', slp.handler_id),
+            where('form_type', '==', 'mai-bahin-yojna')
+          ),
+          query(
+            slpActivityCollection,
+            where('handler_id', '==', slp.handler_id),
+            where('type', '==', 'mai-bahin-yojna')
+          )
+        );
+      }
+    }
+    
+    console.log(`[getSlpMaiBahinYojnaActivity] Executing ${queries.length} queries...`);
+    
+    // Execute all queries in parallel
+    const snapshots = await Promise.all(queries.map(q => getDocs(q)));
+    
+    console.log(`[getSlpMaiBahinYojnaActivity] Queries executed. Total documents across all queries: ${
+      snapshots.reduce((total, snapshot) => total + snapshot.size, 0)
+    }`);
+    
+    // Process results, ensuring no duplicates
+    const activitiesMap = new Map<string, MaiBahinYojnaActivity>();
+    
+    snapshots.forEach(snapshot => {
+      snapshot.forEach(doc => {
+        activitiesMap.set(doc.id, {
+          id: doc.id,
+          ...doc.data()
+        } as MaiBahinYojnaActivity);
+      });
+    });
+    
+    const activities = Array.from(activitiesMap.values());
+    console.log(`[getSlpMaiBahinYojnaActivity] Found ${activities.length} Mai Bahin Yojna activities`);
+    console.log('[getSlpMaiBahinYojnaActivity] Documents:', JSON.stringify(activities, null, 2));
+    
+    return activities;
+  } catch (error) {
+    console.error('[getSlpMaiBahinYojnaActivity] Error fetching Mai Bahin Yojna activities:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetches training activities for a selected SLP or Associated SLP
+ * @param slp - Object containing slp.uid and optionally slp.handler_id, and slp.role
+ * @returns Promise resolving to array of training activity objects
+ */
+export async function getSlpTrainingActivity(slp: {
+  uid: string;
+  role: string;
+  handler_id?: string;
+}): Promise<SlpTrainingActivity[]> {
+  console.log(`[getSlpTrainingActivity] Fetching training activities for ${slp.role}: ${slp.uid}`);
+  
+  try {
+    const slpActivityCollection = collection(db, 'slp-activity');
+    
+    // Arrays to store queries
+    const queries = [];
+    
+    if (slp.role === 'SLP') {
+      // Individual SLP - search by uid
+      queries.push(
+        query(
+          slpActivityCollection,
+          where('handler_id', '==', slp.uid),
+          where('form_type', '==', 'slp-training')
+        ),
+        query(
+          slpActivityCollection,
+          where('handler_id', '==', slp.uid),
+          where('type', '==', 'slp-training')
+        )
+      );
+    } else {
+      // Associated SLP - search by handler_id
+      if (slp.handler_id) {
+        queries.push(
+          query(
+            slpActivityCollection,
+            where('handler_id', '==', slp.handler_id),
+            where('form_type', '==', 'slp-training')
+          ),
+          query(
+            slpActivityCollection,
+            where('handler_id', '==', slp.handler_id),
+            where('type', '==', 'slp-training')
+          )
+        );
+      }
+    }
+    
+    console.log(`[getSlpTrainingActivity] Executing ${queries.length} queries...`);
+    
+    // Execute all queries in parallel
+    const snapshots = await Promise.all(queries.map(q => getDocs(q)));
+    
+    console.log(`[getSlpTrainingActivity] Queries executed. Total documents across all queries: ${
+      snapshots.reduce((total, snapshot) => total + snapshot.size, 0)
+    }`);
+    
+    // Process results, ensuring no duplicates
+    const activitiesMap = new Map<string, SlpTrainingActivity>();
+    
+    snapshots.forEach(snapshot => {
+      snapshot.forEach(doc => {
+        activitiesMap.set(doc.id, {
+          id: doc.id,
+          ...doc.data()
+        } as SlpTrainingActivity);
+      });
+    });
+    
+    const activities = Array.from(activitiesMap.values());
+    console.log(`[getSlpTrainingActivity] Found ${activities.length} training activities`);
+    console.log('[getSlpTrainingActivity] Documents:', JSON.stringify(activities, null, 2));
+    
+    return activities;
+  } catch (error) {
+    console.error('[getSlpTrainingActivity] Error fetching training activities:', error);
     return [];
   }
 } 

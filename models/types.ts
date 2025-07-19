@@ -132,6 +132,84 @@ export interface MemberActivity {
 }
 
 /**
+ * Interface for SLP Training activities from the "slp-activity" collection
+ */
+export interface SlpTrainingActivity {
+  id: string;
+  form_type: 'slp-training';
+  dateOfTraining: string;
+  assembly: string;
+  location: string;
+  expectedParticipants: number;
+  actualParticipants: number;
+  memberIds: string[];
+  participantRatings: Record<string, number>;
+  summary: string;
+  feedback: string;
+  handler_id: string;
+  trainingId?: string;
+  createdAt: any;
+  created_at?: number;
+  updatedAt?: any;
+  updated_at?: number;
+}
+
+/**
+ * Interface for Panchayat WhatsApp group activities from the "slp-activity" collection
+ */
+export interface PanchayatWaActivity {
+  id: string;
+  form_type: 'panchayat-wa';
+  groupName: string;
+  panchayat: string;
+  assembly: string;
+  link: string;
+  members: number;
+  status: 'Active' | 'Inactive' | string;
+  handler_id: string;
+  trainingId?: string;
+  contentFlow?: string;
+  createdAt: any;
+  created_at?: number;
+  lastUpdated?: string;
+  updated_at?: number;
+}
+
+/**
+ * Interface for Mai Bahin Yojna form activities from the "slp-activity" collection
+ */
+export interface MaiBahinYojnaActivity {
+  id: string;
+  form_type: 'mai-bahin-yojna';
+  date: string;
+  assembly: string;
+  formsDistributed: number;
+  formsCollected: number;
+  handler_id: string;
+  late_entry: boolean;
+  createdAt: any;
+  created_at?: number;
+}
+
+/**
+ * Interface for Local Issue Video activities from the "slp-activity" collection
+ */
+export interface LocalIssueVideoActivity {
+  id: string;
+  form_type: 'local-issue-video';
+  date_submitted: string;
+  assembly: string;
+  description: string;
+  video_link: string;
+  storage_path: string;
+  handler_id: string;
+  late_entry: boolean;
+  image_links?: any;
+  createdAt: any;
+  created_at?: number;
+}
+
+/**
  * Interface for coordinator details including their performance metrics
  */
 export interface CoordinatorDetails {
@@ -149,4 +227,9 @@ export interface CoordinatorDetails {
   members?: MemberActivity[];
   // New field for detailed meetings with additional processing
   detailedMeetings?: WtmSlpEntry[] | Record<string, string>[];
+  // New activity arrays
+  trainingActivities?: SlpTrainingActivity[];
+  panchayatWaActivities?: PanchayatWaActivity[];
+  maiBahinYojnaActivities?: MaiBahinYojnaActivity[];
+  localIssueVideoActivities?: LocalIssueVideoActivity[];
 } 
