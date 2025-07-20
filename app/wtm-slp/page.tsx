@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import DashboardHome from "../../components/DashboardHome";
-import { getWtmSlpSummary, getWtmSlpStakeholders, getCoordinatorDetails, getCurrentAdminUser, getAssociatedSlps, getSlpMemberActivity, getSlpTrainingActivity, getSlpPanchayatWaActivity, getSlpLocalIssueVideoActivity, getSlpMaiBahinYojnaActivity } from "../utils/fetchFirebaseData";
+import { getWtmSlpSummary, getWtmSlpStakeholders, getCoordinatorDetails, getCurrentAdminUser, getAssociatedSlps, getSlpMemberActivity, getSlpTrainingActivity, getSlpPanchayatWaActivity, getSlpLocalIssueVideoActivity, getSlpMaiBahinYojnaActivity, getAcLocalIssueVideoActivities } from "../utils/fetchFirebaseData";
 import { WtmSlpSummary, User, CoordinatorDetails, AdminUser, MemberActivity, SlpTrainingActivity, PanchayatWaActivity, LocalIssueVideoActivity, MaiBahinYojnaActivity } from "../../models/types";
 import LogoutButton from "../../components/LogoutButton";
 import { auth } from "../utils/firebase";
@@ -83,6 +83,10 @@ export default function WTMSLPPage() {
   const [slpLocalIssueVideoActivities, setSlpLocalIssueVideoActivities] = useState<LocalIssueVideoActivity[]>([]);
   const [slpMaiBahinYojnaActivities, setSlpMaiBahinYojnaActivities] = useState<MaiBahinYojnaActivity[]>([]);
   const [isSlpActivitiesLoading, setIsSlpActivitiesLoading] = useState<boolean>(false);
+  
+  // State for AC's local issue videos
+  const [acLocalIssueVideoActivities, setAcLocalIssueVideoActivities] = useState<LocalIssueVideoActivity[]>([]);
+  const [isAcVideosLoading, setIsAcVideosLoading] = useState<boolean>(false);
 
   // Create formatted coordinators list for dropdown - using useMemo to ensure consistent hook ordering
   const formattedCoordinators = useMemo(() => {
@@ -339,6 +343,7 @@ export default function WTMSLPPage() {
     console.log(`[WTMSLPPage] Date range changed: ${start} to ${end}`);
     setStartDate(start);
     setEndDate(end);
+    // Note: AC video refetching is handled by useEffect dependency on startDate/endDate
   };
 
   // Fetch coordinator/member details when a coordinator is selected
@@ -437,6 +442,7 @@ export default function WTMSLPPage() {
           setSlpLocalIssueVideoActivities([]);
           setSlpMaiBahinYojnaActivities([]);
           setIsSlpActivitiesLoading(false);
+          // Note: AC video fetching is handled separately below
         } else if (selectedCoordinator.role === 'SLP' || selectedCoordinator.role === 'ASLP') {
           // For SLPs and ASLPs, fetch member activities
           console.log(`[WTMSLPPage] Fetching member activities for ${selectedCoordinator.role}`);
@@ -555,6 +561,30 @@ export default function WTMSLPPage() {
             setIsSlpActivitiesLoading(false);
           }
         }
+        
+        // Fetch AC's local issue videos (for Assembly Coordinators only)
+        // This runs independently of role-specific logic to handle date changes
+        if (selectedCoordinator.role === 'Assembly Coordinator') {
+          console.log(`[WTMSLPPage] Fetching AC's local issue videos with date range:`, {
+            startDate,
+            endDate,
+            dateRangeObject: { startDate, endDate }
+          });
+          setIsAcVideosLoading(true);
+          try {
+            const videos = await getAcLocalIssueVideoActivities(
+              selectedCoordinatorUid,
+              { startDate, endDate }
+            );
+            console.log(`[WTMSLPPage] Fetched ${videos.length} local issue videos for AC`);
+            setAcLocalIssueVideoActivities(videos);
+          } catch (error) {
+            console.error('[WTMSLPPage] Error fetching AC local issue videos:', error);
+            setAcLocalIssueVideoActivities([]);
+          } finally {
+            setIsAcVideosLoading(false);
+          }
+        }
       } catch (err) {
         console.error("[WTMSLPPage] Error fetching coordinator/member data:", err);
         setCoordinatorDetails(null);
@@ -626,6 +656,8 @@ export default function WTMSLPPage() {
         slpLocalIssueVideoActivities={slpLocalIssueVideoActivities}
         slpMaiBahinYojnaActivities={slpMaiBahinYojnaActivities}
         isSlpActivitiesLoading={isSlpActivitiesLoading}
+        acLocalIssueVideoActivities={acLocalIssueVideoActivities}
+        isAcVideosLoading={isAcVideosLoading}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import { collection, query, where, getDocs, doc, getDoc, Timestamp, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, Timestamp, limit, orderBy } from 'firebase/firestore';
 import { db } from './firebase';
 import { 
   User, 
@@ -1068,6 +1068,68 @@ export async function getSlpMaiBahinYojnaActivity(slp: {
  * @param slp - Object containing slp.uid and optionally slp.handler_id, and slp.role
  * @returns Promise resolving to array of training activity objects
  */
+/**
+ * Fetches local issue video activities for a specific Assembly Coordinator
+ * @param userId - The UID of the Assembly Coordinator
+ * @param dateRange - Optional date range filter
+ * @returns Promise resolving to array of local issue video activity objects
+ */
+export async function getAcLocalIssueVideoActivities(
+  userId: string,
+  dateRange?: { startDate: string; endDate: string }
+): Promise<LocalIssueVideoActivity[]> {
+  try {
+    const activitiesRef = collection(db, 'wtm-slp');
+    console.log(`[getAcLocalIssueVideoActivities] Fetching local issue video activities for AC: ${userId}`);
+    let q = query(
+      activitiesRef,
+      where('form_type', '==', 'local-issue-video'),
+      where('handler_id', '==', userId),
+      orderBy('createdAt', 'desc')
+    );
+
+    if (dateRange) {
+      // Use date_submitted field for filtering (YYYY-MM-DD format)
+      // This matches the SLP activity cards logic
+      const { startDate, endDate } = dateRange;
+      console.log(`[getAcLocalIssueVideoActivities] Filtering by date_submitted range:`, { startDate, endDate });
+      q = query(
+        q,
+        where('date_submitted', '>=', startDate),
+        where('date_submitted', '<=', endDate)
+      );
+    }
+
+    const snapshot = await getDocs(q);
+    console.log(`[getAcLocalIssueVideoActivities] Found ${snapshot.size} local issue video activities`);
+    
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      // Convert createdAt from milliseconds to ISO string
+      const createdAt = data.createdAt 
+        ? new Date(data.createdAt).toISOString() 
+        : new Date().toISOString();
+      
+      return {
+        id: doc.id,
+        form_type: 'local-issue-video',
+        date_submitted: data.date_submitted || new Date(createdAt).toISOString().split('T')[0],
+        assembly: data.assembly || '',
+        description: data.description || '',
+        video_link: data.video_link || '',
+        storage_path: data.storage_path || '',
+        handler_id: data.handler_id || '',
+        late_entry: data.late_entry || false,
+        image_links: data.image_links || [],
+        createdAt: createdAt
+      } as LocalIssueVideoActivity;
+    });
+  } catch (error) {
+    console.error('Error fetching AC local issue video activities:', error);
+    throw error;
+  }
+}
+
 export async function getSlpTrainingActivity(slp: {
   uid: string;
   role: string;
