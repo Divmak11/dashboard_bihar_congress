@@ -45,12 +45,25 @@ export default function WTMSLPPage() {
   const threeMonthsAgo = new Date(today);
   threeMonthsAgo.setMonth(today.getMonth() - 3);
   
+  // Global summary date filter state (independent)
   const [startDate, setStartDate] = useState<string>(
     threeMonthsAgo.toISOString().split('T')[0]
   );
   const [endDate, setEndDate] = useState<string>(
     today.toISOString().split('T')[0]
   );
+
+  // Coordinator-specific date filter state (independent)
+  const [coordinatorStartDate, setCoordinatorStartDate] = useState<string>(
+    threeMonthsAgo.toISOString().split('T')[0]
+  );
+  const [coordinatorEndDate, setCoordinatorEndDate] = useState<string>(
+    today.toISOString().split('T')[0]
+  );
+
+  // Date option state for both filters
+  const [globalDateOption, setGlobalDateOption] = useState<string>('last3Months');
+  const [coordinatorDateOption, setCoordinatorDateOption] = useState<string>('last3Months');
 
   // State for user role and assemblies
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
@@ -338,12 +351,20 @@ export default function WTMSLPPage() {
     }
   };
 
-  // Handle date change
-  const handleDateChange = (start: string, end: string) => {
-    console.log(`[WTMSLPPage] Date range changed: ${start} to ${end}`);
+  // Handle global summary date change (independent)
+  const handleDateChange = (start: string, end: string, option: string) => {
+    console.log(`[WTMSLPPage] Global date range changed: ${start} to ${end}, option: ${option}`);
     setStartDate(start);
     setEndDate(end);
-    // Note: AC video refetching is handled by useEffect dependency on startDate/endDate
+    setGlobalDateOption(option);
+  };
+
+  // Handle coordinator-specific date change (independent)
+  const handleCoordinatorDateChange = (start: string, end: string, option: string) => {
+    console.log(`[WTMSLPPage] Coordinator date range changed: ${start} to ${end}, option: ${option}`);
+    setCoordinatorStartDate(start);
+    setCoordinatorEndDate(end);
+    setCoordinatorDateOption(option);
   };
 
   // Fetch coordinator/member details when a coordinator is selected
@@ -373,12 +394,17 @@ export default function WTMSLPPage() {
           // This ensures we get all their data even if "All Assemblies" is selected
           const coordinatorAssembly = selectedCoordinator.assembly;
           
+          // For "All Time" selection, provide a very wide date range as fallback
+          const acStartDate = coordinatorStartDate || '2000-01-01';
+          const acEndDate = coordinatorEndDate || new Date().toISOString().split('T')[0];
+          
           console.log(`[WTMSLPPage] Fetching coordinator details with their assembly: ${coordinatorAssembly}`);
+          console.log(`[WTMSLPPage] Using date range: ${acStartDate} to ${acEndDate}`);
           
           const details = await getCoordinatorDetails(
             selectedCoordinatorUid, 
-            startDate, 
-            endDate,
+            acStartDate, 
+            acEndDate,
             coordinatorAssembly // Always pass the coordinator's specific assembly
           );
           
@@ -531,11 +557,23 @@ export default function WTMSLPPage() {
               handler_id: selectedCoordinator.handler_id
             };
             
+            // For "All Time" selection, pass undefined to fetch all data
+            const coordinatorDateRange = (coordinatorStartDate && coordinatorEndDate) 
+              ? { startDate: coordinatorStartDate, endDate: coordinatorEndDate }
+              : undefined;
+            
+            console.log(`[WTMSLPPage] SLP date filtering debug:`, {
+              coordinatorStartDate,
+              coordinatorEndDate,
+              coordinatorDateRange,
+              isAllTime: !coordinatorStartDate || !coordinatorEndDate
+            });
+            
             const [trainingData, panchayatWaData, localIssueVideoData, maiBahinYojnaData] = await Promise.all([
-              getSlpTrainingActivity(slpObj),
-              getSlpPanchayatWaActivity(slpObj),
-              getSlpLocalIssueVideoActivity(slpObj),
-              getSlpMaiBahinYojnaActivity(slpObj)
+              getSlpTrainingActivity(slpObj, coordinatorDateRange),
+              getSlpPanchayatWaActivity(slpObj, coordinatorDateRange),
+              getSlpLocalIssueVideoActivity(slpObj, coordinatorDateRange),
+              getSlpMaiBahinYojnaActivity(slpObj, coordinatorDateRange)
             ]);
             
             console.log(`[WTMSLPPage] SLP activities fetched:`, {
@@ -565,16 +603,20 @@ export default function WTMSLPPage() {
         // Fetch AC's local issue videos (for Assembly Coordinators only)
         // This runs independently of role-specific logic to handle date changes
         if (selectedCoordinator.role === 'Assembly Coordinator') {
-          console.log(`[WTMSLPPage] Fetching AC's local issue videos with date range:`, {
-            startDate,
-            endDate,
-            dateRangeObject: { startDate, endDate }
+          // For "All Time" selection, provide a very wide date range as fallback
+          const acVideoStartDate = coordinatorStartDate || '2000-01-01';
+          const acVideoEndDate = coordinatorEndDate || new Date().toISOString().split('T')[0];
+          
+          console.log(`[WTMSLPPage] Fetching AC's local issue videos with coordinator date range:`, {
+            coordinatorStartDate,
+            coordinatorEndDate,
+            dateRangeObject: { startDate: acVideoStartDate, endDate: acVideoEndDate }
           });
           setIsAcVideosLoading(true);
           try {
             const videos = await getAcLocalIssueVideoActivities(
               selectedCoordinatorUid,
-              { startDate, endDate }
+              { startDate: acVideoStartDate, endDate: acVideoEndDate }
             );
             console.log(`[WTMSLPPage] Fetched ${videos.length} local issue videos for AC`);
             setAcLocalIssueVideoActivities(videos);
@@ -604,7 +646,7 @@ export default function WTMSLPPage() {
     }
     
     fetchCoordinatorData();
-  }, [selectedCoordinatorUid, selectedCoordinator, startDate, endDate, selectedAssembly]);
+  }, [selectedCoordinatorUid, selectedCoordinator, coordinatorStartDate, coordinatorEndDate, selectedAssembly]);
 
   console.log(`[WTMSLPPage] Formatted ${formattedCoordinators.length} coordinators for dropdown`);
   console.log('[WTMSLPPage] Rendering main component');
@@ -646,7 +688,12 @@ export default function WTMSLPPage() {
         loadingCoordinator={loadingCoordinator}
         startDate={startDate}
         endDate={endDate}
+        globalDateOption={globalDateOption}
         onDateChange={handleDateChange}
+        coordinatorStartDate={coordinatorStartDate}
+        coordinatorEndDate={coordinatorEndDate}
+        coordinatorDateOption={coordinatorDateOption}
+        onCoordinatorDateChange={handleCoordinatorDateChange}
         overallSummary={summary}
         isSummaryLoading={isSummaryLoading}
         memberActivities={memberActivities}

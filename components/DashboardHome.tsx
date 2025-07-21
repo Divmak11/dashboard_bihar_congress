@@ -2,6 +2,7 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import type { MeetingRow } from "../app/utils/fetchSheetData";
 import LogoutButton from "./LogoutButton";
+import DateRangeFilter from "./DateRangeFilter";
 import { 
   WtmSlpSummary, 
   SlpTrainingActivity, 
@@ -28,7 +29,13 @@ interface DashboardHomeProps {
   loadingCoordinator?: boolean;
   startDate?: string;
   endDate?: string;
-  onDateChange?: (start: string, end: string) => void;
+  globalDateOption?: string;
+  onDateChange?: (start: string, end: string, option: string) => void;
+  // Coordinator-specific date props
+  coordinatorStartDate?: string;
+  coordinatorEndDate?: string;
+  coordinatorDateOption?: string;
+  onCoordinatorDateChange?: (start: string, end: string, option: string) => void;
   // New assembly-related props
   assemblies?: { name: string; value: string | null }[];
   selectedAssembly?: string | null;
@@ -87,44 +94,9 @@ const getUniqueCoordinators = (data: MeetingRow[]) => {
   return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
 };
 
-// Helper for date filter options
-const DATE_FILTERS = [
-  { label: "All Time", value: "all" },
-  { label: "Last Day", value: "lastDay" },
-  { label: "Last Week", value: "lastWeek" },
-  { label: "Last 3 Months", value: "last3Months" },
-  { label: "Custom Range", value: "custom" },
-];
 
-function getDateRange(option: string) {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  today.setHours(23, 59, 59, 999); // Set to end of today
-  
-  let start: Date | null = null;
-  let end: Date | null = today;
-  
-  switch (option) {
-    case "lastDay":
-      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-      start.setHours(0, 0, 0, 0); // Start of yesterday
-      break;
-    case "lastWeek":
-      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
-      start.setHours(0, 0, 0, 0); // Start of day 7 days ago
-      break;
-    case "last3Months":
-      start = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
-      start.setHours(0, 0, 0, 0); // Start of day 3 months ago
-      break;
-    default:
-      start = null;
-      end = null;
-  }
-  
-  console.log(`[getDateRange] Option: ${option}, Start: ${start ? start.toISOString() : 'null'}, End: ${end ? end.toISOString() : 'null'}`);
-  return [start, end];
-}
+
+
 
 export default function DashboardHome({ 
   data, 
@@ -136,7 +108,13 @@ export default function DashboardHome({
   loadingCoordinator,
   startDate,
   endDate,
+  globalDateOption,
   onDateChange,
+  // Coordinator-specific date props
+  coordinatorStartDate,
+  coordinatorEndDate,
+  coordinatorDateOption,
+  onCoordinatorDateChange,
   // New assembly-related props
   assemblies,
   selectedAssembly,
@@ -171,76 +149,18 @@ export default function DashboardHome({
     selectedAssembly
   });
 
-  // --- Global Date Filter State ---
-  const [globalDateOption, setGlobalDateOption] = useState("all");
-  const [globalStart, setGlobalStart] = useState<string>(startDate || "");
-  const [globalEnd, setGlobalEnd] = useState<string>(endDate || "");
-  
-  // Update global date when external dates change
-  useEffect(() => {
-    if (startDate) {
-      console.log(`[DashboardHome] Updating globalStart from prop: ${startDate}`);
-      setGlobalStart(startDate);
-    }
-    if (endDate) {
-      console.log(`[DashboardHome] Updating globalEnd from prop: ${endDate}`);
-      setGlobalEnd(endDate);
-    }
-  }, [startDate, endDate]);
-
-  // Call external onDateChange when our internal dates change, but only if they've actually changed
-  useEffect(() => {
-    if (onDateChange && globalStart && globalEnd) {
-      // Only trigger the callback if the values are different from props (to prevent update loops)
-      const hasChanged = globalStart !== startDate || globalEnd !== endDate;
-      
-      if (hasChanged) {
-        console.log(`[DashboardHome] Calling onDateChange with: ${globalStart} to ${globalEnd}`);
-        onDateChange(globalStart, globalEnd);
-      } else {
-        console.log(`[DashboardHome] Skipping onDateChange - dates haven't changed`);
-      }
-    }
-  }, [globalStart, globalEnd, startDate, endDate, onDateChange]);
-
-  // NEW: Listen for globalDateOption changes and trigger date changes for presets
-  useEffect(() => {
-    console.log(`[DashboardHome] Date option changed to: ${globalDateOption}`);
-    
-    // Skip for custom option as it's handled separately by direct date inputs
-    if (globalDateOption !== 'custom') {
-      const [start, end] = getDateRange(globalDateOption);
-      
-      if (start) {
-        const startStr = start.toISOString().split('T')[0];
-        console.log(`[DashboardHome] Setting globalStart from option: ${startStr}`);
-        setGlobalStart(startStr);
-      }
-      
-      if (end) {
-        const endStr = end.toISOString().split('T')[0];
-        console.log(`[DashboardHome] Setting globalEnd from option: ${endStr}`);
-        setGlobalEnd(endStr);
-      }
-    }
-  }, [globalDateOption]);
-
   // --- Global Date Filtering ---
   const globalDateRange = useMemo(() => {
-    console.log(`[DashboardHome] Computing globalDateRange. Option: ${globalDateOption}, Start: ${globalStart}, End: ${globalEnd}`);
-    if (globalDateOption === "custom") {
-      const start = globalStart ? new Date(globalStart) : null;
-      const end = globalEnd ? new Date(globalEnd) : null;
-      
-      // Normalize the dates to beginning/end of day
-      if (start) start.setHours(0, 0, 0, 0);
-      if (end) end.setHours(23, 59, 59, 999);
-      
-      return [start, end];
-    }
-    if (globalDateOption === "all") return [null, null];
-    return getDateRange(globalDateOption);
-  }, [globalDateOption, globalStart, globalEnd]);
+    console.log(`[DashboardHome] Computing globalDateRange from props. Start: ${startDate}, End: ${endDate}`);
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+    
+    // Normalize the dates to beginning/end of day
+    if (start) start.setHours(0, 0, 0, 0);
+    if (end) end.setHours(23, 59, 59, 999);
+    
+    return [start, end];
+  }, [startDate, endDate]);
 
   // Handle assembly selection
   const handleAssemblyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -334,24 +254,18 @@ export default function DashboardHome({
     }
   };
 
-  // --- FC-specific Date Filter ---
-  const [fcDateOption, setFcDateOption] = useState("all");
-  const [fcStart, setFcStart] = useState<string>("");
-  const [fcEnd, setFcEnd] = useState<string>("");
-  const fcDateRange = useMemo(() => {
-    if (fcDateOption === "custom") {
-      const start = fcStart ? new Date(fcStart) : null;
-      const end = fcEnd ? new Date(fcEnd) : null;
-      
-      // Normalize the dates to beginning/end of day
-      if (start) start.setHours(0, 0, 0, 0);
-      if (end) end.setHours(23, 59, 59, 999);
-      
-      return [start, end];
-    }
-    if (fcDateOption === "all") return [null, null];
-    return getDateRange(fcDateOption);
-  }, [fcDateOption, fcStart, fcEnd]);
+  // --- Coordinator Date Filtering ---
+  const coordinatorDateRange = useMemo(() => {
+    console.log(`[DashboardHome] Computing coordinatorDateRange from props. Start: ${coordinatorStartDate}, End: ${coordinatorEndDate}`);
+    const start = coordinatorStartDate ? new Date(coordinatorStartDate) : null;
+    const end = coordinatorEndDate ? new Date(coordinatorEndDate) : null;
+    
+    // Normalize the dates to beginning/end of day
+    if (start) start.setHours(0, 0, 0, 0);
+    if (end) end.setHours(23, 59, 59, 999);
+    
+    return [start, end];
+  }, [coordinatorStartDate, coordinatorEndDate]);
 
   // --- Coordinator Data & Filtering ---
   const coordinatorData = useMemo(() => {
@@ -370,7 +284,7 @@ export default function DashboardHome({
     let rows = data.filter((row) => normalize(row[KEY_COORDINATOR]) === normalize(selectedName));
     console.log(`[DashboardHome] Found ${rows.length} rows for this coordinator`);
     
-    const [start, end] = fcDateRange;
+    const [start, end] = coordinatorDateRange;
     if (start || end) {
       rows = rows.filter((row) => {
         const d = parseDate(row[KEY_DATE]);
@@ -382,7 +296,7 @@ export default function DashboardHome({
       console.log(`[DashboardHome] After date filtering: ${rows.length} rows`);
     }
     return rows;
-  }, [data, selectedName, fcDateRange, externalCoordinators, coordinatorDetails]);
+  }, [data, selectedName, coordinatorDateRange, externalCoordinators, coordinatorDetails]);
 
   // --- FC Name & Assembly ---
   const coordinatorAssembly = useMemo(() => {
@@ -418,7 +332,7 @@ export default function DashboardHome({
   const dateFilteredCoordinatorMeetings = useMemo(() => {
     if (!coordinatorDetails?.detailedMeetings) return coordinatorData;
     
-    const [start, end] = fcDateRange;
+    const [start, end] = coordinatorDateRange;
     if (!start && !end) return coordinatorDetails.detailedMeetings;
     
     return coordinatorDetails.detailedMeetings.filter((row: MeetingRow) => {
@@ -428,7 +342,7 @@ export default function DashboardHome({
       if (end && d > end) return false;
       return true;
     });
-  }, [coordinatorDetails, fcDateRange, coordinatorData]);
+  }, [coordinatorDetails, coordinatorDateRange, coordinatorData]);
   
   // Use the date-filtered data to calculate summary stats
   const coordinatorMeetings = dateFilteredCoordinatorMeetings.length;
@@ -457,7 +371,7 @@ export default function DashboardHome({
     
     // Apply date filtering first
     const filterByFcDate = (rows: MeetingRow[]) => {
-      const [start, end] = fcDateRange;
+      const [start, end] = coordinatorDateRange;
       if (!start && !end) return rows;
       
       return rows.filter(row => {
@@ -510,7 +424,7 @@ export default function DashboardHome({
     if (fcFilter === "onboarded") return dateFilteredData.filter((row) => normalize(row[KEY_ONBOARDING_STATUS]) === "onboarded");
     if (fcFilter === "slp") return dateFilteredData.filter((row) => normalize(row[KEY_RECOMMENDED_POSITION]) === "slp");
     return dateFilteredData;
-  }, [coordinatorData, fcFilter, coordinatorDetails, fcDateRange, selectedCoordinatorObject?.role]);
+  }, [coordinatorData, fcFilter, coordinatorDetails, coordinatorDateRange, selectedCoordinatorObject?.role]);
 
   // --- UI ---
   return (
@@ -524,14 +438,12 @@ export default function DashboardHome({
       </div>
       
       {/* Global Date Filter */}
-      <DateFilter
-        label="Filter by Date"
-        dateOption={globalDateOption}
-        setDateOption={setGlobalDateOption}
-        start={globalStart}
-        setStart={setGlobalStart}
-        end={globalEnd}
-        setEnd={setGlobalEnd}
+      <DateRangeFilter
+        label="Global Summary Filter"
+        startDate={startDate || ''}
+        endDate={endDate || ''}
+        selectedOption={globalDateOption || 'all'}
+        onDateChange={(start, end, option) => onDateChange?.(start, end, option)}
       />
 
       {/* Summary Cards */}
@@ -599,15 +511,13 @@ export default function DashboardHome({
               </span>
             </div>
           </div>
-          {/* FC Date Filter */}
-          <DateFilter
-            label="Filter by Date"
-            dateOption={fcDateOption}
-            setDateOption={setFcDateOption}
-            start={fcStart}
-            setStart={setFcStart}
-            end={fcEnd}
-            setEnd={setFcEnd}
+          {/* Coordinator Date Filter */}
+          <DateRangeFilter
+            label="Coordinator Activity Filter"
+            startDate={coordinatorStartDate || ''}
+            endDate={coordinatorEndDate || ''}
+            selectedOption={coordinatorDateOption || 'all'}
+            onDateChange={(start, end, option) => onCoordinatorDateChange?.(start, end, option)}
           />
           
           {/* Loading indicator for coordinator details */}
@@ -985,34 +895,78 @@ export default function DashboardHome({
                 <div className="space-y-4">
                   {slpLocalIssueVideoActivities && slpLocalIssueVideoActivities.length > 0 ? (
                     slpLocalIssueVideoActivities.map((video: LocalIssueVideoActivity, index: number) => (
-                      <div key={video.id || index} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                        <div className="flex justify-between items-start mb-3">
-                          <h3 className="text-lg font-semibold text-gray-900">Local Issue Video</h3>
-                          <span className="bg-red-100 text-red-800 text-sm font-medium px-2.5 py-0.5 rounded">
-                            {video.date_submitted}
+                      <div key={video.id || index} className="bg-white rounded-xl shadow border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+                        {/* Header Row with Date and Assembly */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                          <div className="flex items-center gap-3">
+                            <span className="text-lg font-bold text-primary">
+                              Issue Video #{index + 1}
+                            </span>
+                            <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs font-semibold border border-blue-200">
+                              {video.assembly || 'N/A'}
+                            </span>
+                          </div>
+                          <span className="bg-green-100 text-green-800 text-sm font-medium px-2.5 py-0.5 rounded">
+                            {video.date_submitted || (video.createdAt ? new Date(video.createdAt).toLocaleDateString() : 'N/A')}
                           </span>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                          <div><span className="font-medium">Assembly:</span> {video.assembly}</div>
-                          <div><span className="font-medium">Storage Path:</span> {video.storage_path}</div>
+                        
+                        {/* Description */}
+                        <div className="mb-4">
+                          <h3 className="text-sm font-medium text-gray-700 mb-1">Description:</h3>
+                          <p className="text-gray-900 bg-gray-50 p-3 rounded border">
+                            {video.description || 'No description provided'}
+                          </p>
                         </div>
-                        {video.description && (
-                          <div className="mt-3">
-                            <span className="font-medium text-gray-700">Issue:</span>
-                            <p className="text-gray-600 mt-1">{video.description}</p>
+                        
+                        {/* Video Details Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
+                          <div>
+                            <span className="font-medium">Form Type:</span> {video.form_type || 'local-issue-video'}
                           </div>
-                        )}
-                        {video.video_link && (
-                          <div className="mt-3">
-                            <a href={video.video_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">
-                              View Video
-                            </a>
+                          <div>
+                            <span className="font-medium">Late Entry:</span> {video.late_entry ? 'Yes' : 'No'}
                           </div>
-                        )}
+                          {video.storage_path && (
+                            <div className="md:col-span-2">
+                              <span className="font-medium">Storage Path:</span> 
+                              <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded ml-2">
+                                {video.storage_path}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Action Buttons */}
+                        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                          <div className="flex items-center gap-2">
+                            {video.image_links && video.image_links.length > 0 && (
+                              <span className="text-xs text-gray-500">
+                                📷 {video.image_links.length} image(s)
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            {video.video_link ? (
+                              <a 
+                                href={video.video_link} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="btn btn-sm btn-primary hover:bg-blue-700 transition-colors"
+                              >
+                                🎥 Watch Video
+                              </a>
+                            ) : (
+                              <span className="btn btn-sm btn-disabled cursor-not-allowed">
+                                No Video Available
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-16">
+                    <div className="text-center py-8 bg-white rounded-lg shadow">
                       <p className="text-gray-500">No video activities available</p>
                     </div>
                   )}
@@ -1056,46 +1010,7 @@ export default function DashboardHome({
   );
 }
 
-function DateFilter({ label, dateOption, setDateOption, start, setStart, end, setEnd }: {
-  label: string;
-  dateOption: string;
-  setDateOption: (v: string) => void;
-  start: string;
-  setStart: (v: string) => void;
-  end: string;
-  setEnd: (v: string) => void;
-}) {
-  return (
-    <div className="flex items-center gap-2 mb-2">
-      <span className="font-semibold text-gray-700 dark:text-gray-200 mr-2">{label}:</span>
-      <select
-        className="select select-bordered select-sm"
-        value={dateOption}
-        onChange={e => setDateOption(e.target.value)}
-      >
-        {DATE_FILTERS.map(opt => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
-        ))}
-      </select>
-      {dateOption === "custom" && (
-        <>
-          <input
-            type="date"
-            className="input input-bordered input-sm"
-            value={start}
-            onChange={e => setStart(e.target.value)}
-          />
-          <input
-            type="date"
-            className="input input-bordered input-sm"
-            value={end}
-            onChange={e => setEnd(e.target.value)}
-          />
-        </>
-      )}
-    </div>
-  );
-}
+
 
 function CoordinatorSearchDropdown({ coordinators, selected, setSelected }: {
   coordinators: { name: string; assembly: string; uid: string; role?: string }[];

@@ -820,14 +820,21 @@ export async function getSlpMemberActivity(slp: {
 /**
  * Fetches panchayat WhatsApp group activities for a selected SLP or Associated SLP
  * @param slp - Object containing slp.uid and optionally slp.handler_id, and slp.role
+ * @param dateRange - Optional date range filter
  * @returns Promise resolving to array of panchayat WhatsApp group activity objects
  */
-export async function getSlpPanchayatWaActivity(slp: {
-  uid: string;
-  role: string;
-  handler_id?: string;
-}): Promise<PanchayatWaActivity[]> {
+export async function getSlpPanchayatWaActivity(
+  slp: {
+    uid: string;
+    role: string;
+    handler_id?: string;
+  },
+  dateRange?: { startDate: string; endDate: string }
+): Promise<PanchayatWaActivity[]> {
   console.log(`[getSlpPanchayatWaActivity] Fetching panchayat WhatsApp activities for ${slp.role}: ${slp.uid}`);
+  if (dateRange) {
+    console.log(`[getSlpPanchayatWaActivity] Filtering by date range: ${dateRange.startDate} to ${dateRange.endDate}`);
+  }
   
   try {
     const slpActivityCollection = collection(db, 'slp-activity');
@@ -837,33 +844,75 @@ export async function getSlpPanchayatWaActivity(slp: {
     
     if (slp.role === 'SLP') {
       // Individual SLP - search by uid
-      queries.push(
-        query(
-          slpActivityCollection,
-          where('handler_id', '==', slp.uid),
-          where('form_type', '==', 'panchayat-wa')
-        ),
-        query(
-          slpActivityCollection,
-          where('handler_id', '==', slp.uid),
-          where('type', '==', 'panchayat-wa')
-        )
+      let baseQuery1 = query(
+        slpActivityCollection,
+        where('handler_id', '==', slp.uid),
+        where('form_type', '==', 'panchayat-wa')
       );
+      let baseQuery2 = query(
+        slpActivityCollection,
+        where('handler_id', '==', slp.uid),
+        where('type', '==', 'panchayat-wa')
+      );
+      
+      // Add date filtering if provided
+      if (dateRange) {
+        // Convert date strings to ISO format for createdAt comparison
+        const startDateISO = new Date(dateRange.startDate + 'T00:00:00.000Z').toISOString();
+        const endDateISO = new Date(dateRange.endDate + 'T23:59:59.999Z').toISOString();
+        
+        console.log(`[getSlpPanchayatWaActivity] Applying date filter:`, dateRange);
+        console.log(`[getSlpPanchayatWaActivity] Query conditions: createdAt >= '${startDateISO}' AND createdAt <= '${endDateISO}'`);
+        
+        baseQuery1 = query(
+          baseQuery1,
+          where('createdAt', '>=', startDateISO),
+          where('createdAt', '<=', endDateISO)
+        );
+        baseQuery2 = query(
+          baseQuery2,
+          where('createdAt', '>=', startDateISO),
+          where('createdAt', '<=', endDateISO)
+        );
+      }
+      
+      queries.push(baseQuery1, baseQuery2);
     } else {
       // Associated SLP - search by handler_id
       if (slp.handler_id) {
-        queries.push(
-          query(
-            slpActivityCollection,
-            where('handler_id', '==', slp.handler_id),
-            where('form_type', '==', 'panchayat-wa')
-          ),
-          query(
-            slpActivityCollection,
-            where('handler_id', '==', slp.handler_id),
-            where('type', '==', 'panchayat-wa')
-          )
+        let baseQuery1 = query(
+          slpActivityCollection,
+          where('handler_id', '==', slp.handler_id),
+          where('form_type', '==', 'panchayat-wa')
         );
+        let baseQuery2 = query(
+          slpActivityCollection,
+          where('handler_id', '==', slp.handler_id),
+          where('type', '==', 'panchayat-wa')
+        );
+        
+        // Add date filtering if provided
+        if (dateRange) {
+          // Convert date strings to ISO format for createdAt comparison
+          const startDateISO = new Date(dateRange.startDate + 'T00:00:00.000Z').toISOString();
+          const endDateISO = new Date(dateRange.endDate + 'T23:59:59.999Z').toISOString();
+          
+          console.log(`[getSlpPanchayatWaActivity] Applying date filter (Associated SLP):`, dateRange);
+          console.log(`[getSlpPanchayatWaActivity] Associated SLP Query conditions: createdAt >= '${startDateISO}' AND createdAt <= '${endDateISO}'`);
+          
+          baseQuery1 = query(
+            baseQuery1,
+            where('createdAt', '>=', startDateISO),
+            where('createdAt', '<=', endDateISO)
+          );
+          baseQuery2 = query(
+            baseQuery2,
+            where('createdAt', '>=', startDateISO),
+            where('createdAt', '<=', endDateISO)
+          );
+        }
+        
+        queries.push(baseQuery1, baseQuery2);
       }
     }
     
@@ -902,14 +951,21 @@ export async function getSlpPanchayatWaActivity(slp: {
 /**
  * Fetches local issue video activities for a selected SLP or Associated SLP
  * @param slp - Object containing slp.uid and optionally slp.handler_id, and slp.role
+ * @param dateRange - Optional date range filter
  * @returns Promise resolving to array of local issue video activity objects
  */
-export async function getSlpLocalIssueVideoActivity(slp: {
-  uid: string;
-  role: string;
-  handler_id?: string;
-}): Promise<LocalIssueVideoActivity[]> {
+export async function getSlpLocalIssueVideoActivity(
+  slp: {
+    uid: string;
+    role: string;
+    handler_id?: string;
+  },
+  dateRange?: { startDate: string; endDate: string }
+): Promise<LocalIssueVideoActivity[]> {
   console.log(`[getSlpLocalIssueVideoActivity] Fetching local issue video activities for ${slp.role}: ${slp.uid}`);
+  if (dateRange) {
+    console.log(`[getSlpLocalIssueVideoActivity] Filtering by date range: ${dateRange.startDate} to ${dateRange.endDate}`);
+  }
   
   try {
     const slpActivityCollection = collection(db, 'slp-activity');
@@ -919,33 +975,67 @@ export async function getSlpLocalIssueVideoActivity(slp: {
     
     if (slp.role === 'SLP') {
       // Individual SLP - search by uid
-      queries.push(
-        query(
-          slpActivityCollection,
-          where('handler_id', '==', slp.uid),
-          where('form_type', '==', 'local-issue-video')
-        ),
-        query(
-          slpActivityCollection,
-          where('handler_id', '==', slp.uid),
-          where('type', '==', 'local-issue-video')
-        )
+      let baseQuery1 = query(
+        slpActivityCollection,
+        where('handler_id', '==', slp.uid),
+        where('form_type', '==', 'local-issue-video')
       );
+      let baseQuery2 = query(
+        slpActivityCollection,
+        where('handler_id', '==', slp.uid),
+        where('type', '==', 'local-issue-video')
+      );
+      
+      // Add date filtering if provided
+      if (dateRange) {
+        console.log(`[getSlpLocalIssueVideoActivity] Applying date filter:`, dateRange);
+        console.log(`[getSlpLocalIssueVideoActivity] Query conditions: date_submitted >= '${dateRange.startDate}' AND date_submitted <= '${dateRange.endDate}'`);
+        
+        baseQuery1 = query(
+          baseQuery1,
+          where('date_submitted', '>=', dateRange.startDate),
+          where('date_submitted', '<=', dateRange.endDate)
+        );
+        baseQuery2 = query(
+          baseQuery2,
+          where('date_submitted', '>=', dateRange.startDate),
+          where('date_submitted', '<=', dateRange.endDate)
+        );
+      }
+      
+      queries.push(baseQuery1, baseQuery2);
     } else {
       // Associated SLP - search by handler_id
       if (slp.handler_id) {
-        queries.push(
-          query(
-            slpActivityCollection,
-            where('handler_id', '==', slp.handler_id),
-            where('form_type', '==', 'local-issue-video')
-          ),
-          query(
-            slpActivityCollection,
-            where('handler_id', '==', slp.handler_id),
-            where('type', '==', 'local-issue-video')
-          )
+        let baseQuery1 = query(
+          slpActivityCollection,
+          where('handler_id', '==', slp.handler_id),
+          where('form_type', '==', 'local-issue-video')
         );
+        let baseQuery2 = query(
+          slpActivityCollection,
+          where('handler_id', '==', slp.handler_id),
+          where('type', '==', 'local-issue-video')
+        );
+        
+        // Add date filtering if provided
+        if (dateRange) {
+          console.log(`[getSlpLocalIssueVideoActivity] Applying date filter (Associated SLP):`, dateRange);
+          console.log(`[getSlpLocalIssueVideoActivity] Associated SLP Query conditions: date_submitted >= '${dateRange.startDate}' AND date_submitted <= '${dateRange.endDate}'`);
+          
+          baseQuery1 = query(
+            baseQuery1,
+            where('date_submitted', '>=', dateRange.startDate),
+            where('date_submitted', '<=', dateRange.endDate)
+          );
+          baseQuery2 = query(
+            baseQuery2,
+            where('date_submitted', '>=', dateRange.startDate),
+            where('date_submitted', '<=', dateRange.endDate)
+          );
+        }
+        
+        queries.push(baseQuery1, baseQuery2);
       }
     }
     
@@ -984,14 +1074,21 @@ export async function getSlpLocalIssueVideoActivity(slp: {
 /**
  * Fetches Mai Bahin Yojna form activities for a selected SLP or Associated SLP
  * @param slp - Object containing slp.uid and optionally slp.handler_id, and slp.role
+ * @param dateRange - Optional date range filter
  * @returns Promise resolving to array of Mai Bahin Yojna form activity objects
  */
-export async function getSlpMaiBahinYojnaActivity(slp: {
-  uid: string;
-  role: string;
-  handler_id?: string;
-}): Promise<MaiBahinYojnaActivity[]> {
+export async function getSlpMaiBahinYojnaActivity(
+  slp: {
+    uid: string;
+    role: string;
+    handler_id?: string;
+  },
+  dateRange?: { startDate: string; endDate: string }
+): Promise<MaiBahinYojnaActivity[]> {
   console.log(`[getSlpMaiBahinYojnaActivity] Fetching Mai Bahin Yojna activities for ${slp.role}: ${slp.uid}`);
+  if (dateRange) {
+    console.log(`[getSlpMaiBahinYojnaActivity] Filtering by date range: ${dateRange.startDate} to ${dateRange.endDate}`);
+  }
   
   try {
     const slpActivityCollection = collection(db, 'slp-activity');
@@ -1001,33 +1098,67 @@ export async function getSlpMaiBahinYojnaActivity(slp: {
     
     if (slp.role === 'SLP') {
       // Individual SLP - search by uid
-      queries.push(
-        query(
-          slpActivityCollection,
-          where('handler_id', '==', slp.uid),
-          where('form_type', '==', 'mai-bahin-yojna')
-        ),
-        query(
-          slpActivityCollection,
-          where('handler_id', '==', slp.uid),
-          where('type', '==', 'mai-bahin-yojna')
-        )
+      let baseQuery1 = query(
+        slpActivityCollection,
+        where('handler_id', '==', slp.uid),
+        where('form_type', '==', 'mai-bahin-yojna')
       );
+      let baseQuery2 = query(
+        slpActivityCollection,
+        where('handler_id', '==', slp.uid),
+        where('type', '==', 'mai-bahin-yojna')
+      );
+      
+      // Add date filtering if provided
+      if (dateRange) {
+        console.log(`[getSlpMaiBahinYojnaActivity] Applying date filter:`, dateRange);
+        console.log(`[getSlpMaiBahinYojnaActivity] Query conditions: date >= '${dateRange.startDate}' AND date <= '${dateRange.endDate}'`);
+        
+        baseQuery1 = query(
+          baseQuery1,
+          where('date', '>=', dateRange.startDate),
+          where('date', '<=', dateRange.endDate)
+        );
+        baseQuery2 = query(
+          baseQuery2,
+          where('date', '>=', dateRange.startDate),
+          where('date', '<=', dateRange.endDate)
+        );
+      }
+      
+      queries.push(baseQuery1, baseQuery2);
     } else {
       // Associated SLP - search by handler_id
       if (slp.handler_id) {
-        queries.push(
-          query(
-            slpActivityCollection,
-            where('handler_id', '==', slp.handler_id),
-            where('form_type', '==', 'mai-bahin-yojna')
-          ),
-          query(
-            slpActivityCollection,
-            where('handler_id', '==', slp.handler_id),
-            where('type', '==', 'mai-bahin-yojna')
-          )
+        let baseQuery1 = query(
+          slpActivityCollection,
+          where('handler_id', '==', slp.handler_id),
+          where('form_type', '==', 'mai-bahin-yojna')
         );
+        let baseQuery2 = query(
+          slpActivityCollection,
+          where('handler_id', '==', slp.handler_id),
+          where('type', '==', 'mai-bahin-yojna')
+        );
+        
+        // Add date filtering if provided
+        if (dateRange) {
+          console.log(`[getSlpMaiBahinYojnaActivity] Applying date filter (Associated SLP):`, dateRange);
+          console.log(`[getSlpMaiBahinYojnaActivity] Associated SLP Query conditions: date >= '${dateRange.startDate}' AND date <= '${dateRange.endDate}'`);
+          
+          baseQuery1 = query(
+            baseQuery1,
+            where('date', '>=', dateRange.startDate),
+            where('date', '<=', dateRange.endDate)
+          );
+          baseQuery2 = query(
+            baseQuery2,
+            where('date', '>=', dateRange.startDate),
+            where('date', '<=', dateRange.endDate)
+          );
+        }
+        
+        queries.push(baseQuery1, baseQuery2);
       }
     }
     
@@ -1089,14 +1220,14 @@ export async function getAcLocalIssueVideoActivities(
     );
 
     if (dateRange) {
-      // Use date_submitted field for filtering (YYYY-MM-DD format)
-      // This matches the SLP activity cards logic
-      const { startDate, endDate } = dateRange;
-      console.log(`[getAcLocalIssueVideoActivities] Filtering by date_submitted range:`, { startDate, endDate });
+      console.log(`[getAcLocalIssueVideoActivities] Filtering by date_submitted range:`, { 
+        startDate: dateRange.startDate, 
+        endDate: dateRange.endDate
+      });
       q = query(
         q,
-        where('date_submitted', '>=', startDate),
-        where('date_submitted', '<=', endDate)
+        where('date_submitted', '>=', dateRange.startDate),
+        where('date_submitted', '<=', dateRange.endDate)
       );
     }
 
@@ -1130,12 +1261,18 @@ export async function getAcLocalIssueVideoActivities(
   }
 }
 
-export async function getSlpTrainingActivity(slp: {
-  uid: string;
-  role: string;
-  handler_id?: string;
-}): Promise<SlpTrainingActivity[]> {
+export async function getSlpTrainingActivity(
+  slp: {
+    uid: string;
+    role: string;
+    handler_id?: string;
+  },
+  dateRange?: { startDate: string; endDate: string }
+): Promise<SlpTrainingActivity[]> {
   console.log(`[getSlpTrainingActivity] Fetching training activities for ${slp.role}: ${slp.uid}`);
+  if (dateRange) {
+    console.log(`[getSlpTrainingActivity] Filtering by date range: ${dateRange.startDate} to ${dateRange.endDate}`);
+  }
   
   try {
     const slpActivityCollection = collection(db, 'slp-activity');
@@ -1145,33 +1282,77 @@ export async function getSlpTrainingActivity(slp: {
     
     if (slp.role === 'SLP') {
       // Individual SLP - search by uid
-      queries.push(
-        query(
-          slpActivityCollection,
-          where('handler_id', '==', slp.uid),
-          where('form_type', '==', 'slp-training')
-        ),
-        query(
-          slpActivityCollection,
-          where('handler_id', '==', slp.uid),
-          where('type', '==', 'slp-training')
-        )
+      console.log(`[getSlpTrainingActivity] Individual SLP - Searching for handler_id: '${slp.uid}'`);
+      let baseQuery1 = query(
+        slpActivityCollection,
+        where('handler_id', '==', slp.uid),
+        where('form_type', '==', 'slp-training')
       );
+      let baseQuery2 = query(
+        slpActivityCollection,
+        where('handler_id', '==', slp.uid),
+        where('type', '==', 'slp-training')
+      );
+      
+      // Add date filtering if provided
+      if (dateRange) {
+        // Convert date strings to ISO format for createdAt comparison
+        const startDateISO = new Date(dateRange.startDate + 'T00:00:00.000Z').toISOString();
+        const endDateISO = new Date(dateRange.endDate + 'T23:59:59.999Z').toISOString();
+        
+        console.log(`[getSlpTrainingActivity] Individual SLP - Filtering by date range: ${dateRange.startDate} to ${dateRange.endDate}`);
+        console.log(`[getSlpTrainingActivity] Individual SLP - Query conditions: createdAt >= '${startDateISO}' AND createdAt <= '${endDateISO}'`);
+        
+        baseQuery1 = query(
+          baseQuery1,
+          where('createdAt', '>=', startDateISO),
+          where('createdAt', '<=', endDateISO)
+        );
+        baseQuery2 = query(
+          baseQuery2,
+          where('createdAt', '>=', startDateISO),
+          where('createdAt', '<=', endDateISO)
+        );
+      }
+      
+      queries.push(baseQuery1, baseQuery2);
     } else {
       // Associated SLP - search by handler_id
       if (slp.handler_id) {
-        queries.push(
-          query(
-            slpActivityCollection,
-            where('handler_id', '==', slp.handler_id),
-            where('form_type', '==', 'slp-training')
-          ),
-          query(
-            slpActivityCollection,
-            where('handler_id', '==', slp.handler_id),
-            where('type', '==', 'slp-training')
-          )
+        console.log(`[getSlpTrainingActivity] Associated SLP - Searching for handler_id: '${slp.handler_id}'`);
+        let baseQuery1 = query(
+          slpActivityCollection,
+          where('handler_id', '==', slp.handler_id),
+          where('form_type', '==', 'slp-training')
         );
+        let baseQuery2 = query(
+          slpActivityCollection,
+          where('handler_id', '==', slp.handler_id),
+          where('type', '==', 'slp-training')
+        );
+        
+        // Add date filtering if provided
+        if (dateRange) {
+          // Convert date strings to ISO format for createdAt comparison
+          const startDateISO = new Date(dateRange.startDate + 'T00:00:00.000Z').toISOString();
+          const endDateISO = new Date(dateRange.endDate + 'T23:59:59.999Z').toISOString();
+          
+          console.log(`[getSlpTrainingActivity] Associated SLP - Filtering by date range: ${dateRange.startDate} to ${dateRange.endDate}`);
+          console.log(`[getSlpTrainingActivity] Associated SLP - Query conditions: createdAt >= '${startDateISO}' AND createdAt <= '${endDateISO}'`);
+          
+          baseQuery1 = query(
+            baseQuery1,
+            where('createdAt', '>=', startDateISO),
+            where('createdAt', '<=', endDateISO)
+          );
+          baseQuery2 = query(
+            baseQuery2,
+            where('createdAt', '>=', startDateISO),
+            where('createdAt', '<=', endDateISO)
+          );
+        }
+        
+        queries.push(baseQuery1, baseQuery2);
       }
     }
     
@@ -1187,11 +1368,14 @@ export async function getSlpTrainingActivity(slp: {
     // Process results, ensuring no duplicates
     const activitiesMap = new Map<string, SlpTrainingActivity>();
     
-    snapshots.forEach(snapshot => {
+    snapshots.forEach((snapshot, index) => {
+      console.log(`[getSlpTrainingActivity] Query ${index + 1} returned ${snapshot.size} documents`);
       snapshot.forEach(doc => {
+        const data = doc.data();
+        console.log(`[getSlpTrainingActivity] Document ${doc.id}: date_submitted = '${data.date_submitted}'`);
         activitiesMap.set(doc.id, {
           id: doc.id,
-          ...doc.data()
+          ...data
         } as SlpTrainingActivity);
       });
     });
