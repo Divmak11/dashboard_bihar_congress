@@ -691,14 +691,25 @@ export async function getCoordinatorDetails(
 /**
  * Fetches member activities for a selected SLP or Associated SLP
  * @param slp - Object containing slp.uid and optionally slp.handler_id, and slp.role
+ * @param dateRange - Optional date range filter
  * @returns Promise resolving to array of member activity objects
  */
-export async function getSlpMemberActivity(slp: { 
-  uid: string; 
-  role: string; 
-  handler_id?: string;
-}): Promise<any[]> {
+export async function getSlpMemberActivity(
+  slp: { 
+    uid: string; 
+    role: string; 
+    handler_id?: string;
+  },
+  dateRange?: { startDate: string; endDate: string }
+): Promise<any[]> {
   console.log(`[getSlpMemberActivity] Fetching member activities for ${slp.role} with uid: ${slp.uid}`);
+  
+  // Log date range if provided
+  if (dateRange) {
+    console.log(`[getSlpMemberActivity] Date range filter: ${dateRange.startDate} to ${dateRange.endDate}`);
+  } else {
+    console.log('[getSlpMemberActivity] No date range filter applied');
+  }
   
   try {
     const slpActivityCollection = collection(db, 'slp-activity');
@@ -719,18 +730,41 @@ export async function getSlpMemberActivity(slp: {
         console.log(`[getSlpMemberActivity] No handler_id available for ASLP, using only doc ID`);
       }
       
-      memberQuery = query(
+      let baseFormTypeQuery = query(
         slpActivityCollection,
         where('form_type', '==', 'members'),
         where('handler_id', 'in', possibleIds)
       );
       
-      // Fallback query in case 'form_type' is not used
-      const typeQuery = query(
+      let baseTypeQuery = query(
         slpActivityCollection,
         where('type', '==', 'members'),
         where('handler_id', 'in', possibleIds)
       );
+      
+      // Apply date filtering if provided
+      if (dateRange) {
+        // Use string comparison since dateOfVisit is stored as string (e.g., "2025-07-14")
+        const startDateStr = dateRange.startDate;
+        const endDateStr = dateRange.endDate;
+        
+        console.log(`[getSlpMemberActivity] Applying date filter: ${startDateStr} to ${endDateStr}`);
+        
+        baseFormTypeQuery = query(
+          baseFormTypeQuery,
+          where('dateOfVisit', '>=', startDateStr),
+          where('dateOfVisit', '<=', endDateStr)
+        );
+        
+        baseTypeQuery = query(
+          baseTypeQuery,
+          where('dateOfVisit', '>=', startDateStr),
+          where('dateOfVisit', '<=', endDateStr)
+        );
+      }
+      
+      memberQuery = baseFormTypeQuery;
+      const typeQuery = baseTypeQuery;
       
       // Execute both queries in parallel
       console.log('[getSlpMemberActivity] Executing both form_type and type queries for ASLP');
@@ -766,17 +800,41 @@ export async function getSlpMemberActivity(slp: {
       return memberActivities;
     } else {
       // For Individual SLPs, use the uid directly
-      const formTypeQuery = query(
+      let baseFormTypeQuery = query(
         slpActivityCollection,
         where('form_type', '==', 'members'),
         where('handler_id', '==', slp.uid)
       );
       
-      const typeQuery = query(
+      let baseTypeQuery = query(
         slpActivityCollection,
         where('type', '==', 'members'),
         where('handler_id', '==', slp.uid)
       );
+      
+      // Apply date filtering if provided
+      if (dateRange) {
+        // Use string comparison since dateOfVisit is stored as string (e.g., "2025-07-14")
+        const startDateStr = dateRange.startDate;
+        const endDateStr = dateRange.endDate;
+        
+        console.log(`[getSlpMemberActivity] Applying date filter: ${startDateStr} to ${endDateStr}`);
+        
+        baseFormTypeQuery = query(
+          baseFormTypeQuery,
+          where('dateOfVisit', '>=', startDateStr),
+          where('dateOfVisit', '<=', endDateStr)
+        );
+        
+        baseTypeQuery = query(
+          baseTypeQuery,
+          where('dateOfVisit', '>=', startDateStr),
+          where('dateOfVisit', '<=', endDateStr)
+        );
+      }
+      
+      const formTypeQuery = baseFormTypeQuery;
+      const typeQuery = baseTypeQuery;
       
       // Execute both queries in parallel
       console.log('[getSlpMemberActivity] Executing both form_type and type queries for SLP');

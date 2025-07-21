@@ -473,11 +473,18 @@ export default function WTMSLPPage() {
           // For SLPs and ASLPs, fetch member activities
           console.log(`[WTMSLPPage] Fetching member activities for ${selectedCoordinator.role}`);
           
+          // Prepare date range for member activity filtering
+          const coordinatorDateRange = coordinatorDateOption === 'allTime' 
+            ? undefined 
+            : { startDate: coordinatorStartDate, endDate: coordinatorEndDate };
+          
+          console.log(`[WTMSLPPage] Member activity date range:`, coordinatorDateRange);
+          
           const memberData = await getSlpMemberActivity({
             uid: selectedCoordinatorUid,
             role: selectedCoordinator.role,
             handler_id: selectedCoordinator.handler_id
-          });
+          }, coordinatorDateRange);
           
           // --- Add debug logging for SLP/ASLP member data ---
           console.log(`[DEBUG] Raw SLP/ASLP Activity Data for ${selectedCoordinator.name}:`, JSON.stringify(memberData.slice(0, 2), null, 2));
@@ -646,7 +653,7 @@ export default function WTMSLPPage() {
     }
     
     fetchCoordinatorData();
-  }, [selectedCoordinatorUid, selectedCoordinator, coordinatorStartDate, coordinatorEndDate, selectedAssembly]);
+  }, [selectedCoordinatorUid, selectedCoordinator, coordinatorStartDate, coordinatorEndDate, coordinatorDateOption, selectedAssembly]);
 
   console.log(`[WTMSLPPage] Formatted ${formattedCoordinators.length} coordinators for dropdown`);
   console.log('[WTMSLPPage] Rendering main component');

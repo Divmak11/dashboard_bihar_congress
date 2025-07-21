@@ -15,6 +15,15 @@ type AuthView = 'signIn' | 'createAccount';
 export default function AuthPage() {
   const router = useRouter();
   const [view, setView] = useState<AuthView>('signIn');
+  
+  // Stylish header component
+  const AuthHeader = () => (
+    <div className="text-center mb-8">
+      <h1 className="text-3xl font-bold text-blue-900 mb-2">Congress Bihar</h1>
+      <h2 className="text-xl font-semibold text-gray-700">Admin Dashboard</h2>
+      <div className="w-20 h-1 bg-blue-600 mx-auto mt-4 rounded-full"></div>
+    </div>
+  );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -121,7 +130,8 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+        <AuthHeader />
+        <h2 className="mt-6 text-center text-2xl font-semibold text-gray-700">
           {view === 'signIn' ? 'Sign in to your account' : 'Create a new account'}
         </h2>
       </div>
