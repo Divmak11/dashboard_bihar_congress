@@ -1230,11 +1230,137 @@ function LeaderCardList({ data, fcFilter }: { data: MeetingRow[]; fcFilter?: str
   );
 }
 
+// TODO: Uncomment when re-enabling Show Members functionality
+// import { getAssociatedSlps } from "../app/utils/fetchFirebaseData";
+
 function LeaderCard({ row, fcFilter }: { row: MeetingRow; fcFilter?: string | null }) {
+  // ...existing state...
+  // TODO: Uncomment when re-enabling Show Members functionality
+  // const [showAslpModal, setShowAslpModal] = useState(false);
+  // const [selectedAslp, setSelectedAslp] = useState<{ name: string; uid: string; handler_id?: string } | null>(null);
+  // const [aslpModalStartDate, setAslpModalStartDate] = useState<string | null>(null);
+  // const [aslpModalEndDate, setAslpModalEndDate] = useState<string | null>(null);
+  // const [aslpModalOption, setAslpModalOption] = useState<string>('all');
+  // const [aslpSummary, setAslpSummary] = useState<{ training: number; panchayat_wa: number; mai_bahin_yojna: number; local_issue_video: number }>({ training: 0, panchayat_wa: 0, mai_bahin_yojna: 0, local_issue_video: 0 });
+  // const [aslpSummaryLoading, setAslpSummaryLoading] = useState(false);
+  // const [aslpSummaryError, setAslpSummaryError] = useState<string | null>(null);
+
+  // TODO: Uncomment when re-enabling Show Members functionality
+  // Handler: open modal and fetch summary
+  // const handleAslpClick = (aslp: { name: string; uid: string; handler_id?: string }) => {
+  //   setSelectedAslp(aslp);
+  //   setShowAslpModal(true);
+  //   // Default to all time
+  //   setAslpModalStartDate(null);
+  //   setAslpModalEndDate(null);
+  // };
+  // const closeAslpModal = () => {
+  //   setShowAslpModal(false);
+  //   setSelectedAslp(null);
+  //   setAslpSummary({ training: 0, panchayat_wa: 0, mai_bahin_yojna: 0, local_issue_video: 0 });
+  //   setAslpSummaryError(null);
+  // };
+  // // Handler: date change in modal
+  // const handleAslpModalDateChange = (start: string, end: string, option: string) => {
+  //   setAslpModalStartDate(start);
+  //   setAslpModalEndDate(end);
+  //   setAslpModalOption(option);
+  // };
+
+  // TODO: Uncomment when re-enabling Show Members functionality
+  // Effect: fetch summary when modal opens or date changes
+  // useEffect(() => {
+  //   if (!showAslpModal || !selectedAslp) return;
+  //   async function fetchSummary() {
+  //     if (!selectedAslp) return;
+  //     setAslpSummaryLoading(true);
+  //     setAslpSummaryError(null);
+  //     try {
+  //       const dateRange = (aslpModalStartDate && aslpModalEndDate)
+  //         ? { startDate: aslpModalStartDate, endDate: aslpModalEndDate }
+  //         : undefined;
+  //       const aslpObj = { uid: selectedAslp.uid, role: 'ASLP', handler_id: selectedAslp.handler_id };
+  //       const [trainings, pwa, mb, liv] = await Promise.all([
+  //         getSlpTrainingActivity(aslpObj, dateRange).then(arr => arr.length).catch(() => 0),
+  //         getSlpPanchayatWaActivity(aslpObj, dateRange).then(arr => arr.length).catch(() => 0),
+  //         getSlpMaiBahinYojnaActivity(aslpObj, dateRange).then(arr => arr.length).catch(() => 0),
+  //         getSlpLocalIssueVideoActivity(aslpObj, dateRange).then(arr => arr.length).catch(() => 0),
+  //       ]);
+  //       setAslpSummary({
+  //         training: trainings,
+  //         panchayat_wa: pwa,
+  //         mai_bahin_yojna: mb,
+  //         local_issue_video: liv,
+  //       });
+  //     } catch (err) {
+  //       setAslpSummaryError("Failed to fetch summary. Try again.");
+  //     } finally {
+  //       setAslpSummaryLoading(false);
+  //     }
+  //   }
+  //   fetchSummary();
+  // }, [showAslpModal, selectedAslp, aslpModalStartDate, aslpModalEndDate]);
   // Debug information
   console.log('[LeaderCard] Rendering with row data:', row);
   
   const [expanded, setExpanded] = useState(false);
+  // TODO: Uncomment when re-enabling Show Members functionality
+  // ASLP Members Dropdown State
+  // const [showMembers, setShowMembers] = useState(false);
+  // const [aslpLoading, setAslpLoading] = useState(false);
+  // const [aslpList, setAslpList] = useState<{ name: string; uid: string; handler_id?: string }[]>([]);
+  // const membersDropdownRef = useRef<HTMLDivElement>(null);
+
+  // TODO: Uncomment when re-enabling Show Members functionality
+  // Fetch ASLPs for this AC when dropdown opens
+  // useEffect(() => {
+  //   let ignore = false;
+  //   async function fetchAslps() {
+  //     if (!showMembers) return;
+  //     setAslpLoading(true);
+  //     setAslpList([]);
+  //     try {
+  //       // Use assembly name for filtering
+  //       const assembly = row[KEY_ASSEMBLY];
+  //       if (!assembly) {
+  //         setAslpList([]);
+  //         setAslpLoading(false);
+  //         return;
+  //       }
+  //       const aslps = await getAssociatedSlps(assembly);
+  //       if (!ignore) setAslpList(aslps);
+  //     } catch (err) {
+  //       if (!ignore) setAslpList([]);
+  //     } finally {
+  //       if (!ignore) setAslpLoading(false);
+  //     }
+  //   }
+  //   fetchAslps();
+  //   return () => { ignore = true; };
+  // }, [showMembers, row]);
+
+  // TODO: Uncomment when re-enabling Show Members functionality
+  // Close dropdown on outside click or ESC
+  // useEffect(() => {
+  //   if (!showMembers) return;
+  //   function handleClick(e: MouseEvent) {
+  //     if (
+  //       membersDropdownRef.current &&
+  //       !membersDropdownRef.current.contains(e.target as Node)
+  //     ) {
+  //       setShowMembers(false);
+  //     }
+  //   }
+  //   function handleEsc(e: KeyboardEvent) {
+  //     if (e.key === "Escape") setShowMembers(false);
+  //   }
+  //   document.addEventListener("mousedown", handleClick);
+  //   document.addEventListener("keydown", handleEsc);
+  //   return () => {
+  //     document.removeEventListener("mousedown", handleClick);
+  //     document.removeEventListener("keydown", handleEsc);
+  //   };
+  // }, [showMembers]);
   const isSLP = normalize(row[KEY_RECOMMENDED_POSITION]) === "slp";
   const isInactive = normalize(row["activity status"]) === "inactive";
   
@@ -1328,11 +1454,11 @@ function LeaderCard({ row, fcFilter }: { row: MeetingRow; fcFilter?: string | nu
           >
             {expanded ? "Hide Details" : "Show Details"}
           </button>
-          {isSLP && !isMemberActivity && (
-            <button className="btn btn-xs btn-primary ml-2 cursor-pointer transition-colors hover:bg-blue-700 hover:text-white active:bg-blue-900 active:text-white focus:bg-blue-700 focus:text-white">
-              Show Members
-            </button>
-          )}
+          {/* TODO: Uncomment when re-enabling Show Members functionality
+              Show Members button and dropdown functionality has been commented out.
+              This includes: button, dropdown, ASLP list, modal overlay, and all related UI.
+              All supporting code (state, handlers, useEffects) is also commented out above.
+          */}
         </span>
       </div>
       
@@ -1349,8 +1475,7 @@ function LeaderCard({ row, fcFilter }: { row: MeetingRow; fcFilter?: string | nu
             {row["district"] && !row["assembly name"] && <span>District: {row["district"]}</span>}
           </div>
         </div>
-        
-        {/* Date and Coordinator information */}
+        {/* Meeting Details */}
         <div className="flex flex-col">
           <span className="font-semibold text-gray-600">Meeting Details</span>
           <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
@@ -1360,8 +1485,7 @@ function LeaderCard({ row, fcFilter }: { row: MeetingRow; fcFilter?: string | nu
             )}
           </div>
         </div>
-        
-        {/* Demographic Preview */}
+        {/* Demographics */}
         <div className="flex flex-col">
           <span className="font-semibold text-gray-600">Demographics</span>
           <div className="grid grid-cols-1 gap-1 text-gray-800 dark:text-gray-200">
