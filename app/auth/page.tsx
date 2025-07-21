@@ -29,6 +29,7 @@ export default function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [selectedAssemblies, setSelectedAssemblies] = useState<string[]>([]);
   const [assemblies, setAssemblies] = useState<string[]>([]);
+  const [assemblySearch, setAssemblySearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -126,6 +127,11 @@ export default function AuthPage() {
       }
     });
   };
+
+  // Filter assemblies based on search input
+  const filteredAssemblies = assemblies.filter(assembly =>
+    assembly.toLowerCase().includes(assemblySearch.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -265,9 +271,18 @@ export default function AuthPage() {
                 <label htmlFor="assemblies" className="block text-sm font-medium text-gray-700">
                   Select Assemblies
                 </label>
-                <div className="mt-1 max-h-60 overflow-y-auto border border-gray-300 rounded-md p-2">
-                  {assemblies.length > 0 ? (
-                    assemblies.map((assembly) => (
+                <div className="mt-1">
+                  <input
+                    type="text"
+                    placeholder="Search assemblies..."
+                    value={assemblySearch}
+                    onChange={(e) => setAssemblySearch(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm mb-2"
+                  />
+                </div>
+                <div className="max-h-60 overflow-y-auto border border-gray-300 rounded-md p-2">
+                  {filteredAssemblies.length > 0 ? (
+                    filteredAssemblies.map((assembly) => (
                       <div key={assembly} className="flex items-start my-1">
                         <div className="flex items-center h-5">
                           <input
@@ -286,8 +301,10 @@ export default function AuthPage() {
                         </div>
                       </div>
                     ))
-                  ) : (
+                  ) : assemblies.length === 0 ? (
                     <p className="text-sm text-gray-500">Loading assemblies...</p>
+                  ) : (
+                    <p className="text-sm text-gray-500">No assemblies found matching &quot;{assemblySearch}&quot;</p>
                   )}
                 </div>
               </div>
