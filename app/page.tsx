@@ -212,23 +212,29 @@ export default function HomePage() {
             )}
           </div>
         </Link>
-        {/* Other department cards */}
+        {/* Other department cards - greyed out to indicate not yet available */}
         {DEPT_CARDS.map((card) => (
           <div
             key={card.key}
-            className={`rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 ${card.color} p-6 flex flex-col gap-4 hover:shadow-2xl transition group`}
+            className={`rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 ${card.color} p-6 flex flex-col gap-4 transition group opacity-50 cursor-not-allowed relative`}
           >
+            {/* Coming Soon overlay */}
+            <div className="absolute inset-0 bg-gray-900/20 rounded-xl flex items-center justify-center">
+              <span className="bg-gray-800 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                Coming Soon
+              </span>
+            </div>
             <div className="flex flex-col items-center mb-2 gap-1">
-              <h2 className="text-xl font-bold text-center group-hover:text-blue-700 transition">{card.title}</h2>
-              <span className="px-3 py-1 rounded-full bg-white/70 text-gray-800 text-xs font-semibold border border-gray-300 mt-1">
+              <h2 className="text-xl font-bold text-center text-gray-500">{card.title}</h2>
+              <span className="px-3 py-1 rounded-full bg-white/70 text-gray-500 text-xs font-semibold border border-gray-300 mt-1">
                 Lead: {card.lead}
               </span>
             </div>
             <div className="flex flex-col gap-2 mt-2">
               {card.metrics.map((metric) => (
                 <div key={metric.label} className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-700">{metric.label}:</span>
-                  <span className="text-gray-900 dark:text-gray-100 font-bold">{metric.value}</span>
+                  <span className="font-semibold text-gray-500">{metric.label}:</span>
+                  <span className="text-gray-500 font-bold">{metric.value}</span>
                 </div>
               ))}
             </div>
