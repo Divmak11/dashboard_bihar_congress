@@ -66,8 +66,10 @@ interface DateRangeFilterProps {
 }
 
 const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ label, startDate, endDate, selectedOption, onDateChange }) => {
+  const [hasDateError, setHasDateError] = React.useState(false);
 
   const handleDateOptionChange = (option: string) => {
+    setHasDateError(false); // Reset error when changing options
     if (option !== "custom") {
       const range = getDateRange(option);
       if (range) {
@@ -83,6 +85,13 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ label, startDate, end
   };
 
   const handleCustomDateChange = (start: string, end: string) => {
+    // Validate date range
+    if (start && end && new Date(start) > new Date(end)) {
+      console.warn('[DateRangeFilter] Start date cannot be after end date');
+      setHasDateError(true);
+      return;
+    }
+    setHasDateError(false);
     onDateChange(start, end, "custom");
   };
 
@@ -112,7 +121,11 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ label, startDate, end
               type="date"
               value={startDate}
               onChange={(e) => handleCustomDateChange(e.target.value, endDate)}
-              className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`px-2 py-1 border rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 ${
+                hasDateError 
+                  ? 'border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+              }`}
             />
           </div>
           <div className="flex items-center gap-2">
@@ -121,9 +134,18 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ label, startDate, end
               type="date"
               value={endDate}
               onChange={(e) => handleCustomDateChange(startDate, e.target.value)}
-              className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`px-2 py-1 border rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 ${
+                hasDateError 
+                  ? 'border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+              }`}
             />
           </div>
+          {hasDateError && (
+            <div className="text-red-500 text-xs mt-1">
+              Start date must be before end date
+            </div>
+          )}
         </div>
       )}
     </div>
