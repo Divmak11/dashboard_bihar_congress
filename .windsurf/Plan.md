@@ -374,6 +374,11 @@ This prevents errors and ensures consistency across the project.
 | T29 | Navigation Integration | — | DONE ✅ | 2025-07-25 | Integrated with main navigation and breadcrumbs | Seamless navigation flow |
 | T30 | Final PRD Completion | — | DONE ✅ | 2025-07-25 | All PRD tasks completed successfully | Ready for production |
 | T32 | Deep Search Enhancement in DataTable | — | DONE ✅ | 2025-07-25 | Added recursive extraction of nested values to enable name-based search | Verify search by person name |
+| T33 | SLP Level Metrics Filtering Fix | — | DONE ✅ | 2025-07-25 | Fixed SLP selection to use proper handler_id filtering for scoped data | SLP metrics now show correct filtered data |
+| T34 | Enhanced Video Detailed View | — | DONE ✅ | 2025-07-25 | Created VideosList component with watch video, view images, and proper video properties | Videos show all relevant data and actions |
+| T35 | Enhanced Forms Detailed View | — | DONE ✅ | 2025-07-25 | Created FormsList component with completion rates, summary cards, and proper form properties | Forms show distribution/collection metrics |
+| T36 | ClubsList Component & DetailedView Integration | — | DONE ✅ | 2025-07-25 | Added ClubsList component and integrated into DetailedView for Clubs & WA Groups | Review UI |
+| T37 | Zone Name, Label Renames, Volunteers Detail Fix | — | IN-PROGRESS | 2025-07-25 | Implemented zone incharge name display, renamed SLP labels to Samvidhan Leader, fixed volunteers/slps detailed view routing | |
 
 _Add new rows or update existing ones as work progresses. Use **Status** values: `TODO`, `IN-PROGRESS`, `DONE ✅`, `BLOCKED`._
 

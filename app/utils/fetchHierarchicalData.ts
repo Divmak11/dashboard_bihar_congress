@@ -765,7 +765,8 @@ export const fetchZones = async (): Promise<Zone[]> => {
       const data = d.data() as any;
       const id = d.id;
       const assemblies: string[] = data.assemblies || [];
-      const name = `Zone ${counter}`;
+      const zonalName: string = data.name ? String(data.name) : 'Unknown';
+      const name = `Zone ${counter} - ${zonalName}`;
       zones.push({ id, name, assemblies });
     });
     // Sort alphabetically
@@ -1061,6 +1062,22 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
 /**
  * Fetch detailed video activities for the selected hierarchy level
  */
+/**
+ * Fetch detailed volunteers data (meeting entries with onboardingStatus === 'Onboarded')
+ */
+export const fetchDetailedVolunteers = async (options: FetchMetricsOptions): Promise<any[]> => {
+  const meetings = await fetchDetailedMeetings(options);
+  return meetings.filter(m => (m.onboardingStatus || '').toLowerCase() === 'onboarded');
+};
+
+/**
+ * Fetch detailed SLP (Samvidhan Leader) data (meeting entries with recommendedPosition === 'SLP')
+ */
+export const fetchDetailedLeaders = async (options: FetchMetricsOptions): Promise<any[]> => {
+  const meetings = await fetchDetailedMeetings(options);
+  return meetings.filter(m => (m.recommendedPosition || '').toLowerCase() === 'slp');
+};
+
 export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise<any[]> => {
   try {
     console.log('[fetchDetailedVideos] Fetching with options:', options);
@@ -1127,6 +1144,10 @@ export const fetchDetailedData = async (metricType: string, options: FetchMetric
       return fetchDetailedMeetings(options);
     case 'saathi':
       return fetchDetailedMembers(options);
+    case 'volunteers':
+      return fetchDetailedVolunteers(options);
+    case 'slps':
+      return fetchDetailedLeaders(options);
     case 'videos':
       return fetchDetailedVideos(options);
     case 'clubs':

@@ -90,14 +90,14 @@ const HierarchicalNavigation: React.FC<NavigationProps> = ({
 
       {/* SLP Dropdown */}
       <div>
-        <label className="block text-sm font-medium mb-1">SLP</label>
+        <label className="block text-sm font-medium mb-1">Samvidhan Leader</label>
         <select
           className="w-full border rounded px-2 py-1"
           value={selectedSlpId || ''}
           onChange={(e) => onSlpChange(e.target.value)}
           disabled={!selectedAcId}
         >
-          <option value="">Select SLP</option>
+          <option value="">Select Samvidhan Leader</option>
           {slps.map((slp) => (
             <option key={slp.uid} value={slp.uid}>
               {slp.name} ({slp.role}){slp.independent ? ' - Independent' : ''}

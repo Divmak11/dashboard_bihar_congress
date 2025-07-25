@@ -118,10 +118,13 @@ const HierarchicalDashboardPage: React.FC = () => {
         let options: any = {};
         
         if (selectedSlpId) {
-          // SLP level
+          // SLP level - filter by SLP's handler_id
+          const selectedSlp = slps.find(s => s.uid === selectedSlpId);
+          const selectedAc = acs.find(ac => ac.uid === selectedAcId);
           options = {
             level: 'slp',
-            handler_id: selectedSlpId,
+            handler_id: selectedSlp?.handler_id || selectedSlpId,
+            assemblies: selectedSlp?.assembly ? [selectedSlp.assembly] : (selectedAc?.assembly ? [selectedAc.assembly] : (selectedAssembly ? [selectedAssembly] : [])),
             dateRange: startDate && endDate ? { startDate, endDate } : undefined,
           };
         } else if (selectedAcId) {

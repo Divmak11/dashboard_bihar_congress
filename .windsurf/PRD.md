@@ -457,6 +457,11 @@ This PRD provides a comprehensive roadmap for implementing the WTM-SLP Hierarchi
 | T15 | Navigation State Management Fix | — | DONE ✅ | 2025-07-25 | Fixed state reset when switching between hierarchy levels | Consistent data fetching |
 | T31 | Zone Metrics Infinite Loading Fix | — | DONE ✅ | 2025-07-25 | Removed `showError` from metrics fetch dependencies to stop infinite loading | Metrics load correctly |
 | T32 | Deep Search Enhancement in DataTable | — | DONE ✅ | 2025-07-25 | Added recursive extraction of nested values to enable name-based search | Verify search by person name |
+| T33 | SLP Level Metrics Filtering Fix | — | DONE ✅ | 2025-07-25 | Fixed SLP selection to use proper handler_id filtering for scoped data | SLP metrics now show correct filtered data |
+| T34 | Enhanced Video Detailed View | — | DONE ✅ | 2025-07-25 | Created VideosList component with watch video, view images, and proper video properties | Videos show all relevant data and actions |
+| T35 | Enhanced Forms Detailed View | — | DONE ✅ | 2025-07-25 | Created FormsList component with completion rates, summary cards, and proper form properties | Forms show distribution/collection metrics |
+| T36 | ClubsList Component & DetailedView Integration | — | DONE ✅ | 2025-07-25 | Added ClubsList component and integrated into DetailedView for Clubs & WA Groups | Review UI |
+| T37 | Zone Name, Label Renames, Volunteers Detail Fix | — | IN-PROGRESS | 2025-07-25 | Implemented zone incharge name display, renamed SLP labels to Samvidhan Leader, fixed volunteers/slps detailed view routing | |
 | … | … | … | … | … | … | … |
 
 _Update status when tasks move through the workflow. Use `TODO`, `IN-PROGRESS`, `DONE ✅`, `BLOCKED`._

@@ -4,6 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { fetchDetailedData, FetchMetricsOptions } from '../../app/utils/fetchHierarchicalData';
 import MeetingsList from './MeetingsList';
 import ActivitiesList from './ActivitiesList';
+import VideosList from './VideosList';
+import FormsList from './FormsList';
+import ClubsList from './ClubsList';
 
 interface Props {
   selectedCard?: string | null;
@@ -81,7 +84,7 @@ const DetailedView: React.FC<Props> = ({
     const titles: Record<string, string> = {
       meetings: 'Meeting Details',
       volunteers: 'Volunteer Information',
-      slps: 'SLP/ASLP Details',
+      slps: 'Samvidhan Leader Details',
       saathi: 'Saathi Members',
       leaders: 'Leader Information',
       clubs: 'Club Activities',
@@ -122,6 +125,18 @@ const DetailedView: React.FC<Props> = ({
     // Render specific components based on card type
     if (selectedCard === 'meetings') {
       return <MeetingsList data={detailedData} loading={loading} />;
+    }
+    
+    if (selectedCard === 'videos') {
+      return <VideosList data={detailedData} loading={loading} />;
+    }
+    
+    if (selectedCard === 'forms' || selectedCard === 'shaktiForms') {
+      return <FormsList data={detailedData} loading={loading} />;
+    }
+
+    if (['clubs','shaktiClubs','centralWaGroups','assemblyWaGroups'].includes(selectedCard)) {
+      return <ClubsList data={detailedData} loading={loading} activityType={selectedCard} />;
     }
 
     // For all other activity types, use ActivitiesList

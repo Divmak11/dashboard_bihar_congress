@@ -19,7 +19,7 @@ const CumulativeDataCards: React.FC<Props> = ({ metrics, onCardSelect, isLoading
   const cardData = [
     { id: 'meetings', label: 'Meetings', value: metrics.meetings, color: 'blue' },
     { id: 'volunteers', label: 'Volunteers', value: metrics.volunteers, color: 'green' },
-    { id: 'slps', label: 'SLPs', value: metrics.slps, color: 'purple' },
+    { id: 'slps', label: 'Samvidhan Leaders', value: metrics.slps, color: 'purple' },
     { id: 'saathi', label: 'Samvidhan Saathi', value: metrics.saathi, color: 'orange' },
     { id: 'shaktiLeaders', label: 'Shakti Leaders', value: metrics.shaktiLeaders, color: 'red' },
     { id: 'shaktiSaathi', label: 'Shakti Saathi', value: metrics.shaktiSaathi, color: 'pink' },

@@ -115,6 +115,104 @@ const ActivitiesList: React.FC<ActivitiesListProps> = ({ data, loading = false, 
           }
         ];
 
+      case 'volunteers':
+        return [
+          ...baseColumns,
+          {
+            key: 'recommendedPosition',
+            label: 'Position',
+            sortable: true
+          },
+          {
+            key: 'onboardingStatus',
+            label: 'Status',
+            sortable: true,
+            render: (value: any) => {
+              const v = String(value || 'Unknown');
+              const color = v.toLowerCase() === 'onboarded' ? 'green' : v.toLowerCase() === 'dicey' ? 'yellow' : 'red';
+              return (
+                <span className={`px-2 py-1 rounded-full text-xs font-medium bg-${color}-100 text-${color}-800`}>
+                  {v}
+                </span>
+              );
+            }
+          },
+          {
+            key: 'village',
+            label: 'Village',
+            sortable: true
+          },
+          {
+            key: 'block',
+            label: 'Block',
+            sortable: true
+          },
+          {
+            key: 'profession',
+            label: 'Profession',
+            sortable: true
+          },
+          {
+            key: 'mobileNumber',
+            label: 'Mobile',
+            sortable: false,
+            render: (value: any) => {
+              if (!value) return '-';
+              const mobile = String(value);
+              return mobile.length >= 10 ? `${mobile.slice(0, 2)}****${mobile.slice(-4)}` : mobile;
+            }
+          }
+        ];
+
+      case 'slps':
+        return [
+          ...baseColumns,
+          {
+            key: 'recommendedPosition',
+            label: 'Position',
+            sortable: true
+          },
+          {
+            key: 'onboardingStatus',
+            label: 'Status',
+            sortable: true,
+            render: (value: any) => {
+              const v = String(value || 'Unknown');
+              const color = v.toLowerCase() === 'onboarded' ? 'green' : v.toLowerCase() === 'dicey' ? 'yellow' : 'red';
+              return (
+                <span className={`px-2 py-1 rounded-full text-xs font-medium bg-${color}-100 text-${color}-800`}>
+                  {v}
+                </span>
+              );
+            }
+          },
+          {
+            key: 'village',
+            label: 'Village',
+            sortable: true
+          },
+          {
+            key: 'block',
+            label: 'Block',
+            sortable: true
+          },
+          {
+            key: 'profession',
+            label: 'Profession',
+            sortable: true
+          },
+          {
+            key: 'mobileNumber',
+            label: 'Mobile',
+            sortable: false,
+            render: (value: any) => {
+              if (!value) return '-';
+              const mobile = String(value);
+              return mobile.length >= 10 ? `${mobile.slice(0, 2)}****${mobile.slice(-4)}` : mobile;
+            }
+          }
+        ];
+
       case 'clubs':
         return [
           ...baseColumns,
@@ -210,7 +308,8 @@ const ActivitiesList: React.FC<ActivitiesListProps> = ({ data, loading = false, 
       shaktiClubs: 'Shakti Clubs',
       shaktiForms: 'Shakti Forms',
       centralWaGroups: 'Central WA Groups',
-      assemblyWaGroups: 'Assembly WA Groups'
+      assemblyWaGroups: 'Assembly WA Groups',
+      slps: 'Samvidhan Leader Details'
     };
     return titles[activityType] || 'Activities';
   };
