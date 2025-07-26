@@ -7,9 +7,10 @@ import { LocalIssueVideoActivity } from '../../models/types';
 interface VideosListProps {
   data: LocalIssueVideoActivity[];
   loading?: boolean;
+  title?: string;
 }
 
-const VideosList: React.FC<VideosListProps> = ({ data, loading = false }) => {
+const VideosList: React.FC<VideosListProps> = ({ data, loading = false, title = "Local Issue Videos" }) => {
   const columns = [
     {
       key: 'date_submitted',
@@ -141,7 +142,7 @@ const VideosList: React.FC<VideosListProps> = ({ data, loading = false }) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h4 className="text-lg font-medium text-gray-900">Local Issue Videos</h4>
+        <h4 className="text-lg font-medium text-gray-900">{title}</h4>
         <div className="text-sm text-gray-500">
           Total videos: {data.length}
         </div>

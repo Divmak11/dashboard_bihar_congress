@@ -172,7 +172,7 @@ export default function HomePage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Ravi Pandit card with real data and dashboard link */}
         <Link
-          href="/wtm-slp"
+          href="/wtm-slp-new"
           className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-red-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group"
         >
           <div className="flex flex-col items-center mb-2 gap-1">

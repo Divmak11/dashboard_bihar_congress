@@ -80,6 +80,11 @@ const MeetingsList: React.FC<MeetingsListProps> = ({ data, loading = false }) =>
       sortable: true
     },
     {
+      key: 'levelOfInfluence',
+      label: 'Level of Influence',
+      sortable: true
+    },
+    {
       key: 'mobileNumber',
       label: 'Mobile',
       sortable: false,

@@ -89,9 +89,11 @@ const DetailedView: React.FC<Props> = ({
       leaders: 'Leader Information',
       clubs: 'Club Activities',
       forms: 'Form Submissions',
-      videos: 'Video Content',
+      videos: 'Local Issue Videos',
+      acVideos: 'AC Videos',
       waGroups: 'WhatsApp Groups',
       chaupals: 'Chaupal Sessions',
+      shaktiBaithaks: 'Shakti Baithaks',
     };
     return titles[cardId] || 'Details';
   };
@@ -127,8 +129,9 @@ const DetailedView: React.FC<Props> = ({
       return <MeetingsList data={detailedData} loading={loading} />;
     }
     
-    if (selectedCard === 'videos') {
-      return <VideosList data={detailedData} loading={loading} />;
+    if (selectedCard === 'videos' || selectedCard === 'acVideos') {
+      const videoTitle = selectedCard === 'acVideos' ? 'AC Videos' : 'Local Issue Videos';
+      return <VideosList data={detailedData} loading={loading} title={videoTitle} />;
     }
     
     if (selectedCard === 'forms' || selectedCard === 'shaktiForms') {

@@ -102,7 +102,15 @@ const ClubsList: React.FC<ClubsListProps> = ({ data, loading = false, activityTy
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h4 className="text-lg font-medium text-gray-900">{activityType === 'assemblyWaGroups' ? 'Assembly WA Groups' : activityType === 'centralWaGroups' ? 'Central WA Groups' : 'Samvidhan Clubs'}</h4>
+        <h4 className="text-lg font-medium text-gray-900">
+          {activityType === 'assemblyWaGroups'
+            ? 'Assembly WA Groups'
+            : activityType === 'centralWaGroups'
+            ? 'Central WA Groups'
+            : activityType === 'shaktiClubs'
+            ? 'Shakti Clubs'
+            : 'Samvidhan Clubs'}
+        </h4>
         <div className="text-sm text-gray-500">Total clubs: {data.length}</div>
       </div>
       <DataTable

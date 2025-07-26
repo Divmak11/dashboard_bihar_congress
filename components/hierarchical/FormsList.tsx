@@ -32,7 +32,7 @@ const FormsList: React.FC<FormsListProps> = ({ data, loading = false }) => {
       sortable: true,
       render: (value: any) => {
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
             {value || 0}
           </span>
         );
@@ -44,7 +44,7 @@ const FormsList: React.FC<FormsListProps> = ({ data, loading = false }) => {
       sortable: true,
       render: (value: any) => {
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
             {value || 0}
           </span>
         );
@@ -58,16 +58,21 @@ const FormsList: React.FC<FormsListProps> = ({ data, loading = false }) => {
         const distributed = row.formsDistributed || 0;
         const collected = row.formsCollected || 0;
         
-        if (distributed === 0) {
+        if (collected === 0) {
           return <span className="text-gray-400">N/A</span>;
         }
         
-        const rate = Math.round((collected / distributed) * 100);
+        // Completion rate = (distributed / collected) * 100
+        // Shows how much of the collection target has been achieved through distribution
+        const rate = Math.round((distributed / collected) * 100);
+        
         const colorClass = rate >= 80 ? 'text-green-600' : rate >= 60 ? 'text-yellow-600' : 'text-red-600';
         
         return (
           <div className="flex items-center">
-            <span className={`font-semibold ${colorClass}`}>{rate}%</span>
+            <span className={`font-semibold ${colorClass}`}>
+              {rate}%
+            </span>
             <div className="ml-2 w-16 bg-gray-200 rounded-full h-2">
               <div 
                 className={`h-2 rounded-full ${rate >= 80 ? 'bg-green-500' : rate >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`}
@@ -129,7 +134,7 @@ const FormsList: React.FC<FormsListProps> = ({ data, loading = false }) => {
 
   const totalDistributed = data.reduce((sum, item) => sum + (item.formsDistributed || 0), 0);
   const totalCollected = data.reduce((sum, item) => sum + (item.formsCollected || 0), 0);
-  const overallRate = totalDistributed > 0 ? Math.round((totalCollected / totalDistributed) * 100) : 0;
+  const overallRate = totalCollected > 0 ? Math.round((totalDistributed / totalCollected) * 100) : 0;
 
   return (
     <div className="space-y-4">
@@ -142,13 +147,13 @@ const FormsList: React.FC<FormsListProps> = ({ data, loading = false }) => {
       
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="text-blue-600 text-sm font-medium">Total Distributed</div>
-          <div className="text-2xl font-bold text-blue-900">{totalDistributed.toLocaleString()}</div>
-        </div>
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="text-green-600 text-sm font-medium">Total Collected</div>
-          <div className="text-2xl font-bold text-green-900">{totalCollected.toLocaleString()}</div>
+          <div className="text-green-600 text-sm font-medium">Total Distributed</div>
+          <div className="text-2xl font-bold text-green-900">{totalDistributed.toLocaleString()}</div>
+        </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="text-blue-600 text-sm font-medium">Total Collected</div>
+          <div className="text-2xl font-bold text-blue-900">{totalCollected.toLocaleString()}</div>
         </div>
         <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
           <div className="text-purple-600 text-sm font-medium">Overall Rate</div>
@@ -156,7 +161,7 @@ const FormsList: React.FC<FormsListProps> = ({ data, loading = false }) => {
         </div>
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
           <div className="text-gray-600 text-sm font-medium">Pending</div>
-          <div className="text-2xl font-bold text-gray-900">{(totalDistributed - totalCollected).toLocaleString()}</div>
+          <div className="text-2xl font-bold text-gray-900">{(totalCollected - totalDistributed).toLocaleString()}</div>
         </div>
       </div>
       

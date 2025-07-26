@@ -28,7 +28,9 @@ const CumulativeDataCards: React.FC<Props> = ({ metrics, onCardSelect, isLoading
     { id: 'forms', label: 'Mai-Bahin Forms', value: metrics.forms, color: 'cyan' },
     { id: 'shaktiForms', label: 'Shakti Mai-Bahin', value: metrics.shaktiForms, color: 'lime' },
     { id: 'videos', label: 'Local Issue Videos', value: metrics.videos, color: 'yellow' },
+    { id: 'acVideos', label: 'AC Videos', value: metrics.acVideos, color: 'rose' },
     { id: 'chaupals', label: 'Samvidhan Chaupals', value: metrics.chaupals, color: 'gray' },
+    { id: 'shaktiBaithaks', label: 'Shakti Baithaks', value: metrics.shaktiBaithaks, color: 'amber' },
     { id: 'centralWaGroups', label: 'Central WA Groups', value: metrics.centralWaGroups, color: 'teal' },
     { id: 'assemblyWaGroups', label: 'Assembly WA Groups', value: metrics.assemblyWaGroups, color: 'emerald' },
   ];
@@ -48,7 +50,9 @@ const CumulativeDataCards: React.FC<Props> = ({ metrics, onCardSelect, isLoading
       violet: 'bg-violet-50 border-violet-200 text-violet-800',
       cyan: 'bg-cyan-50 border-cyan-200 text-cyan-800',
       lime: 'bg-lime-50 border-lime-200 text-lime-800',
+      amber: 'bg-amber-50 border-amber-200 text-amber-800',
       emerald: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+      rose: 'bg-rose-50 border-rose-200 text-rose-800',
     };
     return colorMap[color] || colorMap.gray;
   };

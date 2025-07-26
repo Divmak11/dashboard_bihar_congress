@@ -26,7 +26,9 @@ const emptyMetrics: CumulativeMetrics = {
   forms: '-',
   shaktiForms: '-',
   videos: '-',
+  acVideos: '-',
   chaupals: '-',
+  shaktiBaithaks: '-',
   centralWaGroups: '-',
   assemblyWaGroups: '-',
 };
@@ -118,16 +120,27 @@ const HierarchicalDashboardPage: React.FC = () => {
         let options: any = {};
         
         if (selectedSlpId) {
-          // SLP level - filter by SLP's handler_id
-          const selectedSlp = slps.find(s => s.uid === selectedSlpId);
-          const selectedAc = acs.find(ac => ac.uid === selectedAcId);
-          options = {
-            level: 'slp',
-            handler_id: selectedSlp?.handler_id || selectedSlpId,
-            assemblies: selectedSlp?.assembly ? [selectedSlp.assembly] : (selectedAc?.assembly ? [selectedAc.assembly] : (selectedAssembly ? [selectedAssembly] : [])),
-            dateRange: startDate && endDate ? { startDate, endDate } : undefined,
-          };
-        } else if (selectedAcId) {
+      // SLP level - filter by SLP's handler_id
+      const selectedSlp = slps.find(s => s.uid === selectedSlpId);
+      const selectedAc = acs.find(ac => ac.uid === selectedAcId);
+      
+      // For Shakti SLPs, use shaktiId as handler_id, otherwise use regular logic
+      let handlerId;
+      if (selectedSlp?.isShaktiSLP && selectedSlp?.shaktiId) {
+        handlerId = selectedSlp.shaktiId;
+        console.log('[fetchMetrics] Using Shakti SLP ID as handler_id:', handlerId);
+      } else {
+        handlerId = selectedSlp?.handler_id || selectedSlpId;
+        console.log('[fetchMetrics] Using regular SLP handler_id:', handlerId);
+      }
+      
+      options = {
+        level: 'slp',
+        handler_id: handlerId,
+        assemblies: selectedSlp?.assembly ? [selectedSlp.assembly] : (selectedAc?.assembly ? [selectedAc.assembly] : (selectedAssembly ? [selectedAssembly] : [])),
+        dateRange: startDate && endDate ? { startDate, endDate } : undefined,
+      };
+    } else if (selectedAcId) {
           // AC level - include both handler_id and assembly filter
           const selectedAc = acs.find(ac => ac.uid === selectedAcId);
           options = {

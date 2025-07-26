@@ -1,0 +1,4 @@
+{
+    "editor.maxTokenizationLineLength": 20000,
+    "search.maxResults": 20000
+}

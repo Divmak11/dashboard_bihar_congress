@@ -22,6 +22,8 @@ export interface SLP {
   role: 'SLP' | 'ASLP';
   handler_id?: string;
   independent?: boolean;
+  isShaktiSLP?: boolean;
+  shaktiId?: string;
 }
 
 export type MetricKey =
@@ -36,9 +38,11 @@ export type MetricKey =
   | 'forms'
   | 'shaktiForms'
   | 'videos'
+  | 'acVideos'
   | 'chaupals'
   | 'centralWaGroups'
-  | 'assemblyWaGroups';
+  | 'assemblyWaGroups'
+  | 'shaktiBaithaks';
 
 export type MetricRecord = Record<MetricKey, number | string>;
 
@@ -54,7 +58,9 @@ export interface CumulativeMetrics extends MetricRecord {
   forms: number | string;
   shaktiForms: number | string;
   videos: number | string;
+  acVideos: number | string;
   chaupals: number | string;
+  shaktiBaithaks: number | string;
   centralWaGroups: number | string;
   assemblyWaGroups: number | string;
 }

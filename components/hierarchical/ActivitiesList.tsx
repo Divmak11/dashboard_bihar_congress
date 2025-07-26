@@ -56,6 +56,11 @@ const ActivitiesList: React.FC<ActivitiesListProps> = ({ data, loading = false, 
             sortable: true
           },
           {
+            key: 'levelOfInfluence',
+            label: 'Level of Influence',
+            sortable: true
+          },
+          {
             key: 'gender',
             label: 'Gender',
             sortable: true
@@ -153,6 +158,11 @@ const ActivitiesList: React.FC<ActivitiesListProps> = ({ data, loading = false, 
             sortable: true
           },
           {
+            key: 'levelOfInfluence',
+            label: 'Level of Influence',
+            sortable: true
+          },
+          {
             key: 'mobileNumber',
             label: 'Mobile',
             sortable: false,
@@ -199,6 +209,11 @@ const ActivitiesList: React.FC<ActivitiesListProps> = ({ data, loading = false, 
           {
             key: 'profession',
             label: 'Profession',
+            sortable: true
+          },
+          {
+            key: 'levelOfInfluence',
+            label: 'Level of Influence',
             sortable: true
           },
           {
@@ -278,6 +293,38 @@ const ActivitiesList: React.FC<ActivitiesListProps> = ({ data, loading = false, 
           }
         ];
 
+      case 'shaktiLeaders':
+        return [
+          ...baseColumns,
+          {
+            key: 'mobile',
+            label: 'Mobile',
+            sortable: true,
+            render: (value: any) => {
+              if (!value) return '-';
+              const mobile = String(value);
+              return mobile.length >= 10 ? `${mobile.slice(0, 2)}****${mobile.slice(-4)}` : mobile;
+            }
+          },
+          {
+            key: 'village',
+            label: 'Village',
+            sortable: true
+          },
+          {
+            key: 'isShaktiSLP',
+            label: 'Type',
+            sortable: true,
+            render: (value: any) => (
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                value ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+              }`}>
+                {value ? 'Shakti SLP' : 'Regular SLP'}
+              </span>
+            )
+          }
+        ];
+
       default:
         return [
           ...baseColumns,
@@ -307,6 +354,7 @@ const ActivitiesList: React.FC<ActivitiesListProps> = ({ data, loading = false, 
       shaktiSaathi: 'Shakti Saathi',
       shaktiClubs: 'Shakti Clubs',
       shaktiForms: 'Shakti Forms',
+      shaktiBaithaks: 'Shakti Baithaks',
       centralWaGroups: 'Central WA Groups',
       assemblyWaGroups: 'Assembly WA Groups',
       slps: 'Samvidhan Leader Details'

@@ -8,7 +8,7 @@ import {
 
 import { CumulativeMetrics } from '../../models/hierarchicalTypes';
 import { db } from './firebase';
-import { collection, query, where, getDocs, doc, getDoc, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, QueryDocumentSnapshot, limit } from 'firebase/firestore';
 import { createAppError, logError, getFirebaseErrorCode, validateDateRange, validateAssemblyData, ERROR_CODES } from './errorUtils';
 
 /**
@@ -21,6 +21,27 @@ export interface FetchMetricsOptions {
   handler_id?: string;
   level: 'zone' | 'assembly' | 'ac' | 'slp';
 }
+
+// Helper function to check if AC is from Shakti Abhiyaan
+const isShaktiAC = async (acId: string): Promise<boolean> => {
+  try {
+    const shaktiCollection = collection(db, 'shakti-abhiyaan');
+    const q = query(shaktiCollection, where('form_type', '==', 'add-data'));
+    const snap = await getDocs(q);
+    
+    for (const doc of snap.docs) {
+      const data = doc.data() as any;
+      const coordinators = data.coveredAssemblyCoordinators || [];
+      if (coordinators.some((coord: any) => coord.id === acId)) {
+        return true;
+      }
+    }
+    return false;
+  } catch (error) {
+    console.error('[isShaktiAC] Error:', error);
+    return false;
+  }
+};
 
 // Duplicated and modified SLP activity functions for hierarchical aggregation
 
@@ -51,13 +72,14 @@ const getHierarchicalMemberActivity = async (assemblies?: string[], dateRange?: 
 
     // Add date filter if provided
     if (dateRange) {
-      const startDate = new Date(dateRange.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(dateRange.endDate);
-      endDate.setHours(23, 59, 59, 999);
+      // Use string comparison for dateOfVisit field (format: "2025-07-14")
+      const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
+      const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
       
-      baseQuery1 = query(baseQuery1, where('dateOfVisit', '>=', startDate), where('dateOfVisit', '<=', endDate));
-      baseQuery2 = query(baseQuery2, where('dateOfVisit', '>=', startDate), where('dateOfVisit', '<=', endDate));
+      console.log('[getHierarchicalMemberActivity] Filtering by dateOfVisit:', startDateStr, 'to', endDateStr);
+      
+      baseQuery1 = query(baseQuery1, where('dateOfVisit', '>=', startDateStr), where('dateOfVisit', '<=', endDateStr));
+      baseQuery2 = query(baseQuery2, where('dateOfVisit', '>=', startDateStr), where('dateOfVisit', '<=', endDateStr));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
@@ -104,13 +126,14 @@ const getHierarchicalPanchayatWaActivity = async (assemblies?: string[], dateRan
     }
 
     if (dateRange) {
-      const startDate = new Date(dateRange.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(dateRange.endDate);
-      endDate.setHours(23, 59, 59, 999);
+      // Convert coordinator date range (YYYY-MM-DD) to ISO strings for createdAt field
+      const startDateISO = `${dateRange.startDate}T00:00:00.000Z`;
+      const endDateISO = `${dateRange.endDate}T23:59:59.999Z`;
       
-      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
-      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
+      console.log('[getHierarchicalPanchayatWaActivity] Filtering by createdAt:', startDateISO, 'to', endDateISO);
+      
+      baseQuery1 = query(baseQuery1, where('createdAt', '>=', startDateISO), where('createdAt', '<=', endDateISO));
+      baseQuery2 = query(baseQuery2, where('createdAt', '>=', startDateISO), where('createdAt', '<=', endDateISO));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
@@ -154,15 +177,16 @@ const getHierarchicalMaiBahinYojnaActivity = async (assemblies?: string[], dateR
       baseQuery2 = query(baseQuery2, where('handler_id', '==', handler_id));
     }
 
-    if (dateRange) {
-      const startDate = new Date(dateRange.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(dateRange.endDate);
-      endDate.setHours(23, 59, 59, 999);
+    // if (dateRange) {
+    //   // Use string comparison for 'date' field (format: "2025-07-17")
+    //   const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
+    //   const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
       
-      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
-      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
-    }
+    //   console.log('[getHierarchicalMaiBahinYojnaActivity] Filtering by date:', startDateStr, 'to', endDateStr);
+      
+    //   baseQuery1 = query(baseQuery1, where('date', '>=', startDateStr), where('date', '<=', endDateStr));
+    //   baseQuery2 = query(baseQuery2, where('date', '>=', startDateStr), where('date', '<=', endDateStr));
+    // }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
     const activitiesMap = new Map();
@@ -206,13 +230,14 @@ const getHierarchicalLocalIssueVideoActivity = async (assemblies?: string[], dat
     }
 
     if (dateRange) {
-      const startDate = new Date(dateRange.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(dateRange.endDate);
-      endDate.setHours(23, 59, 59, 999);
+      // Use string comparison for date_submitted field (format: "2025-07-13")
+      const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
+      const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
       
-      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
-      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
+      console.log('[getHierarchicalLocalIssueVideoActivity] Filtering by date_submitted:', startDateStr, 'to', endDateStr);
+      
+      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr));
+      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
@@ -238,32 +263,32 @@ const getHierarchicalLocalIssueVideoActivity = async (assemblies?: string[], dat
 };
 
 /**
- * Fetch Shakti Leaders for hierarchical levels
+ * Fetch AC Videos from wtm-slp collection for hierarchical levels
+ * Similar to Local Issue Videos but fetches from wtm-slp collection
  */
-const getHierarchicalShaktiLeaders = async (assemblies?: string[], dateRange?: { startDate: string; endDate: string }, handler_id?: string): Promise<any[]> => {
+const getHierarchicalAcVideos = async (assemblies?: string[], dateRange?: { startDate: string; endDate: string }, handler_id?: string): Promise<any[]> => {
   try {
-    const slpActivityCollection = collection(db, 'slp-activity');
-    let baseQuery1 = query(
-      slpActivityCollection, 
-      where('form_type', '==', 'members'),
-      where('parentVertical', '==', 'shakti-abhiyaan')
-    );
-    let baseQuery2 = query(
-      slpActivityCollection, 
-      where('type', '==', 'members'),
-      where('parentVertical', '==', 'shakti-abhiyaan')
-    );
+    console.log('[getHierarchicalAcVideos] Fetching AC videos from wtm-slp collection');
+    console.log('[getHierarchicalAcVideos] Assemblies:', assemblies);
+    console.log('[getHierarchicalAcVideos] Handler ID:', handler_id);
+    
+    const wtmSlpCollection = collection(db, 'wtm-slp');
+    let baseQuery1 = query(wtmSlpCollection, where('form_type', '==', 'local-issue-video'));
+    let baseQuery2 = query(wtmSlpCollection, where('type', '==', 'local-issue-video'));
 
+    // Add assembly filter if provided
     if (assemblies && assemblies.length > 0) {
       baseQuery1 = query(baseQuery1, where('assembly', 'in', assemblies));
       baseQuery2 = query(baseQuery2, where('assembly', 'in', assemblies));
     }
 
+    // Add handler_id filter if provided (for AC level)
     if (handler_id) {
       baseQuery1 = query(baseQuery1, where('handler_id', '==', handler_id));
       baseQuery2 = query(baseQuery2, where('handler_id', '==', handler_id));
     }
 
+    // Add date filter if provided
     if (dateRange) {
       const startDate = new Date(dateRange.startDate);
       startDate.setHours(0, 0, 0, 0);
@@ -275,21 +300,90 @@ const getHierarchicalShaktiLeaders = async (assemblies?: string[], dateRange?: {
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
-    const activitiesMap = new Map();
+    const videosMap = new Map();
     
     snap1.forEach((doc) => {
-      if (!activitiesMap.has(doc.id)) {
-        activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
+      if (!videosMap.has(doc.id)) {
+        videosMap.set(doc.id, { ...doc.data(), id: doc.id });
       }
     });
     
     snap2.forEach((doc) => {
-      if (!activitiesMap.has(doc.id)) {
-        activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
+      if (!videosMap.has(doc.id)) {
+        videosMap.set(doc.id, { ...doc.data(), id: doc.id });
       }
     });
 
-    return Array.from(activitiesMap.values());
+    const result = Array.from(videosMap.values());
+    console.log(`[getHierarchicalAcVideos] Found ${result.length} AC videos`);
+    return result;
+  } catch (error) {
+    console.error('[getHierarchicalAcVideos] Error:', error);
+    return [];
+  }
+};
+
+/**
+ * Fetch Shakti Leaders for hierarchical levels
+ * NOTE: This fetches SLPs from shakti-abhiyaan collection, not activities
+ * FIXED: Now properly handles zone-level filtering using coveredAssemblies array
+ */
+const getHierarchicalShaktiLeaders = async (assemblies?: string[], dateRange?: { startDate: string; endDate: string }, handler_id?: string): Promise<any[]> => {
+  try {
+    console.log('[getHierarchicalShaktiLeaders] Fetching Shakti SLPs from shakti-abhiyaan collection');
+    console.log('[getHierarchicalShaktiLeaders] Zone Assemblies:', assemblies);
+    console.log('[getHierarchicalShaktiLeaders] AC Handler ID:', handler_id);
+    
+    const shaktiCollection = collection(db, 'shakti-abhiyaan');
+    const q = query(shaktiCollection, where('form_type', '==', 'add-data'));
+    const snap = await getDocs(q);
+    
+    const slpsList: any[] = [];
+    
+    snap.forEach((doc) => {
+      const data = doc.data() as any;
+      const coveredAssemblies = data.coveredAssemblies || [];
+      const coordinators = data.coveredAssemblyCoordinators || [];
+      
+      // Zone Level: Check if any zone assemblies intersect with document's coveredAssemblies
+      if (assemblies && assemblies.length > 0) {
+        const hasIntersection = assemblies.some(assembly => coveredAssemblies.includes(assembly));
+        if (!hasIntersection) {
+          console.log(`[getHierarchicalShaktiLeaders] Document ${doc.id} doesn't cover zone assemblies, skipping`);
+          return; // Skip this document entirely
+        }
+        console.log(`[getHierarchicalShaktiLeaders] Document ${doc.id} covers zone assemblies:`, coveredAssemblies);
+      }
+      
+      coordinators.forEach((coord: any) => {
+        // AC Level: Filter by specific AC handler_id if provided
+        if (handler_id && coord.id !== handler_id) {
+          return;
+        }
+        
+        // Zone Level: Only include ACs whose assembly is in the zone's assemblies
+        if (assemblies && assemblies.length > 0 && !assemblies.includes(coord.assembly)) {
+          return;
+        }
+        
+        // Add all SLPs under this coordinator
+        if (coord.slps && Array.isArray(coord.slps)) {
+          coord.slps.forEach((slp: any) => {
+            slpsList.push({
+              ...slp,
+              coordinatorId: coord.id,
+              coordinatorName: coord.name,
+              assembly: coord.assembly,
+              documentId: doc.id, // Track which document this came from
+              coveredAssemblies: coveredAssemblies // Store for reference
+            });
+          });
+        }
+      });
+    });
+    
+    console.log(`[getHierarchicalShaktiLeaders] Found ${slpsList.length} Shakti SLPs`);
+    return slpsList;
   } catch (error) {
     console.error('[getHierarchicalShaktiLeaders] Error:', error);
     return [];
@@ -474,6 +568,99 @@ const getHierarchicalShaktiForms = async (assemblies?: string[], dateRange?: { s
 };
 
 /**
+ * Fetch Shakti Baithaks (weekly meetings under Shakti Abhiyaan) for hierarchical levels
+ */
+const getHierarchicalShaktiBaithaks = async (
+  assemblies?: string[],
+  dateRange?: { startDate: string; endDate: string },
+  handler_id?: string
+): Promise<any[]> => {
+  try {
+    const slpActivityCollection = collection(db, 'slp-activity');
+
+    // Two query variants to account for both historical and new documents
+    let baseQuery1 = query(
+      slpActivityCollection,
+      where('form_type', '==', 'weekly_meeting'),
+      where('parentVertical', '==', 'shakti-abhiyaan')
+    );
+    let baseQuery2 = query(
+      slpActivityCollection,
+      where('type', '==', 'weekly_meeting'),
+      where('parentVertical', '==', 'shakti-abhiyaan')
+    );
+
+    if (assemblies && assemblies.length > 0) {
+      baseQuery1 = query(baseQuery1, where('assembly', 'in', assemblies));
+      baseQuery2 = query(baseQuery2, where('assembly', 'in', assemblies));
+    }
+
+    if (handler_id) {
+      baseQuery1 = query(baseQuery1, where('handler_id', '==', handler_id));
+      baseQuery2 = query(baseQuery2, where('handler_id', '==', handler_id));
+    }
+
+    if (dateRange) {
+      const startDate = new Date(dateRange.startDate);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(dateRange.endDate);
+      endDate.setHours(23, 59, 59, 999);
+
+      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
+      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
+    }
+
+    const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
+    const activitiesMap = new Map();
+
+    snap1.forEach((doc) => {
+      if (!activitiesMap.has(doc.id)) {
+        activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
+      }
+    });
+
+    snap2.forEach((doc) => {
+      if (!activitiesMap.has(doc.id)) {
+        activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
+      }
+    });
+
+    let result = Array.from(activitiesMap.values());
+    
+    // Apply date filtering in JavaScript for meetingDate field (DD-MM-YYYY format)
+    if (dateRange) {
+      console.log('[getHierarchicalShaktiBaithaks] Applying date filter for meetingDate (DD-MM-YYYY):', dateRange);
+      
+      // Helper function to convert DD-MM-YYYY to YYYY-MM-DD for comparison
+      const convertToComparableDate = (ddmmyyyy: string): string => {
+        if (!ddmmyyyy || typeof ddmmyyyy !== 'string') return '';
+        const parts = ddmmyyyy.split('-');
+        if (parts.length !== 3) return '';
+        const [day, month, year] = parts;
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      };
+      
+      const startDateComparable = dateRange.startDate; // Already YYYY-MM-DD
+      const endDateComparable = dateRange.endDate;     // Already YYYY-MM-DD
+      
+      result = result.filter((doc) => {
+        if (!doc.meetingDate) return false;
+        const docDateComparable = convertToComparableDate(doc.meetingDate);
+        if (!docDateComparable) return false;
+        return docDateComparable >= startDateComparable && docDateComparable <= endDateComparable;
+      });
+      
+      console.log(`[getHierarchicalShaktiBaithaks] Filtered ${result.length} baithaks by date range`);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('[getHierarchicalShaktiBaithaks] Error:', error);
+    return [];
+  }
+};
+
+/**
  * Fetch Samvidhan Chaupals for hierarchical levels
  */
 const getHierarchicalChaupals = async (assemblies?: string[], dateRange?: { startDate: string; endDate: string }, handler_id?: string): Promise<any[]> => {
@@ -517,7 +704,35 @@ const getHierarchicalChaupals = async (assemblies?: string[], dateRange?: { star
       }
     });
 
-    return Array.from(activitiesMap.values());
+    let result = Array.from(activitiesMap.values());
+    
+    // Apply date filtering in JavaScript for meetingDate field (DD-MM-YYYY format)
+    if (dateRange) {
+      console.log('[getHierarchicalChaupals] Applying date filter for meetingDate (DD-MM-YYYY):', dateRange);
+      
+      // Helper function to convert DD-MM-YYYY to YYYY-MM-DD for comparison
+      const convertToComparableDate = (ddmmyyyy: string): string => {
+        if (!ddmmyyyy || typeof ddmmyyyy !== 'string') return '';
+        const parts = ddmmyyyy.split('-');
+        if (parts.length !== 3) return '';
+        const [day, month, year] = parts;
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      };
+      
+      const startDateComparable = dateRange.startDate; // Already YYYY-MM-DD
+      const endDateComparable = dateRange.endDate;     // Already YYYY-MM-DD
+      
+      result = result.filter((doc) => {
+        if (!doc.meetingDate) return false;
+        const docDateComparable = convertToComparableDate(doc.meetingDate);
+        if (!docDateComparable) return false;
+        return docDateComparable >= startDateComparable && docDateComparable <= endDateComparable;
+      });
+      
+      console.log(`[getHierarchicalChaupals] Filtered ${result.length} chaupals by date range`);
+    }
+    
+    return result;
   } catch (error) {
     console.error('[getHierarchicalChaupals] Error:', error);
     return [];
@@ -541,12 +756,13 @@ const getHierarchicalCentralWaGroups = async (assemblies?: string[], dateRange?:
     }
 
     if (dateRange) {
-      const startDate = new Date(dateRange.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(dateRange.endDate);
-      endDate.setHours(23, 59, 59, 999);
+      // Convert coordinator date range (YYYY-MM-DD) to ISO strings for createdAt field
+      const startDateISO = `${dateRange.startDate}T00:00:00.000Z`;
+      const endDateISO = `${dateRange.endDate}T23:59:59.999Z`;
       
-      centralQuery = query(centralQuery, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
+      console.log('[getHierarchicalCentralWaGroups] Filtering by createdAt:', startDateISO, 'to', endDateISO);
+      
+      centralQuery = query(centralQuery, where('createdAt', '>=', startDateISO), where('createdAt', '<=', endDateISO));
     }
 
     const centralSnap = await getDocs(centralQuery);
@@ -580,12 +796,13 @@ const getHierarchicalAssemblyWaGroups = async (assemblies?: string[], dateRange?
     }
 
     if (dateRange) {
-      const startDate = new Date(dateRange.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(dateRange.endDate);
-      endDate.setHours(23, 59, 59, 999);
+      // Convert coordinator date range (YYYY-MM-DD) to ISO strings for createdAt field
+      const startDateISO = `${dateRange.startDate}T00:00:00.000Z`;
+      const endDateISO = `${dateRange.endDate}T23:59:59.999Z`;
       
-      assemblyQuery = query(assemblyQuery, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
+      console.log('[getHierarchicalAssemblyWaGroups] Filtering by createdAt:', startDateISO, 'to', endDateISO);
+      
+      assemblyQuery = query(assemblyQuery, where('createdAt', '>=', startDateISO), where('createdAt', '<=', endDateISO));
     }
 
     const assemblySnap = await getDocs(assemblyQuery);
@@ -668,7 +885,9 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
       validateDateRange(options.dateRange.startDate, options.dateRange.endDate);
     }
     
-    // Parallel fetch all 14 metrics for performance using hierarchical functions
+    // Fetch all metrics for any AC type - data will naturally be 0 if no activities exist
+    
+    // Fetch all metrics for all hierarchy levels
     const [
       wtmSummary, 
       saathi, 
@@ -679,7 +898,9 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
       forms, 
       shaktiForms, 
       videos, 
+      acVideos,
       chaupals, 
+      shaktiBaithaks,
       centralWaGroups, 
       assemblyWaGroups
     ] = await Promise.allSettled([
@@ -692,7 +913,9 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
       getHierarchicalMaiBahinYojnaActivity(options.assemblies, options.dateRange, options.handler_id),
       getHierarchicalShaktiForms(options.assemblies, options.dateRange, options.handler_id),
       getHierarchicalLocalIssueVideoActivity(options.assemblies, options.dateRange, options.handler_id),
+      getHierarchicalAcVideos(options.assemblies, options.dateRange, options.handler_id),
       getHierarchicalChaupals(options.assemblies, options.dateRange, options.handler_id),
+      getHierarchicalShaktiBaithaks(options.assemblies, options.dateRange, options.handler_id),
       getHierarchicalCentralWaGroups(options.assemblies, options.dateRange, options.handler_id),
       getHierarchicalAssemblyWaGroups(options.assemblies, options.dateRange, options.handler_id),
     ]);
@@ -724,7 +947,9 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
       forms: getResultValue(forms),
       shaktiForms: getResultValue(shaktiForms),
       videos: getResultValue(videos),
+      acVideos: getResultValue(acVideos),
       chaupals: getResultValue(chaupals),
+      shaktiBaithaks: getResultValue(shaktiBaithaks),
       centralWaGroups: getResultValue(centralWaGroups),
       assemblyWaGroups: getResultValue(assemblyWaGroups),
     };
@@ -803,6 +1028,7 @@ export const fetchZones = async (): Promise<Zone[]> => {
  */
 export const fetchAssemblyCoordinators = async (assembly: string): Promise<AC[]> => {
   if (!assembly) return [];
+  console.log('[fetchAssemblyCoordinators] Fetching ACs for assembly:', assembly);
   try {
     // Source 1: users collection
     const q1 = query(
@@ -811,6 +1037,7 @@ export const fetchAssemblyCoordinators = async (assembly: string): Promise<AC[]>
       where('assembly', '==', assembly)
     );
     const snap1 = await getDocs(q1);
+    console.log('[fetchAssemblyCoordinators] Users query returned', snap1.size, 'documents');
     const list: AC[] = [];
     
     snap1.forEach((d) => {
@@ -822,6 +1049,27 @@ export const fetchAssemblyCoordinators = async (assembly: string): Promise<AC[]>
         handler_id: data.handler_id 
       });
     });
+    
+    // If no Assembly Coordinators found, try Zonal Incharge
+    if (list.length === 0) {
+      const q1b = query(
+        collection(db, 'users'),
+        where('role', '==', 'Zonal Incharge'),
+        where('assembly', '==', assembly)
+      );
+      const snap1b = await getDocs(q1b);
+      console.log('[fetchAssemblyCoordinators] Zonal Incharge query returned', snap1b.size, 'documents');
+      
+      snap1b.forEach((d) => {
+        const data = d.data() as any;
+        list.push({ 
+          uid: d.id, 
+          name: data.name || 'ZI', 
+          assembly,
+          handler_id: data.handler_id 
+        });
+      });
+    }
     
     // Source 2: shakti-abhiyaan collection (coveredAssemblyCoordinators)
     const q2 = query(
@@ -848,6 +1096,66 @@ export const fetchAssemblyCoordinators = async (assembly: string): Promise<AC[]>
       });
     });
     
+    snap2.forEach((d) => {
+      const data = d.data() as any;
+      const coordinators = data.coveredAssemblyCoordinators || [];
+      coordinators.forEach((coord: any) => {
+        if (coord.assembly === assembly) {
+          // Avoid duplicates
+          if (!list.find(ac => ac.uid === coord.id)) {
+            list.push({
+              uid: coord.id,
+              name: coord.name || 'AC',
+              assembly,
+              handler_id: coord.handler_id
+            });
+          }
+        }
+      });
+    });
+    
+    // Source 3 (fallback): If no ACs found, derive from meeting documents handler_id
+    if (list.length === 0) {
+      console.log('[fetchAssemblyCoordinators] No ACs found in users/shakti-abhiyaan, trying meetings fallback...');
+      try {
+        const meetingQuery = query(
+          collection(db, 'slp-activity'),
+          where('assembly', '==', assembly),
+          where('form_type', '==', 'meeting'),
+          limit(50)
+        );
+        const meetingSnap = await getDocs(meetingQuery);
+        const handlerIds = new Set<string>();
+        meetingSnap.forEach((d) => {
+          const hid = (d.data() as any).handler_id;
+          if (hid) handlerIds.add(hid);
+        });
+        console.log('[fetchAssemblyCoordinators] Found', handlerIds.size, 'unique handler_ids in meetings');
+
+        for (const hid of handlerIds) {
+          try {
+            const userSnap = await getDoc(doc(db, 'users', hid));
+            if (userSnap.exists()) {
+              const udata = userSnap.data() as any;
+              list.push({
+                uid: hid,
+                name: udata.name || 'AC',
+                assembly, // Use the assembly we're querying for, not user's assembly field
+                handler_id: udata.handler_id || hid,
+              });
+              console.log('[fetchAssemblyCoordinators] Added AC from meetings:', { uid: hid, name: udata.name, userAssembly: udata.assembly });
+            }
+          } catch (userErr) {
+            console.warn('[fetchAssemblyCoordinators] Error fetching user for handler_id', hid, userErr);
+          }
+        }
+      } catch (fallbackErr) {
+        console.warn('[fetchAssemblyCoordinators] Meetings fallback failed', fallbackErr);
+      }
+    }
+    
+    console.log('[fetchAssemblyCoordinators] Final list size:', list.length);
+
     list.sort((a, b) => a.name.localeCompare(b.name));
     return list;
   } catch (err) {
@@ -882,6 +1190,8 @@ export const fetchSlpsForAc = async (acId: string): Promise<SLP[]> => {
               assembly: slp.assembly || '',
               role: slp.role || 'SLP',
               handler_id: slp.handler_id || acId,
+              isShaktiSLP: true, // Mark as Shakti SLP
+              shaktiId: slp.id, // Store the original Shakti ID
             });
           });
         }
@@ -966,15 +1276,12 @@ export const fetchDetailedMeetings = async (options: FetchMetricsOptions): Promi
       baseQuery2 = query(baseQuery2, where('handler_id', '==', options.handler_id));
     }
 
-    // Add date filter if provided
+    // Add date filter if provided - meetings use dateOfVisit field with string format "YYYY-MM-DD"
     if (options.dateRange) {
-      const startDate = new Date(options.dateRange.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(options.dateRange.endDate);
-      endDate.setHours(23, 59, 59, 999);
+      console.log('[fetchDetailedMeetings] Applying date filter:', options.dateRange);
       
-      baseQuery1 = query(baseQuery1, where('dateOfVisit', '>=', startDate), where('dateOfVisit', '<=', endDate));
-      baseQuery2 = query(baseQuery2, where('dateOfVisit', '>=', startDate), where('dateOfVisit', '<=', endDate));
+      baseQuery1 = query(baseQuery1, where('dateOfVisit', '>=', options.dateRange.startDate), where('dateOfVisit', '<=', options.dateRange.endDate));
+      baseQuery2 = query(baseQuery2, where('dateOfVisit', '>=', options.dateRange.startDate), where('dateOfVisit', '<=', options.dateRange.endDate));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
@@ -1024,15 +1331,12 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
       baseQuery2 = query(baseQuery2, where('handler_id', '==', options.handler_id));
     }
 
-    // Add date filter if provided
+    // Add date filter if provided - members use dateOfVisit field with string format "YYYY-MM-DD"
     if (options.dateRange) {
-      const startDate = new Date(options.dateRange.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(options.dateRange.endDate);
-      endDate.setHours(23, 59, 59, 999);
+      console.log('[fetchDetailedMembers] Applying date filter:', options.dateRange);
       
-      baseQuery1 = query(baseQuery1, where('dateOfVisit', '>=', startDate), where('dateOfVisit', '<=', endDate));
-      baseQuery2 = query(baseQuery2, where('dateOfVisit', '>=', startDate), where('dateOfVisit', '<=', endDate));
+      baseQuery1 = query(baseQuery1, where('dateOfVisit', '>=', options.dateRange.startDate), where('dateOfVisit', '<=', options.dateRange.endDate));
+      baseQuery2 = query(baseQuery2, where('dateOfVisit', '>=', options.dateRange.startDate), where('dateOfVisit', '<=', options.dateRange.endDate));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
@@ -1098,17 +1402,6 @@ export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise
       baseQuery2 = query(baseQuery2, where('handler_id', '==', options.handler_id));
     }
 
-    // Add date filter if provided
-    if (options.dateRange) {
-      const startDate = new Date(options.dateRange.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(options.dateRange.endDate);
-      endDate.setHours(23, 59, 59, 999);
-      
-      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
-      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
-    }
-
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
     const videosMap = new Map();
     
@@ -1124,7 +1417,32 @@ export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise
       }
     });
 
-    const result = Array.from(videosMap.values());
+    let result = Array.from(videosMap.values());
+    
+    // Apply JavaScript date filtering if provided - videos use date_submitted field
+    if (options.dateRange) {
+      console.log('[fetchDetailedVideos] Applying JavaScript date filter:', options.dateRange);
+      
+      const startDateObj = new Date(options.dateRange.startDate);
+      const endDateObj = new Date(options.dateRange.endDate);
+      endDateObj.setHours(23, 59, 59, 999); // Include entire end day
+      
+      result = result.filter((doc) => {
+        if (!doc.date_submitted) {
+          console.log(`[fetchDetailedVideos] Document ${doc.id} has no date_submitted field, excluding`);
+          return false;
+        }
+        const docDate = new Date(doc.date_submitted);
+        const isInRange = docDate >= startDateObj && docDate <= endDateObj;
+        if (!isInRange) {
+          console.log(`[fetchDetailedVideos] Document ${doc.id} date ${doc.date_submitted} is outside range, excluding`);
+        }
+        return isInRange;
+      });
+      
+      console.log(`[fetchDetailedVideos] Filtered to ${result.length} videos by date range`);
+    }
+    
     console.log(`[fetchDetailedVideos] Found ${result.length} videos`);
     return result;
   } catch (error) {
@@ -1150,6 +1468,8 @@ export const fetchDetailedData = async (metricType: string, options: FetchMetric
       return fetchDetailedLeaders(options);
     case 'videos':
       return fetchDetailedVideos(options);
+    case 'acVideos':
+      return getHierarchicalAcVideos(options.assemblies, options.dateRange, options.handler_id);
     case 'clubs':
       return getHierarchicalPanchayatWaActivity(options.assemblies, options.dateRange, options.handler_id);
     case 'forms':
@@ -1162,6 +1482,8 @@ export const fetchDetailedData = async (metricType: string, options: FetchMetric
       return getHierarchicalShaktiSaathi(options.assemblies, options.dateRange, options.handler_id);
     case 'shaktiClubs':
       return getHierarchicalShaktiClubs(options.assemblies, options.dateRange, options.handler_id);
+    case 'shaktiBaithaks':
+      return getHierarchicalShaktiBaithaks(options.assemblies, options.dateRange, options.handler_id);
     case 'shaktiForms':
       return getHierarchicalShaktiForms(options.assemblies, options.dateRange, options.handler_id);
     case 'centralWaGroups':
