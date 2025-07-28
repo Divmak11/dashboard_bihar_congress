@@ -20,6 +20,7 @@ export interface FetchMetricsOptions {
   dateRange?: { startDate: string; endDate: string };
   handler_id?: string;
   level: 'zone' | 'assembly' | 'ac' | 'slp';
+  slp?: { uid: string; handler_id?: string; isShaktiSLP?: boolean; shaktiId?: string };
 }
 
 // Helper function to check if AC is from Shakti Abhiyaan
@@ -126,11 +127,11 @@ const getHierarchicalPanchayatWaActivity = async (assemblies?: string[], dateRan
     }
 
     if (dateRange) {
-      // Convert coordinator date range (YYYY-MM-DD) to ISO strings for createdAt field
+      // Convert coordinator date range (YYYY-MM-DD) to ISO strings for createdAt field (stored as string)
       const startDateISO = `${dateRange.startDate}T00:00:00.000Z`;
       const endDateISO = `${dateRange.endDate}T23:59:59.999Z`;
       
-      console.log('[getHierarchicalPanchayatWaActivity] Filtering by createdAt:', startDateISO, 'to', endDateISO);
+      console.log('[getHierarchicalPanchayatWaActivity] Filtering by createdAt (string):', startDateISO, 'to', endDateISO);
       
       baseQuery1 = query(baseQuery1, where('createdAt', '>=', startDateISO), where('createdAt', '<=', endDateISO));
       baseQuery2 = query(baseQuery2, where('createdAt', '>=', startDateISO), where('createdAt', '<=', endDateISO));
@@ -177,16 +178,16 @@ const getHierarchicalMaiBahinYojnaActivity = async (assemblies?: string[], dateR
       baseQuery2 = query(baseQuery2, where('handler_id', '==', handler_id));
     }
 
-    // if (dateRange) {
-    //   // Use string comparison for 'date' field (format: "2025-07-17")
-    //   const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
-    //   const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
+    if (dateRange) {
+      // Use string comparison for 'date' field (format: "2025-07-17")
+      const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
+      const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
       
-    //   console.log('[getHierarchicalMaiBahinYojnaActivity] Filtering by date:', startDateStr, 'to', endDateStr);
+      console.log('[getHierarchicalMaiBahinYojnaActivity] Filtering by date:', startDateStr, 'to', endDateStr);
       
-    //   baseQuery1 = query(baseQuery1, where('date', '>=', startDateStr), where('date', '<=', endDateStr));
-    //   baseQuery2 = query(baseQuery2, where('date', '>=', startDateStr), where('date', '<=', endDateStr));
-    // }
+      baseQuery1 = query(baseQuery1, where('date', '>=', startDateStr), where('date', '<=', endDateStr));
+      baseQuery2 = query(baseQuery2, where('date', '>=', startDateStr), where('date', '<=', endDateStr));
+    }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
     const activitiesMap = new Map();
@@ -290,13 +291,14 @@ const getHierarchicalAcVideos = async (assemblies?: string[], dateRange?: { star
 
     // Add date filter if provided
     if (dateRange) {
-      const startDate = new Date(dateRange.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(dateRange.endDate);
-      endDate.setHours(23, 59, 59, 999);
+      // Use string comparison for date_submitted field (format: "2025-07-13")
+      const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
+      const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
       
-      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
-      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
+      console.log('[getHierarchicalAcVideos] Filtering by date_submitted:', startDateStr, 'to', endDateStr);
+      
+      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr));
+      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
@@ -418,13 +420,14 @@ const getHierarchicalShaktiSaathi = async (assemblies?: string[], dateRange?: { 
     }
 
     if (dateRange) {
-      const startDate = new Date(dateRange.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(dateRange.endDate);
-      endDate.setHours(23, 59, 59, 999);
+      // Use string comparison for dateOfVisit field (format: "2025-07-14")
+      const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
+      const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
       
-      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
-      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
+      console.log('[getHierarchicalShaktiSaathi] Filtering by dateOfVisit:', startDateStr, 'to', endDateStr);
+      
+      baseQuery1 = query(baseQuery1, where('dateOfVisit', '>=', startDateStr), where('dateOfVisit', '<=', endDateStr));
+      baseQuery2 = query(baseQuery2, where('dateOfVisit', '>=', startDateStr), where('dateOfVisit', '<=', endDateStr));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
@@ -477,13 +480,14 @@ const getHierarchicalShaktiClubs = async (assemblies?: string[], dateRange?: { s
     }
 
     if (dateRange) {
-      const startDate = new Date(dateRange.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(dateRange.endDate);
-      endDate.setHours(23, 59, 59, 999);
+      // Convert coordinator date range (YYYY-MM-DD) to ISO strings for createdAt field (stored as string)
+      const startDateISO = `${dateRange.startDate}T00:00:00.000Z`;
+      const endDateISO = `${dateRange.endDate}T23:59:59.999Z`;
       
-      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
-      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
+      console.log('[getHierarchicalShaktiClubs] Filtering by createdAt (string):', startDateISO, 'to', endDateISO);
+      
+      baseQuery1 = query(baseQuery1, where('createdAt', '>=', startDateISO), where('createdAt', '<=', endDateISO));
+      baseQuery2 = query(baseQuery2, where('createdAt', '>=', startDateISO), where('createdAt', '<=', endDateISO));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
@@ -536,13 +540,14 @@ const getHierarchicalShaktiForms = async (assemblies?: string[], dateRange?: { s
     }
 
     if (dateRange) {
-      const startDate = new Date(dateRange.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(dateRange.endDate);
-      endDate.setHours(23, 59, 59, 999);
+      // Use string comparison for 'date' field (format: "2025-07-17")
+      const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
+      const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
       
-      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
-      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
+      console.log('[getHierarchicalShaktiForms] Filtering by date:', startDateStr, 'to', endDateStr);
+      
+      baseQuery1 = query(baseQuery1, where('date', '>=', startDateStr), where('date', '<=', endDateStr));
+      baseQuery2 = query(baseQuery2, where('date', '>=', startDateStr), where('date', '<=', endDateStr));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
@@ -601,13 +606,14 @@ const getHierarchicalShaktiBaithaks = async (
     }
 
     if (dateRange) {
-      const startDate = new Date(dateRange.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(dateRange.endDate);
-      endDate.setHours(23, 59, 59, 999);
-
-      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
-      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
+      // Use string comparison for dateFormatted field (format: "2025-07-06")
+      const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
+      const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
+      
+      console.log('[getHierarchicalShaktiBaithaks] Filtering by dateFormatted:', startDateStr, 'to', endDateStr);
+      
+      baseQuery1 = query(baseQuery1, where('dateFormatted', '>=', startDateStr), where('dateFormatted', '<=', endDateStr));
+      baseQuery2 = query(baseQuery2, where('dateFormatted', '>=', startDateStr), where('dateFormatted', '<=', endDateStr));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
@@ -625,34 +631,7 @@ const getHierarchicalShaktiBaithaks = async (
       }
     });
 
-    let result = Array.from(activitiesMap.values());
-    
-    // Apply date filtering in JavaScript for meetingDate field (DD-MM-YYYY format)
-    if (dateRange) {
-      console.log('[getHierarchicalShaktiBaithaks] Applying date filter for meetingDate (DD-MM-YYYY):', dateRange);
-      
-      // Helper function to convert DD-MM-YYYY to YYYY-MM-DD for comparison
-      const convertToComparableDate = (ddmmyyyy: string): string => {
-        if (!ddmmyyyy || typeof ddmmyyyy !== 'string') return '';
-        const parts = ddmmyyyy.split('-');
-        if (parts.length !== 3) return '';
-        const [day, month, year] = parts;
-        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      };
-      
-      const startDateComparable = dateRange.startDate; // Already YYYY-MM-DD
-      const endDateComparable = dateRange.endDate;     // Already YYYY-MM-DD
-      
-      result = result.filter((doc) => {
-        if (!doc.meetingDate) return false;
-        const docDateComparable = convertToComparableDate(doc.meetingDate);
-        if (!docDateComparable) return false;
-        return docDateComparable >= startDateComparable && docDateComparable <= endDateComparable;
-      });
-      
-      console.log(`[getHierarchicalShaktiBaithaks] Filtered ${result.length} baithaks by date range`);
-    }
-    
+    const result = Array.from(activitiesMap.values());
     return result;
   } catch (error) {
     console.error('[getHierarchicalShaktiBaithaks] Error:', error);
@@ -680,13 +659,14 @@ const getHierarchicalChaupals = async (assemblies?: string[], dateRange?: { star
     }
 
     if (dateRange) {
-      const startDate = new Date(dateRange.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(dateRange.endDate);
-      endDate.setHours(23, 59, 59, 999);
+      // Use string comparison for dateFormatted field (format: "2025-07-06")
+      const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
+      const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
       
-      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
-      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
+      console.log('[getHierarchicalChaupals] Filtering by dateFormatted:', startDateStr, 'to', endDateStr);
+      
+      baseQuery1 = query(baseQuery1, where('dateFormatted', '>=', startDateStr), where('dateFormatted', '<=', endDateStr));
+      baseQuery2 = query(baseQuery2, where('dateFormatted', '>=', startDateStr), where('dateFormatted', '<=', endDateStr));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
@@ -704,34 +684,7 @@ const getHierarchicalChaupals = async (assemblies?: string[], dateRange?: { star
       }
     });
 
-    let result = Array.from(activitiesMap.values());
-    
-    // Apply date filtering in JavaScript for meetingDate field (DD-MM-YYYY format)
-    if (dateRange) {
-      console.log('[getHierarchicalChaupals] Applying date filter for meetingDate (DD-MM-YYYY):', dateRange);
-      
-      // Helper function to convert DD-MM-YYYY to YYYY-MM-DD for comparison
-      const convertToComparableDate = (ddmmyyyy: string): string => {
-        if (!ddmmyyyy || typeof ddmmyyyy !== 'string') return '';
-        const parts = ddmmyyyy.split('-');
-        if (parts.length !== 3) return '';
-        const [day, month, year] = parts;
-        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      };
-      
-      const startDateComparable = dateRange.startDate; // Already YYYY-MM-DD
-      const endDateComparable = dateRange.endDate;     // Already YYYY-MM-DD
-      
-      result = result.filter((doc) => {
-        if (!doc.meetingDate) return false;
-        const docDateComparable = convertToComparableDate(doc.meetingDate);
-        if (!docDateComparable) return false;
-        return docDateComparable >= startDateComparable && docDateComparable <= endDateComparable;
-      });
-      
-      console.log(`[getHierarchicalChaupals] Filtered ${result.length} chaupals by date range`);
-    }
-    
+    const result = Array.from(activitiesMap.values());
     return result;
   } catch (error) {
     console.error('[getHierarchicalChaupals] Error:', error);
@@ -756,11 +709,11 @@ const getHierarchicalCentralWaGroups = async (assemblies?: string[], dateRange?:
     }
 
     if (dateRange) {
-      // Convert coordinator date range (YYYY-MM-DD) to ISO strings for createdAt field
+      // Convert coordinator date range (YYYY-MM-DD) to ISO strings for createdAt field (stored as string)
       const startDateISO = `${dateRange.startDate}T00:00:00.000Z`;
       const endDateISO = `${dateRange.endDate}T23:59:59.999Z`;
       
-      console.log('[getHierarchicalCentralWaGroups] Filtering by createdAt:', startDateISO, 'to', endDateISO);
+      console.log('[getHierarchicalCentralWaGroups] Filtering by createdAt (string):', startDateISO, 'to', endDateISO);
       
       centralQuery = query(centralQuery, where('createdAt', '>=', startDateISO), where('createdAt', '<=', endDateISO));
     }
@@ -796,11 +749,11 @@ const getHierarchicalAssemblyWaGroups = async (assemblies?: string[], dateRange?
     }
 
     if (dateRange) {
-      // Convert coordinator date range (YYYY-MM-DD) to ISO strings for createdAt field
+      // Convert coordinator date range (YYYY-MM-DD) to ISO strings for createdAt field (stored as string)
       const startDateISO = `${dateRange.startDate}T00:00:00.000Z`;
       const endDateISO = `${dateRange.endDate}T23:59:59.999Z`;
       
-      console.log('[getHierarchicalAssemblyWaGroups] Filtering by createdAt:', startDateISO, 'to', endDateISO);
+      console.log('[getHierarchicalAssemblyWaGroups] Filtering by createdAt (string):', startDateISO, 'to', endDateISO);
       
       assemblyQuery = query(assemblyQuery, where('createdAt', '>=', startDateISO), where('createdAt', '<=', endDateISO));
     }
@@ -839,13 +792,14 @@ const getHierarchicalTrainingActivity = async (assemblies?: string[], dateRange?
     }
 
     if (dateRange) {
-      const startDate = new Date(dateRange.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(dateRange.endDate);
-      endDate.setHours(23, 59, 59, 999);
+      // Use string comparison for 'date' field (format: "2025-07-17")
+      const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
+      const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
       
-      baseQuery1 = query(baseQuery1, where('date', '>=', startDate), where('date', '<=', endDate));
-      baseQuery2 = query(baseQuery2, where('date', '>=', startDate), where('date', '<=', endDate));
+      console.log('[getHierarchicalTrainingActivity] Filtering by date:', startDateStr, 'to', endDateStr);
+      
+      baseQuery1 = query(baseQuery1, where('date', '>=', startDateStr), where('date', '<=', endDateStr));
+      baseQuery2 = query(baseQuery2, where('date', '>=', startDateStr), where('date', '<=', endDateStr));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
@@ -904,7 +858,7 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
       centralWaGroups, 
       assemblyWaGroups
     ] = await Promise.allSettled([
-      getWtmSlpSummary(options.dateRange?.startDate, options.dateRange?.endDate, options.assemblies),
+      getWtmSlpSummary(options.dateRange?.startDate, options.dateRange?.endDate, options.assemblies, options.handler_id, options.slp),
       getHierarchicalMemberActivity(options.assemblies, options.dateRange, options.handler_id),
       getHierarchicalShaktiLeaders(options.assemblies, options.dateRange, options.handler_id),
       getHierarchicalShaktiSaathi(options.assemblies, options.dateRange, options.handler_id),
@@ -1171,32 +1125,62 @@ export const fetchSlpsForAc = async (acId: string): Promise<SLP[]> => {
   try {
     const list: SLP[] = [];
     
-    // Source 1: Associated SLPs from shakti-abhiyaan coveredAssemblyCoordinators
-    const q1 = query(
-      collection(db, 'shakti-abhiyaan'),
-      where('form_type', '==', 'add-data')
-    );
-    const snap1 = await getDocs(q1);
-    
-    snap1.forEach((d) => {
-      const data = d.data() as any;
-      const coordinators = data.coveredAssemblyCoordinators || [];
-      coordinators.forEach((coord: any) => {
-        if (coord.id === acId && coord.slps) {
-          coord.slps.forEach((slp: any) => {
-            list.push({
-              uid: slp.id || slp.uid,
-              name: slp.name || 'SLP',
-              assembly: slp.assembly || '',
-              role: slp.role || 'SLP',
-              handler_id: slp.handler_id || acId,
-              isShaktiSLP: true, // Mark as Shakti SLP
-              shaktiId: slp.id, // Store the original Shakti ID
-            });
+    // First, check if this AC is from shakti-abhiyaan or users collection
+    let isShaktiAc = false;
+    try {
+      const acDoc = await getDocs(query(collection(db, 'users'), where('uid', '==', acId)));
+      if (!acDoc.empty) {
+        // If AC is in users collection, it's not a Shakti AC
+        isShaktiAc = false;
+      } else {
+        // Check if AC exists in shakti-abhiyaan
+        const shaktiQuery = query(
+          collection(db, 'shakti-abhiyaan'),
+          where('form_type', '==', 'add-data')
+        );
+        const shaktiSnap = await getDocs(shaktiQuery);
+        shaktiSnap.forEach((d) => {
+          const data = d.data() as any;
+          const coordinators = data.coveredAssemblyCoordinators || [];
+          coordinators.forEach((coord: any) => {
+            if (coord.id === acId) {
+              isShaktiAc = true;
+            }
           });
-        }
+        });
+      }
+    } catch (err) {
+      console.log(`[fetchSlpsForAc] Error checking AC source:`, err);
+    }
+    
+    // Source 1: Associated SLPs from shakti-abhiyaan (only if AC is from Shakti)
+    if (isShaktiAc) {
+      const q1 = query(
+        collection(db, 'shakti-abhiyaan'),
+        where('form_type', '==', 'add-data')
+      );
+      const snap1 = await getDocs(q1);
+      
+      snap1.forEach((d) => {
+        const data = d.data() as any;
+        const coordinators = data.coveredAssemblyCoordinators || [];
+        coordinators.forEach((coord: any) => {
+          if (coord.id === acId && coord.slps) {
+            coord.slps.forEach((slp: any) => {
+              list.push({
+                uid: slp.id || slp.uid,
+                name: slp.name || 'SLP',
+                assembly: slp.assembly || '',
+                role: slp.role || 'SLP',
+                handler_id: slp.handler_id || acId,
+                isShaktiSLP: true, // Mark as Shakti SLP
+                shaktiId: slp.id, // Store the original Shakti ID
+              });
+            });
+          }
+        });
       });
-    });
+    }
     
     // Source 2: Meeting SLPs from wtm-slp where handler_id matches AC
     const q2 = query(
@@ -1209,10 +1193,10 @@ export const fetchSlpsForAc = async (acId: string): Promise<SLP[]> => {
     
     snap2.forEach((d) => {
       const data = d.data() as any;
-      if (data.recommendedPersonName && !list.find(slp => slp.name === data.recommendedPersonName)) {
+      if (data.name && !list.find(slp => slp.name === data.name)) {
         list.push({
           uid: d.id,
-          name: data.recommendedPersonName,
+          name: data.name,
           assembly: data.assembly || '',
           role: 'SLP',
           handler_id: acId,
@@ -1402,6 +1386,17 @@ export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise
       baseQuery2 = query(baseQuery2, where('handler_id', '==', options.handler_id));
     }
 
+    // Add date filtering using Firestore queries - videos use date_submitted field with string comparison
+    if (options.dateRange) {
+      const startDateStr = options.dateRange.startDate; // Already in YYYY-MM-DD format
+      const endDateStr = options.dateRange.endDate;     // Already in YYYY-MM-DD format
+      
+      console.log('[fetchDetailedVideos] Applying Firestore date filter:', startDateStr, 'to', endDateStr);
+      
+      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr));
+      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr));
+    }
+
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
     const videosMap = new Map();
     
@@ -1417,31 +1412,7 @@ export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise
       }
     });
 
-    let result = Array.from(videosMap.values());
-    
-    // Apply JavaScript date filtering if provided - videos use date_submitted field
-    if (options.dateRange) {
-      console.log('[fetchDetailedVideos] Applying JavaScript date filter:', options.dateRange);
-      
-      const startDateObj = new Date(options.dateRange.startDate);
-      const endDateObj = new Date(options.dateRange.endDate);
-      endDateObj.setHours(23, 59, 59, 999); // Include entire end day
-      
-      result = result.filter((doc) => {
-        if (!doc.date_submitted) {
-          console.log(`[fetchDetailedVideos] Document ${doc.id} has no date_submitted field, excluding`);
-          return false;
-        }
-        const docDate = new Date(doc.date_submitted);
-        const isInRange = docDate >= startDateObj && docDate <= endDateObj;
-        if (!isInRange) {
-          console.log(`[fetchDetailedVideos] Document ${doc.id} date ${doc.date_submitted} is outside range, excluding`);
-        }
-        return isInRange;
-      });
-      
-      console.log(`[fetchDetailedVideos] Filtered to ${result.length} videos by date range`);
-    }
+    const result = Array.from(videosMap.values());
     
     console.log(`[fetchDetailedVideos] Found ${result.length} videos`);
     return result;

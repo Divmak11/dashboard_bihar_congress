@@ -84,11 +84,19 @@ export async function getCurrentAdminUser(uid: string): Promise<AdminUser | null
 export async function getWtmSlpSummary(
   startDate?: string,
   endDate?: string,
-  assemblies?: string[]
+  assemblies?: string[],
+  handler_id?: string,
+  slp?: { uid: string; handler_id?: string; isShaktiSLP?: boolean; shaktiId?: string }
 ): Promise<WtmSlpSummary> {
   console.log(`[getWtmSlpSummary] Fetching data${startDate && endDate ? ` between ${startDate} and ${endDate}` : ' for all time'}`);
   if (assemblies && assemblies.length > 0) {
     console.log(`[getWtmSlpSummary] Filtering by assemblies: ${assemblies.join(', ')}`);
+  }
+  if (handler_id) {
+    console.log(`[getWtmSlpSummary] Filtering by handler_id: ${handler_id}`);
+  }
+  if (slp) {
+    console.log(`[getWtmSlpSummary] SLP details:`, { uid: slp.uid, handler_id: slp.handler_id, isShaktiSLP: slp.isShaktiSLP, shaktiId: slp.shaktiId });
   }
   
   try {
@@ -98,38 +106,33 @@ export async function getWtmSlpSummary(
     // Arrays to store queries
     const queries = [];
     
-    // If assemblies are provided, add the assembly filter
+    // Build base queries with form_type and type filters
+    let baseQuery1 = query(wtmSlpCollection, where('form_type', '==', 'meeting'));
+    let baseQuery2 = query(wtmSlpCollection, where('type', '==', 'meeting'));
+
+    // Add assembly filter if provided
     if (assemblies && assemblies.length > 0) {
-      // Only use singular form with assembly filter
-      queries.push(
-        query(
-          wtmSlpCollection,
-          where('form_type', '==', 'meeting'),
-          where('assembly', 'in', assemblies)
-        ),
-        query(
-          wtmSlpCollection,
-          where('type', '==', 'meeting'),
-          where('assembly', 'in', assemblies)
-        )
-      );
-      
+      baseQuery1 = query(baseQuery1, where('assembly', 'in', assemblies));
+      baseQuery2 = query(baseQuery2, where('assembly', 'in', assemblies));
       console.log(`[getWtmSlpSummary] Added assembly filter for ${assemblies.length} assemblies`);
-    } else {
-      // No assembly filter - only use singular form
-      queries.push(
-        query(
-          wtmSlpCollection,
-          where('form_type', '==', 'meeting')
-        ),
-        query(
-          wtmSlpCollection,
-          where('type', '==', 'meeting')
-        )
-      );
-      
-      console.log('[getWtmSlpSummary] No assembly filter applied');
     }
+
+    // When SLP level is selected, return zero values for AC-level metrics
+    // Meetings, Volunteers, and Samvidhan Leaders are AC-level activities, not SLP-specific
+    if (handler_id && slp) {
+      console.log(`[getWtmSlpSummary] SLP level selected - returning zero values for AC-level metrics`);
+      console.log(`[getWtmSlpSummary] SLP: ${slp.uid}, isShaktiSLP: ${slp.isShaktiSLP}`);
+      
+      // Return early with zero values for AC-level metrics
+      return {
+        totalMeetings: 0,
+        totalSlps: 0,
+        totalOnboarded: 0
+      };
+    }
+
+    // Add the final queries to the array
+    queries.push(baseQuery1, baseQuery2);
 
     console.log(`[getWtmSlpSummary] Executing ${queries.length} queries...`);
     

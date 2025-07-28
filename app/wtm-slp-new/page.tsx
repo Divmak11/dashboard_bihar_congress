@@ -12,6 +12,10 @@ import { Zone, AC, SLP } from '../../models/hierarchicalTypes';
 import { fetchZones, fetchAssemblies, fetchAssemblyCoordinators, fetchSlpsForAc, fetchCumulativeMetrics } from '../utils/fetchHierarchicalData';
 import { CumulativeMetrics } from '../../models/hierarchicalTypes';
 import { AppError } from '../utils/errorUtils';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '../utils/firebase';
+import { getCurrentAdminUser } from '../utils/fetchFirebaseData';
+import { AdminUser } from '../../models/types';
 
 // Placeholder metrics; real data will be fetched in Phase 2
 const emptyMetrics: CumulativeMetrics = {
@@ -37,6 +41,10 @@ const HierarchicalDashboardPage: React.FC = () => {
   // Toast notifications
   const { toasts, removeToast, showError, showSuccess, showWarning } = useToast();
   
+  // Authentication state
+  const [user, authLoading, authError] = useAuthState(auth);
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+  
   // Global date filter state (zone/assembly level)
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
@@ -59,10 +67,31 @@ const HierarchicalDashboardPage: React.FC = () => {
   const [metrics, setMetrics] = useState<CumulativeMetrics>(emptyMetrics);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState<boolean>(false);
 
-  // Load zones on mount
+  // Fetch user data when authenticated
   React.useEffect(() => {
-    fetchZones().then(setZones).catch(console.error);
-  }, []);
+    if (user) {
+      getCurrentAdminUser(user.uid).then(setAdminUser).catch(console.error);
+    }
+  }, [user]);
+
+  // Load zones on mount and filter based on user role
+  React.useEffect(() => {
+    fetchZones().then(allZones => {
+      if (adminUser?.role === 'zonal-incharge') {
+        // Only show the zone-incharge user's own zone
+        const userZone = allZones.find(zone => zone.id === adminUser.id);
+        if (userZone) {
+          setZones([userZone]);
+          setSelectedZoneId(userZone.id); // Auto-select their zone
+        } else {
+          setZones([]);
+        }
+      } else {
+        // Admin users see all zones
+        setZones(allZones);
+      }
+    }).catch(console.error);
+  }, [adminUser]);
 
   // Load assemblies when zone changes
   React.useEffect(() => {
@@ -124,14 +153,14 @@ const HierarchicalDashboardPage: React.FC = () => {
       const selectedSlp = slps.find(s => s.uid === selectedSlpId);
       const selectedAc = acs.find(ac => ac.uid === selectedAcId);
       
-      // For Shakti SLPs, use shaktiId as handler_id, otherwise use regular logic
+      // For Shakti SLPs, use shaktiId as handler_id, for regular SLPs use document ID only
       let handlerId;
       if (selectedSlp?.isShaktiSLP && selectedSlp?.shaktiId) {
         handlerId = selectedSlp.shaktiId;
         console.log('[fetchMetrics] Using Shakti SLP ID as handler_id:', handlerId);
       } else {
-        handlerId = selectedSlp?.handler_id || selectedSlpId;
-        console.log('[fetchMetrics] Using regular SLP handler_id:', handlerId);
+        handlerId = selectedSlpId; // Use document ID only for regular SLPs
+        console.log('[fetchMetrics] Using regular SLP document ID as handler_id:', handlerId);
       }
       
       options = {
@@ -139,6 +168,12 @@ const HierarchicalDashboardPage: React.FC = () => {
         handler_id: handlerId,
         assemblies: selectedSlp?.assembly ? [selectedSlp.assembly] : (selectedAc?.assembly ? [selectedAc.assembly] : (selectedAssembly ? [selectedAssembly] : [])),
         dateRange: startDate && endDate ? { startDate, endDate } : undefined,
+        slp: selectedSlp ? {
+          uid: selectedSlp.uid,
+          handler_id: selectedSlp.handler_id,
+          isShaktiSLP: selectedSlp.isShaktiSLP,
+          shaktiId: selectedSlp.shaktiId
+        } : undefined,
       };
     } else if (selectedAcId) {
           // AC level - include both handler_id and assembly filter

@@ -100,7 +100,7 @@ const HierarchicalNavigation: React.FC<NavigationProps> = ({
           <option value="">Select Samvidhan Leader</option>
           {slps.map((slp) => (
             <option key={slp.uid} value={slp.uid}>
-              {slp.name} ({slp.role}){slp.independent ? ' - Independent' : ''}
+              {slp.name}{slp.independent ? ' - Independent' : ''}
             </option>
           ))}
         </select>
