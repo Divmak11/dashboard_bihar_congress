@@ -11,26 +11,41 @@ const DATE_FILTERS = [
   { label: "Custom Range", value: "custom" },
 ];
 
+// Helper function to format date in local timezone as YYYY-MM-DD
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function getDateRange(option: string) {
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  today.setHours(23, 59, 59, 999); // Set to end of today
-
+  
   let start: Date | null = null;
-  let end: Date | null = today;
+  let end: Date | null = null;
 
   switch (option) {
     case "lastDay":
+      // Yesterday only (T-1)
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
       start.setHours(0, 0, 0, 0); // Start of yesterday
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      end.setHours(23, 59, 59, 999); // End of yesterday
       break;
     case "lastWeek":
+      // Last 7 days (T-7 to T-1)
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
       start.setHours(0, 0, 0, 0); // Start of day 7 days ago
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      end.setHours(23, 59, 59, 999); // End of yesterday
       break;
     case "last3Months":
+      // Last 3 months ending yesterday
       start = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
       start.setHours(0, 0, 0, 0);
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      end.setHours(23, 59, 59, 999); // End of yesterday
       break;
     case "all":
       start = null;
@@ -42,8 +57,8 @@ function getDateRange(option: string) {
   }
 
   const result = {
-    startDate: start ? start.toISOString().split('T')[0] : "",
-    endDate: end ? end.toISOString().split('T')[0] : "",
+    startDate: start ? formatLocalDate(start) : "",
+    endDate: end ? formatLocalDate(end) : "",
   };
   
   console.log(`[DateRangeFilter] getDateRange for "${option}":`, {
