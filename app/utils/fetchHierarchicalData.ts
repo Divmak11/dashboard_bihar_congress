@@ -6,6 +6,7 @@ import {
   getWtmSlpSummary,
 } from './fetchFirebaseData';
 
+
 import { CumulativeMetrics } from '../../models/hierarchicalTypes';
 import { db } from './firebase';
 import { collection, query, where, getDocs, doc, getDoc, QueryDocumentSnapshot, limit } from 'firebase/firestore';
@@ -99,8 +100,9 @@ const getHierarchicalMemberActivity = async (assemblies?: string[], dateRange?: 
     });
 
     const result = Array.from(activitiesMap.values());
-    console.log(`[getHierarchicalMemberActivity] Final result count: ${result.length}`);
-    return result;
+    const filteredResult = result.filter((doc: any) => doc.parentVertical !== 'shakti-abhiyaan');
+    console.log(`[getHierarchicalMemberActivity] Final result count: ${filteredResult.length}`);
+    return filteredResult;
   } catch (error) {
     console.error('[getHierarchicalMemberActivity] Error:', error);
     return [];
@@ -152,7 +154,9 @@ const getHierarchicalPanchayatWaActivity = async (assemblies?: string[], dateRan
       }
     });
 
-    return Array.from(activitiesMap.values());
+    const result = Array.from(activitiesMap.values());
+    const filteredResult = result.filter((doc: any) => doc.parentVertical !== 'shakti-abhiyaan');
+    return filteredResult;
   } catch (error) {
     console.error('[getHierarchicalPanchayatWaActivity] Error:', error);
     return [];
@@ -204,7 +208,9 @@ const getHierarchicalMaiBahinYojnaActivity = async (assemblies?: string[], dateR
       }
     });
 
-    return Array.from(activitiesMap.values());
+    const result = Array.from(activitiesMap.values());
+    const filteredResult = result.filter((doc: any) => doc.parentVertical !== 'shakti-abhiyaan');
+    return filteredResult;
   } catch (error) {
     console.error('[getHierarchicalMaiBahinYojnaActivity] Error:', error);
     return [];
@@ -256,7 +262,9 @@ const getHierarchicalLocalIssueVideoActivity = async (assemblies?: string[], dat
       }
     });
 
-    return Array.from(activitiesMap.values());
+    const result = Array.from(activitiesMap.values());
+    const filteredResult = result.filter((doc: any) => doc.parentVertical !== 'shakti-abhiyaan');
+    return filteredResult;
   } catch (error) {
     console.error('[getHierarchicalLocalIssueVideoActivity] Error:', error);
     return [];
@@ -640,6 +648,65 @@ const getHierarchicalShaktiBaithaks = async (
 };
 
 /**
+ * Fetch Shakti Local Issue Videos for hierarchical levels
+ */
+const getHierarchicalShaktiLocalIssueVideoActivity = async (
+  assemblies?: string[],
+  dateRange?: { startDate: string; endDate: string },
+  handler_id?: string,
+): Promise<any[]> => {
+  try {
+    const slpActivityCollection = collection(db, 'slp-activity');
+    let baseQuery1 = query(
+      slpActivityCollection,
+      where('form_type', '==', 'local-issue-video'),
+      where('parentVertical', '==', 'shakti-abhiyaan'),
+    );
+    let baseQuery2 = query(
+      slpActivityCollection,
+      where('type', '==', 'local-issue-video'),
+      where('parentVertical', '==', 'shakti-abhiyaan'),
+    );
+
+    if (assemblies && assemblies.length > 0) {
+      baseQuery1 = query(baseQuery1, where('assembly', 'in', assemblies));
+      baseQuery2 = query(baseQuery2, where('assembly', 'in', assemblies));
+    }
+
+    if (handler_id) {
+      baseQuery1 = query(baseQuery1, where('handler_id', '==', handler_id));
+      baseQuery2 = query(baseQuery2, where('handler_id', '==', handler_id));
+    }
+
+    if (dateRange) {
+      const { startDate, endDate } = dateRange;
+      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
+      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
+    }
+
+    const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
+    const activitiesMap = new Map();
+
+    snap1.forEach((doc) => {
+      if (!activitiesMap.has(doc.id)) {
+        activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
+      }
+    });
+
+    snap2.forEach((doc) => {
+      if (!activitiesMap.has(doc.id)) {
+        activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
+      }
+    });
+
+    return Array.from(activitiesMap.values());
+  } catch (error) {
+    console.error('[getHierarchicalShaktiLocalIssueVideoActivity] Error:', error);
+    return [];
+  }
+};
+
+/**
  * Fetch Samvidhan Chaupals for hierarchical levels
  */
 const getHierarchicalChaupals = async (assemblies?: string[], dateRange?: { startDate: string; endDate: string }, handler_id?: string): Promise<any[]> => {
@@ -685,7 +752,8 @@ const getHierarchicalChaupals = async (assemblies?: string[], dateRange?: { star
     });
 
     const result = Array.from(activitiesMap.values());
-    return result;
+    const filteredResult = result.filter((doc: any) => doc.parentVertical !== 'shakti-abhiyaan');
+    return filteredResult;
   } catch (error) {
     console.error('[getHierarchicalChaupals] Error:', error);
     return [];
@@ -817,7 +885,9 @@ const getHierarchicalTrainingActivity = async (assemblies?: string[], dateRange?
       }
     });
 
-    return Array.from(activitiesMap.values());
+    const result = Array.from(activitiesMap.values());
+    const filteredResult = result.filter((doc: any) => doc.parentVertical !== 'shakti-abhiyaan');
+    return filteredResult;
   } catch (error) {
     console.error('[getHierarchicalTrainingActivity] Error:', error);
     return [];
@@ -851,6 +921,7 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
       shaktiClubs, 
       forms, 
       shaktiForms, 
+      shaktiVideos, 
       videos, 
       acVideos,
       chaupals, 
@@ -866,6 +937,7 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
       getHierarchicalShaktiClubs(options.assemblies, options.dateRange, options.handler_id),
       getHierarchicalMaiBahinYojnaActivity(options.assemblies, options.dateRange, options.handler_id),
       getHierarchicalShaktiForms(options.assemblies, options.dateRange, options.handler_id),
+      getHierarchicalShaktiLocalIssueVideoActivity(options.assemblies, options.dateRange, options.handler_id),
       getHierarchicalLocalIssueVideoActivity(options.assemblies, options.dateRange, options.handler_id),
       getHierarchicalAcVideos(options.assemblies, options.dateRange, options.handler_id),
       getHierarchicalChaupals(options.assemblies, options.dateRange, options.handler_id),
@@ -901,6 +973,7 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
       forms: getResultValue(forms),
       shaktiForms: getResultValue(shaktiForms),
       videos: getResultValue(videos),
+      shaktiVideos: getResultValue(shaktiVideos),
       acVideos: getResultValue(acVideos),
       chaupals: getResultValue(chaupals),
       shaktiBaithaks: getResultValue(shaktiBaithaks),
@@ -1339,8 +1412,9 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
     });
 
     const result = Array.from(membersMap.values());
-    console.log(`[fetchDetailedMembers] Found ${result.length} members`);
-    return result;
+    const filteredResult = result.filter((doc: any) => doc.parentVertical !== 'shakti-abhiyaan');
+    console.log(`[fetchDetailedMembers] Found ${filteredResult.length} members`);
+    return filteredResult;
   } catch (error) {
     console.error('[fetchDetailedMembers] Error:', error);
     return [];
@@ -1413,9 +1487,10 @@ export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise
     });
 
     const result = Array.from(videosMap.values());
+    const filteredResult = result.filter((doc: any) => doc.parentVertical !== 'shakti-abhiyaan');
     
-    console.log(`[fetchDetailedVideos] Found ${result.length} videos`);
-    return result;
+    console.log(`[fetchDetailedVideos] Found ${filteredResult.length} videos`);
+    return filteredResult;
   } catch (error) {
     console.error('[fetchDetailedVideos] Error:', error);
     return [];

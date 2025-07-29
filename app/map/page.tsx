@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { fetchSheetData, MeetingRow } from "../utils/fetchSheetData";
+import { fetchZones } from "../utils/fetchHierarchicalData"; // <-- new helper to get zone assemblies
 
 // Dynamically import React-Leaflet components to avoid SSR issues
 // TypeScript: Cast to 'any' to suppress prop type errors due to dynamic import and ESM-only modules
@@ -70,15 +71,39 @@ function darkenHSL(hsl: string, amount: number = 0.15) {
 }
 
 export default function BiharMapPage() {
+  // Assemblies enabled for interaction (populated from zonal-incharge docs)
+  const [enabledAssemblies, setEnabledAssemblies] = useState<string[]>([]);
   const [geoData, setGeoData] = useState<any>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [sheetData, setSheetData] = useState<MeetingRow[]>([]);
   const [assemblyStats, setAssemblyStats] = useState<Record<string, { meetings: number; slp: number; onboarded: number }>>({});
   const [selectedAssembly, setSelectedAssembly] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<string>("shakti");
+  // Keep reference to the currently selected Leaflet layer for cleanup
+  const selectedLayerRef = useRef<any>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
+
+
+
+  // Fetch assemblies list from all zones (zonal-incharge docs)
+  useEffect(() => {
+    async function loadAssemblies() {
+      try {
+        const zones = await fetchZones();
+        const set = new Set<string>();
+        zones.forEach((z) => {
+          (z.assemblies || []).forEach((a) => set.add(a.trim().toLowerCase()));
+        });
+        setEnabledAssemblies(Array.from(set));
+      } catch (err) {
+        console.error('[MapPage] Failed to load zone assemblies', err);
+      }
+    }
+    loadAssemblies();
+  }, []);
 
   // Fetch GeoJSON
   useEffect(() => {
@@ -110,7 +135,7 @@ export default function BiharMapPage() {
     if (!geoData || !geoData.features) return {};
     const colors: Record<string, { pastel: string; vibrant: string; name: string }> = {};
     geoData.features.forEach((feature: any, idx: number) => {
-      const id = feature.properties?.AC_NO;
+      const id = String(feature.properties?.AC_NO);
       const name = feature.properties?.AC_NAME?.trim();
       colors[id] = {
         pastel: pastelColor(idx),
@@ -121,64 +146,46 @@ export default function BiharMapPage() {
     return colors;
   }, [geoData]);
 
+
+
   // onEachFeature for hover highlight and tooltip
-  function onEachFeature(feature: any, layer: any) {
-    const id = feature.properties?.AC_NO;
-    const idx = geoData?.features?.findIndex((f: any) => f.properties?.AC_NO === id) ?? 0;
-    const fillColor = hoveredId === id ? regionColors[id]?.vibrant : regionColors[id]?.pastel;
-    const defaultStyle = {
-      fillColor: regionColors[id]?.pastel || "#eee",
-      weight: 2.5,
-      opacity: 1,
-      color: "#fff",
-      fillOpacity: 0.85,
-    };
-    const highlightStyle = {
-      fillColor: regionColors[id]?.vibrant || "#eee",
-      weight: 0,
-      opacity: 1,
-      color: "rgba(0,0,0,0)",
-      fillOpacity: 1,
-    };
-    layer.setStyle(hoveredId === id ? highlightStyle : defaultStyle);
+  const onEachFeature = useCallback((feature: any, layer: any) => {
     const assemblyName = feature.properties?.AC_NAME?.trim();
     const assemblyKey = assemblyName?.toLowerCase();
+    const isEnabled = !enabledAssemblies.length || enabledAssemblies.includes(assemblyKey);
+    // Disable interactions for greyed-out assemblies
+    if (!isEnabled) {
+      layer.options.interactive = false;
+      return;
+    }
+    const id = String(feature.properties?.AC_NO);
     const stats = assemblyStats[assemblyKey] || { meetings: 0, slp: 0, onboarded: 0 };
-    // Overlay metrics (replace with your real data extraction logic as needed)
-    const overlayMetrics = [
-      { label: "Total Meetings Done", value: stats.meetings },
-      { label: "Total Onboarded", value: stats.onboarded },
-      { label: "Total WA Groups", value: 0 },
-      { label: "Total YT Channels", value: 0 },
-      { label: "Total Hostels", value: 0 },
-    ];
+    
     layer.on({
       mouseover: function () {
         setHoveredId(id);
-        layer.setStyle(highlightStyle);
         layer.bringToFront();
         // Tooltip content
         const tooltipHtml = `
           <div class='font-semibold text-base mb-1'>${assemblyName || "Constituency"}</div>
-          <div class='flex flex-col gap-1'>
-            ${overlayMetrics
-              .map(
-                (m) => `<div class='flex items-center gap-2'><span class='font-semibold text-gray-700'>${m.label}:</span> <span class='text-gray-900 font-bold'>${m.value}</span></div>`
-              )
-              .join("")}
-          </div>
+          <div>Total Meetings: <b>${stats.meetings}</b></div>
+          <div>Total SLP: <b>${stats.slp}</b></div>
+          <div>Total Onboarded: <b>${stats.onboarded}</b></div>
         `;
         layer.setTooltipContent(tooltipHtml);
       },
       mouseout: function () {
         setHoveredId(null);
-        layer.setStyle(defaultStyle);
       },
       click: function () {
+        // Set new selection - let GeoJSON style callback handle the visual styling
+        selectedLayerRef.current = layer;
         setSelectedAssembly(assemblyName);
+        setSelectedId(String(id));
         setSelectedTab("shakti");
       },
     });
+    
     // Initial tooltip
     const tooltipHtml = `
       <div class='font-semibold text-base mb-1'>${assemblyName || "Constituency"}</div>
@@ -191,29 +198,48 @@ export default function BiharMapPage() {
       sticky: true,
       className: "leaflet-tooltip leaflet-tooltip-custom",
     });
-  }
+  }, [assemblyStats, enabledAssemblies, setHoveredId, setSelectedAssembly, setSelectedId, setSelectedTab]);
 
-  // Refactor: create a GeoJsonLayer component to keep the map page clean
-  const GeoJsonLayer = () => {
+  // Memoize GeoJSON to prevent layer recreation on re-renders
+  const geoJsonLayer = useMemo(() => {
+    if (!geoData) return null;
+    
+    const enabledSet = new Set(enabledAssemblies);
     return (
       <GeoJSON
         data={geoData}
         style={(feature: any) => {
-          const id = feature.properties?.AC_NO;
+          const id = String(feature.properties?.AC_NO);
+          const assemblyName = feature.properties?.AC_NAME?.trim() ?? "";
+          const assemblyKey = assemblyName.toLowerCase();
           const isHovered = hoveredId === id;
+          const isSelected = selectedId === id;
+          
+
+          const enabled = !enabledAssemblies.length || enabledSet.has(assemblyKey);
+          if (!enabled) {
+            return {
+              fillColor: "#cccccc",
+              weight: 1,
+              opacity: 0.6,
+              color: "#ffffff",
+              fillOpacity: 0.4,
+              interactive: false,
+            } as any;
+          }
           return {
-            fillColor: isHovered ? regionColors[id]?.vibrant || "#eee" : regionColors[id]?.pastel || "#eee",
-            weight: isHovered ? 0 : 2.5,
+            fillColor: (isHovered || isSelected) ? regionColors[id]?.vibrant || "#eee" : regionColors[id]?.pastel || "#eee",
+            weight: (isHovered || isSelected) ? 0 : 2.5,
             opacity: 1,
-            color: isHovered ? "rgba(0,0,0,0)" : "#fff",
-            fillOpacity: isHovered ? 1 : 0.85,
+            color: (isHovered || isSelected) ? "rgba(0,0,0,0)" : "#fff",
+            fillOpacity: (isHovered || isSelected) ? 1 : 0.6,
             interactive: true,
-          };
+          } as any;
         }}
         onEachFeature={onEachFeature}
       />
     );
-  };
+  }, [geoData, enabledAssemblies, hoveredId, selectedId, regionColors, onEachFeature]);
 
   const isDataReady = geoData && Object.keys(assemblyStats).length > 0;
 
@@ -221,6 +247,14 @@ export default function BiharMapPage() {
     <div className="max-w-7xl mx-auto p-8">
       <h1 className="text-2xl font-bold mb-4 text-center">Bihar Assembly Constituency Map</h1>
       <div className="relative w-full h-[900px] rounded-lg overflow-hidden">
+        {(!isDataReady || !mounted) && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
+            <svg className="animate-spin h-10 w-10 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+          </div>
+        )}
         {mounted && isDataReady && (
           <MapContainer
             center={[25.5, 85.2]}
@@ -236,7 +270,7 @@ export default function BiharMapPage() {
           >
             <MapResizer />
             <FitBoundsHandler geoData={geoData} />
-            <GeoJsonLayer />
+            {geoJsonLayer}
           </MapContainer>
         )}
       </div>

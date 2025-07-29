@@ -7,16 +7,17 @@ interface Props {
   metrics: CumulativeMetrics;
   onCardSelect?: (cardId: string) => void;
   isLoading?: boolean;
+  selectedVertical?: string;
 }
 
-const CumulativeDataCards: React.FC<Props> = ({ metrics, onCardSelect, isLoading }) => {
+const CumulativeDataCards: React.FC<Props> = ({ metrics, onCardSelect, isLoading, selectedVertical = 'wtm' }) => {
   const handleCardClick = (cardId: string) => {
     if (onCardSelect) {
       onCardSelect(cardId);
     }
   };
 
-  const cardData = [
+  const allCards = [
     { id: 'meetings', label: 'Meetings', value: metrics.meetings, color: 'blue' },
     { id: 'volunteers', label: 'Volunteers', value: metrics.volunteers, color: 'green' },
     { id: 'slps', label: 'Samvidhan Leaders', value: metrics.slps, color: 'purple' },
@@ -27,6 +28,7 @@ const CumulativeDataCards: React.FC<Props> = ({ metrics, onCardSelect, isLoading
     { id: 'shaktiClubs', label: 'Shakti Clubs', value: metrics.shaktiClubs, color: 'violet' },
     { id: 'forms', label: 'Mai-Bahin Forms', value: metrics.forms, color: 'cyan' },
     { id: 'shaktiForms', label: 'Shakti Mai-Bahin', value: metrics.shaktiForms, color: 'lime' },
+    { id: 'shaktiVideos', label: 'Shakti Local Issue Videos', value: metrics.shaktiVideos, color: 'amber' },
     { id: 'videos', label: 'Local Issue Videos', value: metrics.videos, color: 'yellow' },
     { id: 'acVideos', label: 'AC Videos', value: metrics.acVideos, color: 'rose' },
     { id: 'chaupals', label: 'Samvidhan Chaupals', value: metrics.chaupals, color: 'gray' },
@@ -34,6 +36,16 @@ const CumulativeDataCards: React.FC<Props> = ({ metrics, onCardSelect, isLoading
     { id: 'centralWaGroups', label: 'Central WA Groups', value: metrics.centralWaGroups, color: 'teal' },
     { id: 'assemblyWaGroups', label: 'Assembly WA Groups', value: metrics.assemblyWaGroups, color: 'emerald' },
   ];
+
+  const cardData = allCards.filter(card => {
+    if (selectedVertical === 'shakti-abhiyaan') {
+      // Show only Shakti-specific cards
+      return ['shaktiLeaders', 'shaktiSaathi', 'shaktiClubs', 'shaktiForms', 'shaktiBaithaks', 'shaktiVideos'].includes(card.id);
+    } else {
+      // WTM - exclude Shakti-specific cards
+      return !['shaktiLeaders', 'shaktiSaathi', 'shaktiClubs', 'shaktiForms', 'shaktiBaithaks', 'shaktiVideos'].includes(card.id);
+    }
+  });
 
   const getColorClasses = (color: string) => {
     const colorMap: Record<string, string> = {
@@ -51,6 +63,7 @@ const CumulativeDataCards: React.FC<Props> = ({ metrics, onCardSelect, isLoading
       cyan: 'bg-cyan-50 border-cyan-200 text-cyan-800',
       lime: 'bg-lime-50 border-lime-200 text-lime-800',
       amber: 'bg-amber-50 border-amber-200 text-amber-800',
+      sienna: 'bg-amber-50 border-amber-200 text-amber-800',
       emerald: 'bg-emerald-50 border-emerald-200 text-emerald-800',
       rose: 'bg-rose-50 border-rose-200 text-rose-800',
     };

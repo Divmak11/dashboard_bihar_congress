@@ -32,6 +32,7 @@ const emptyMetrics: CumulativeMetrics = {
   videos: '-',
   acVideos: '-',
   chaupals: '-',
+  shaktiVideos: '-',
   shaktiBaithaks: '-',
   centralWaGroups: '-',
   assemblyWaGroups: '-',
@@ -49,6 +50,9 @@ const HierarchicalDashboardPage: React.FC = () => {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [dateOption, setDateOption] = useState<string>('All Time');
+
+  // Vertical selection state ('wtm' | 'shakti-abhiyaan')
+  const [selectedVertical, setSelectedVertical] = useState<string>('wtm');
 
   // Navigation state
   const [zones, setZones] = useState<Zone[]>([]);
@@ -76,22 +80,29 @@ const HierarchicalDashboardPage: React.FC = () => {
 
   // Load zones on mount and filter based on user role
   React.useEffect(() => {
-    fetchZones().then(allZones => {
+    const loadZones = async () => {
+      const allZones = await fetchZones();
+
+      // Filter zones based on selected vertical using the zone's parentVertical property
+      const filteredZones = selectedVertical === 'shakti-abhiyaan'
+        ? allZones.filter(z => z.parentVertical === 'shakti-abhiyaan')
+        : allZones.filter(z => z.parentVertical !== 'shakti-abhiyaan');
+
       if (adminUser?.role === 'zonal-incharge') {
-        // Only show the zone-incharge user's own zone
-        const userZone = allZones.find(zone => zone.id === adminUser.id);
+        const userZone = filteredZones.find(zone => zone.id === adminUser.id);
         if (userZone) {
           setZones([userZone]);
-          setSelectedZoneId(userZone.id); // Auto-select their zone
+          setSelectedZoneId(userZone.id);
         } else {
           setZones([]);
         }
       } else {
-        // Admin users see all zones
-        setZones(allZones);
+        setZones(filteredZones);
       }
-    }).catch(console.error);
-  }, [adminUser]);
+    };
+
+    loadZones().catch(console.error);
+  }, [adminUser, selectedVertical]);
 
   // Load assemblies when zone changes
   React.useEffect(() => {
@@ -266,6 +277,17 @@ const HierarchicalDashboardPage: React.FC = () => {
     setSelectedSlpId(slpId);
   };
 
+  // Vertical change handler
+  const handleVerticalChange = (vertical: string) => {
+    console.log('[Navigation] Vertical changed to:', vertical);
+    setSelectedVertical(vertical);
+    // reset hierarchy selections
+    setSelectedZoneId(null);
+    setSelectedAssembly(null);
+    setSelectedAcId(null);
+    setSelectedSlpId(null);
+  };
+
   return (
     <>
       <HierarchicalErrorBoundary componentName="Hierarchical Dashboard">
@@ -285,6 +307,8 @@ const HierarchicalDashboardPage: React.FC = () => {
           <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
             <HierarchicalErrorBoundary componentName="Navigation Panel">
               <HierarchicalNavigation
+                selectedVertical={selectedVertical}
+                onVerticalChange={handleVerticalChange}
                 zones={zones}
                 assemblies={assemblies}
                 acs={acs}
@@ -305,6 +329,7 @@ const HierarchicalDashboardPage: React.FC = () => {
                 metrics={isLoadingMetrics ? emptyMetrics : metrics} 
                 onCardSelect={handleCardSelect}
                 isLoading={isLoadingMetrics}
+                selectedVertical={selectedVertical}
               />
             </HierarchicalErrorBoundary>
           </div>

@@ -6,6 +6,8 @@ export interface Zone {
   id: string;
   name: string; // "Zone 1", "Zone 2", etc.
   assemblies: string[];
+  /** Vertical this zone belongs to (e.g., 'wtm' or 'shakti-abhiyaan'). */
+  parentVertical?: string;
 }
 
 export interface AC {
@@ -42,7 +44,8 @@ export type MetricKey =
   | 'chaupals'
   | 'centralWaGroups'
   | 'assemblyWaGroups'
-  | 'shaktiBaithaks';
+  | 'shaktiBaithaks'
+  | 'shaktiVideos';
 
 export type MetricRecord = Record<MetricKey, number | string>;
 
@@ -58,6 +61,7 @@ export interface CumulativeMetrics extends MetricRecord {
   forms: number | string;
   shaktiForms: number | string;
   videos: number | string;
+  shaktiVideos: number | string;
   acVideos: number | string;
   chaupals: number | string;
   shaktiBaithaks: number | string;
