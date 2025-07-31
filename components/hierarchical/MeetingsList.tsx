@@ -8,7 +8,34 @@ interface MeetingsListProps {
   loading?: boolean;
 }
 
+import ColumnValueFilter, { ColumnOption } from './ColumnValueFilter';
+
 const MeetingsList: React.FC<MeetingsListProps> = ({ data, loading = false }) => {
+  // Columns eligible for filtering
+  const filterableColumns: ColumnOption[] = [
+    { key: 'assembly', label: 'Assembly' },
+    { key: 'recommendedPosition', label: 'Position' },
+    { key: 'onboardingStatus', label: 'Status' },
+    { key: 'levelOfInfluence', label: 'Level Of Influence' },
+    { key: 'block', label: 'Block' }
+  ];
+
+  const [selectedColumn, setSelectedColumn] = React.useState<string | null>(null);
+  const [selectedValue, setSelectedValue] = React.useState<string | null>(null);
+
+  // Compute unique values for the selected column
+  const uniqueValues = React.useMemo(() => {
+    if (!selectedColumn) return [] as string[];
+    const vals = data.map((d: any) => d[selectedColumn] || '').filter(Boolean);
+    const set = new Set<string>(vals);
+    return Array.from(set).sort();
+  }, [selectedColumn, data]);
+
+  // Apply column/value filtering
+  const filteredData = React.useMemo(() => {
+    if (!selectedColumn || !selectedValue) return data;
+    return data.filter((d: any) => String(d[selectedColumn] || '') === selectedValue);
+  }, [data, selectedColumn, selectedValue]);
   const columns = [
     {
       key: 'dateOfVisit',
@@ -109,8 +136,21 @@ const MeetingsList: React.FC<MeetingsListProps> = ({ data, loading = false }) =>
         </div>
       </div>
       
+      {/* Column/Value Filter */}
+      <ColumnValueFilter
+        columnOptions={filterableColumns}
+        selectedColumn={selectedColumn}
+        selectedValue={selectedValue}
+        uniqueValues={uniqueValues}
+        onColumnChange={(col) => {
+          setSelectedColumn(col);
+          setSelectedValue(null); // reset value
+        }}
+        onValueChange={(val) => setSelectedValue(val)}
+      />
+
       <DataTable
-        data={data}
+        data={filteredData}
         columns={columns}
         loading={loading}
         emptyMessage="No meetings found for the selected criteria"

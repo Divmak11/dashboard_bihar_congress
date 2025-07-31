@@ -143,11 +143,15 @@ const DetailedView: React.FC<Props> = ({
     }
 
     // For all other activity types, use ActivitiesList
+    // Enable column filtering only for specific metric cards that support the standard filter columns
+    const supportsColumnFilter = ['volunteers', 'slps'].includes(selectedCard);
+    
     return (
       <ActivitiesList 
         data={detailedData} 
         loading={loading} 
         activityType={selectedCard}
+        showColumnFilter={supportsColumnFilter}
       />
     );
   };

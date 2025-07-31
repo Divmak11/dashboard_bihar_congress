@@ -1,15 +1,68 @@
 // components/hierarchical/ActivitiesList.tsx
-// Activities list component for detailed view
+// Activities list component for detailed view with optional column/value filtering
+//
+// FILTERING SYSTEM OVERVIEW:
+// - This component supports optional two-stage filtering via showColumnFilter prop
+// - When enabled, users can select a column (Assembly, Position, Status, etc.) and then filter by specific values
+// - Filtering is applied client-side to the already-fetched data before rendering in DataTable
+// - Filter state resets automatically when switching between metric cards
+//
+// CURRENT IMPLEMENTATION:
+// - Standard column filter for Assembly, Position, Status, Level Of Influence, Block
+// - Used by Volunteers (activityType='volunteers') and Samvidhan Leaders (activityType='slps')
+// - Other metric cards (Shakti*, Samvidhan Chaupals, etc.) don't show filters
+//
+// TO ADD NEW METRIC-SPECIFIC FILTERS:
+// 1. Add new optional props to ActivitiesListProps (e.g., showDateFilter, showLocationFilter)
+// 2. Create new filter components similar to ColumnValueFilter
+// 3. Add conditional rendering blocks in the JSX return statement
+// 4. Update DetailedView.tsx to pass the appropriate filter props for each metric card
+// 5. Ensure new filter logic integrates with existing search/sort functionality
+
 import React from 'react';
+import ColumnValueFilter, { ColumnOption } from './ColumnValueFilter';
 import DataTable from './DataTable';
 
 interface ActivitiesListProps {
   data: any[];
   loading?: boolean;
   activityType: string;
+  showColumnFilter?: boolean; // Opt-in flag for column/value filtering
 }
 
-const ActivitiesList: React.FC<ActivitiesListProps> = ({ data, loading = false, activityType }) => {
+const ActivitiesList: React.FC<ActivitiesListProps> = ({ data, loading = false, activityType, showColumnFilter = false }) => {
+  // FILTER CONFIGURATION: Only initialize filter state/logic when showColumnFilter is true
+  // This prevents unwanted filter UI from appearing on metric cards that don't support these columns
+  // 
+  // TO ADD METRIC-SPECIFIC FILTERS IN FUTURE:
+  // 1. Add new props like `showCustomFilter?: boolean` and `customFilterColumns?: ColumnOption[]`
+  // 2. Create conditional blocks similar to the one below for different filter types
+  // 3. Pass the appropriate prop when rendering ActivitiesList from DetailedView
+  
+  const filterableColumns: ColumnOption[] = [
+    { key: 'assembly', label: 'Assembly' },
+    { key: 'recommendedPosition', label: 'Position' },
+    { key: 'onboardingStatus', label: 'Status' },
+    { key: 'levelOfInfluence', label: 'Level Of Influence' },
+    { key: 'block', label: 'Block' }
+  ];
+
+  // Filter state - only used when showColumnFilter is true
+  const [selectedColumn, setSelectedColumn] = React.useState<string | null>(null);
+  const [selectedValue, setSelectedValue] = React.useState<string | null>(null);
+
+  // Compute unique values for selected column - only when filtering is enabled
+  const uniqueValues = React.useMemo(() => {
+    if (!showColumnFilter || !selectedColumn) return [] as string[];
+    const vals = data.map((d: any) => d[selectedColumn] || '').filter(Boolean);
+    return Array.from(new Set<string>(vals)).sort();
+  }, [showColumnFilter, selectedColumn, data]);
+
+  // Apply column/value filtering - only when enabled and values selected
+  const filteredData = React.useMemo(() => {
+    if (!showColumnFilter || !selectedColumn || !selectedValue) return data;
+    return data.filter((d: any) => String(d[selectedColumn] || '') === selectedValue);
+  }, [showColumnFilter, data, selectedColumn, selectedValue]);
   const getColumns = () => {
     const baseColumns = [
       {
@@ -371,8 +424,23 @@ const ActivitiesList: React.FC<ActivitiesListProps> = ({ data, loading = false, 
         </div>
       </div>
       
+      {/* Column/Value Filter - only show when explicitly enabled */}
+      {showColumnFilter && (
+        <ColumnValueFilter
+          columnOptions={filterableColumns}
+          selectedColumn={selectedColumn}
+          selectedValue={selectedValue}
+          uniqueValues={uniqueValues}
+          onColumnChange={(col) => {
+            setSelectedColumn(col);
+            setSelectedValue(null);
+          }}
+          onValueChange={(val) => setSelectedValue(val)}
+        />
+      )}
+
       <DataTable
-        data={data}
+        data={filteredData}
         columns={getColumns()}
         loading={loading}
         emptyMessage={`No ${activityType} found for the selected criteria`}
