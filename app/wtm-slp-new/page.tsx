@@ -211,10 +211,11 @@ const HierarchicalDashboardPage: React.FC = () => {
             dateRange: startDate && endDate ? { startDate, endDate } : undefined,
           };
         } else {
-          // No selection - show empty metrics
-          setMetrics(emptyMetrics);
-          setIsLoadingMetrics(false);
-          return;
+          // Vertical level - show global metrics across all zones and assemblies
+          options = {
+            level: 'vertical',
+            dateRange: startDate && endDate ? { startDate, endDate } : undefined,
+          };
         }
         
         const fetchedMetrics = await fetchCumulativeMetrics(options);

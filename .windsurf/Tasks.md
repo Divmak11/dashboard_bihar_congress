@@ -1,68 +1,44 @@
-# Detailed View Filters – Task Plan (Meetings / Volunteers / Samvidhan Leaders)
-
-> NOTE:  Implementation **must not start** until explicitly approved.
+# PRD – Global Metrics Default for Hierarchical Dashboard
 
 ## Objective
-Introduce a two-stage filter (column selector + value selector) in the detailed views of the Meetings, Volunteers, and Samvidhan Leaders metric cards, using the columns:
-* Assembly  
-* Position  
-* Status  
-* Level Of Influence  
-* Block
+When a vertical (WTM Samvidhan Leader or Shakti-Abhiyaan) is selected **without** choosing a Zone, Assembly, AC, or SLP, the metric cards must display totals aggregated across **all** zones and assemblies for that vertical, instead of “-”.
 
-The selectors must follow existing dashboard design patterns and gather their value options dynamically from the data already fetched from Firebase.
+## Success Metrics
+1. Metric cards show correct aggregated counts immediately on vertical selection with no lower-level filters.
+2. Detailed view lists match the aggregated metrics.
+3. No additional Firestore composite indexes are required.
+4. Existing behaviour for lower hierarchy selections remains unchanged.
+5. Dashboard performance stays within current baseline (< 3 s first paint).
 
----
+## Assumptions
+• Existing Firestore queries already return global totals when no filters are supplied.  
+• Only the early-return guard in the React page prevents this fetch.
+
+## Out of Scope
+• Firestore schema changes.  
+• Creating new composite indexes.  
+• Refactors unrelated to this behaviour.
+
+## High-Level Solution
+1. **Remove Early-Return Guard** – Delete the `setMetrics(emptyMetrics)` shortcut in `app/wtm-slp-new/page.tsx` (approx. lines 210-220).
+2. **Default Options** – When no Zone / Assembly / AC / SLP is selected, build `{ level: 'vertical' }` and call `fetchCumulativeMetrics`.
+3. **No Query Changes** – `fetchCumulativeMetrics` and helper queries already fetch all records when filters are absent.
 
 ## Task Breakdown
+| ID | Description | Owner |
+|----|-------------|-------|
+|E1 |Remove early-return guard in page component|FE|
+|E2 |Create default options object and invoke metrics fetch|FE|
+|E3 |Manual QA on both verticals (no filters & with filters) |QA|
+|E4 |Add/adjust unit & integration tests for global totals|FE|
+|E5 |Monitor Firestore read counts post-release; rollback if reads ↑ >25 %|DevOps|
 
-### 1. UI/UX Design
-- [ ] T1 – Finalise exact placement and spacing of the two selectors inside each detailed view header (below title, above search bar).
-- [ ] T2 – Define Tailwind classes / component variants to match current drop-down styling.
+## Timeline
+Coding & unit tests: **0.5 day**  
+QA & release: **0.5 day** (behind feature flag)
 
-### 2. Data Preparation
-- [ ] T3 – Extend detailed data fetching logic to compute **unique value sets** for each of the five columns *from the fetched dataset* (client-side) when the detailed view loads.
-- [ ] T4 – If a dataset is empty, ensure selectors fall back to an empty/disabled state gracefully.
+## Risks & Mitigations
+*Higher Firestore reads*: Acceptable based on current volumes; monitor and optimise if necessary.
 
-### 3. Filter Component
-- [x] T5 – Build reusable `<ColumnValueFilter>` component:
-  - Primary select → column list (Assembly, Position, Status, Level Of Influence, Block)
-  - Secondary select → deduplicated values based on column chosen
-  - Props: `availableColumns`, `uniqueValues`, `onChange`
-
-### 4. Integration per Metric Card
-- [x] T6 – Integrate filter component into `MeetingsList` and hook into its internal filtered dataset.
-- [x] T7 – Integrate into `VolunteersList` (shares same data structure).
-- [x] T8 – Integrate into `SlpsList` (Samvidhan Leaders detailed view).
-
-### 5. Filtering Logic
-- [x] T9 – Apply selected column/value pair to filter the **already fetched** data array before rendering `DataTable`."
-- [x] T10 – Ensure interaction with existing text search & table sorting works without conflict (filters applied first, then search/sort).
-
-### 6. State & Reset Handling
-- [x] T11 – Reset filters when user switches metric card or closes the detailed view.
-
-### 7. QA & Testing
-- [ ] T12 – Unit test `getUniqueValues` helper for each column type.
-- [ ] T13 – Component tests for `<ColumnValueFilter>` (options population, disabled states).
-- [ ] T14 – Manual end-to-end verification across all hierarchy levels and date ranges.
-
----
-
-## Deliverables
-1. Updated components (`MeetingsList`, `VolunteersList`, `SlpsList`) with integrated filters.
-2. Reusable filter component file under `components/hierarchical/`.
-3. Updated documentation in `README_dashboard.md` (if exists).
-4. All new code fully typed, lint-clean, and matching project conventions.
-
----
-
-### Implementation Complete ✅  
-**Filter System:** Two-stage column/value selectors added to Meetings, Volunteers, and Samvidhan Leaders detailed views.  
-**Conditional Rendering:** Filters only appear on metric cards that explicitly opt-in via `showColumnFilter` prop.  
-**Future-Ready:** Easy to extend with metric-specific filters by adding new props and conditional blocks.
-
-## Progress Tracking
-- **Total Tasks:** 14
-- **Completed:** 0
-- **Remaining:** 14
+## Approval
+Product Lead · Engineering Lead · Data Analyst
