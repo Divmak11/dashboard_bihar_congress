@@ -114,7 +114,18 @@ export async function getWtmSlpSummary(
     if (assemblies && assemblies.length > 0) {
       baseQuery1 = query(baseQuery1, where('assembly', 'in', assemblies));
       baseQuery2 = query(baseQuery2, where('assembly', 'in', assemblies));
-      console.log(`[getWtmSlpSummary] Added assembly filter for ${assemblies.length} assemblies`);
+      console.log(`[getWtmSlpSummary] Added assembly filter for ${assemblies.length} assemblies:`, assemblies);
+      
+      // Debug: Check what assembly names exist in the database
+      const debugQuery = query(wtmSlpCollection, limit(10));
+      getDocs(debugQuery).then(debugSnapshot => {
+        const foundAssemblies = new Set();
+        debugSnapshot.docs.forEach(doc => {
+          const assembly = doc.data().assembly;
+          if (assembly) foundAssemblies.add(assembly);
+        });
+        console.log('[getWtmSlpSummary] Sample assembly names in database:', Array.from(foundAssemblies));
+      }).catch(console.error);
     }
 
     // When SLP level is selected, return zero values for AC-level metrics

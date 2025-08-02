@@ -64,6 +64,17 @@ const getHierarchicalMemberActivity = async (assemblies?: string[], dateRange?: 
     if (assemblies && assemblies.length > 0) {
       baseQuery1 = query(baseQuery1, where('assembly', 'in', assemblies));
       baseQuery2 = query(baseQuery2, where('assembly', 'in', assemblies));
+      
+      // Debug: Check what assembly names exist in slp-activity collection
+      const debugQuery = query(slpActivityCollection, where('form_type', '==', 'members'), limit(10));
+      getDocs(debugQuery).then(debugSnapshot => {
+        const foundAssemblies = new Set();
+        debugSnapshot.docs.forEach(doc => {
+          const assembly = doc.data().assembly;
+          if (assembly) foundAssemblies.add(assembly);
+        });
+        console.log('[getHierarchicalMemberActivity] Sample assembly names in slp-activity:', Array.from(foundAssemblies));
+      }).catch(console.error);
     }
 
     // Add handler_id filter if provided (for AC/SLP level)
