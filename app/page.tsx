@@ -20,7 +20,8 @@ export default function HomePage() {
     wtmSlpMetrics: null,
     isLoading: true
   });
-  
+  const [role, setRole] = useState<string | null>(null);
+
   // Fetch data based on user role when user auth state changes
   useEffect(() => {
     // Skip if not authenticated yet
@@ -34,6 +35,7 @@ export default function HomePage() {
         // Get user role and assigned assemblies
         const adminUser = await getCurrentAdminUser(user?.uid || "");
         console.log('[HomePage] Admin user data:', adminUser);
+        setRole(adminUser?.role || null);
         
         let assembliesFilter: string[] | undefined;
         
@@ -161,13 +163,15 @@ export default function HomePage() {
           <LogoutButton />
         </div>
       </div>
-      <div className="flex justify-center mb-6">
-        <Link href="/map">
-          <button className="px-6 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition font-semibold text-lg">
-            View Map
-          </button>
-        </Link>
-      </div>
+      {role === 'admin' && (
+        <div className="flex justify-center mb-6">
+          <Link href="/map">
+            <button className="px-6 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition font-semibold text-lg">
+              View Map
+            </button>
+          </Link>
+        </div>
+      )}
       {/* All cards in a single grid for alignment */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Ravi Pandit card with real data and dashboard link */}
