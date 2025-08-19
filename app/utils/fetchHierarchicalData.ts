@@ -365,6 +365,7 @@ const getHierarchicalShaktiLeaders = async (assemblies?: string[], dateRange?: {
       const data = doc.data() as any;
       const coveredAssemblies = data.coveredAssemblies || [];
       const coordinators = data.coveredAssemblyCoordinators || [];
+      const documentCreatedAt = data.createdAt; // Get createdAt from document root
       
       // Zone Level: Check if any zone assemblies intersect with document's coveredAssemblies
       if (assemblies && assemblies.length > 0) {
@@ -396,15 +397,58 @@ const getHierarchicalShaktiLeaders = async (assemblies?: string[], dateRange?: {
               coordinatorName: coord.name,
               assembly: coord.assembly,
               documentId: doc.id, // Track which document this came from
-              coveredAssemblies: coveredAssemblies // Store for reference
+              coveredAssemblies: coveredAssemblies, // Store for reference
+              createdAt: documentCreatedAt // Add document's createdAt to each SLP
             });
           });
         }
       });
     });
     
-    console.log(`[getHierarchicalShaktiLeaders] Found ${slpsList.length} Shakti SLPs`);
-    return slpsList;
+    // Apply local date filtering if dateRange is provided
+    let filteredSlpsList = slpsList;
+    if (dateRange) {
+      // Convert date range strings to milliseconds for comparison
+      const startDateMs = new Date(dateRange.startDate).getTime();
+      const endDateMs = new Date(dateRange.endDate).setHours(23, 59, 59, 999); // End of day
+      
+      console.log(`[getHierarchicalShaktiLeaders] Date range: ${dateRange.startDate} to ${dateRange.endDate}`);
+      console.log(`[getHierarchicalShaktiLeaders] Filtering by createdAt (milliseconds): ${startDateMs} to ${endDateMs}`);
+      
+      // Debug: Log first few SLPs to check createdAt values
+      console.log(`[getHierarchicalShaktiLeaders] Sample SLP createdAt values:`, 
+        slpsList.slice(0, 3).map(slp => ({ 
+          name: slp.name, 
+          createdAt: slp.createdAt, 
+          type: typeof slp.createdAt,
+          date: slp.createdAt ? new Date(slp.createdAt).toISOString() : 'N/A'
+        }))
+      );
+      
+      filteredSlpsList = slpsList.filter((slp: any) => {
+        if (!slp.createdAt) {
+          console.log(`[getHierarchicalShaktiLeaders] SLP ${slp.name} has no createdAt`);
+          return false;
+        }
+        
+        if (typeof slp.createdAt !== 'number') {
+          console.log(`[getHierarchicalShaktiLeaders] SLP ${slp.name} createdAt is not number:`, typeof slp.createdAt, slp.createdAt);
+          return false;
+        }
+        
+        const isInRange = slp.createdAt >= startDateMs && slp.createdAt <= endDateMs;
+        if (!isInRange) {
+          console.log(`[getHierarchicalShaktiLeaders] SLP ${slp.name} outside range: ${slp.createdAt} (${new Date(slp.createdAt).toISOString()})`);
+        }
+        
+        return isInRange;
+      });
+      
+      console.log(`[getHierarchicalShaktiLeaders] Filtered from ${slpsList.length} to ${filteredSlpsList.length} Shakti SLPs`);
+    }
+    
+    console.log(`[getHierarchicalShaktiLeaders] Found ${filteredSlpsList.length} Shakti SLPs`);
+    return filteredSlpsList;
   } catch (error) {
     console.error('[getHierarchicalShaktiLeaders] Error:', error);
     return [];
