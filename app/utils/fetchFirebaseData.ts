@@ -110,22 +110,31 @@ export async function getWtmSlpSummary(
     let baseQuery1 = query(wtmSlpCollection, where('form_type', '==', 'meeting'));
     let baseQuery2 = query(wtmSlpCollection, where('type', '==', 'meeting'));
 
-    // Add assembly filter if provided
     if (assemblies && assemblies.length > 0) {
-      baseQuery1 = query(baseQuery1, where('assembly', 'in', assemblies));
-      baseQuery2 = query(baseQuery2, where('assembly', 'in', assemblies));
-      console.log(`[getWtmSlpSummary] Added assembly filter for ${assemblies.length} assemblies:`, assemblies);
+      const uniqueAssemblies = [...new Set(assemblies)];
+      console.log(`[getWtmSlpSummary] Added assembly filter for ${uniqueAssemblies.length} assemblies:`, uniqueAssemblies);
       
-      // Debug: Check what assembly names exist in the database
-      const debugQuery = query(wtmSlpCollection, limit(10));
-      getDocs(debugQuery).then(debugSnapshot => {
-        const foundAssemblies = new Set();
-        debugSnapshot.docs.forEach(doc => {
-          const assembly = doc.data().assembly;
-          if (assembly) foundAssemblies.add(assembly);
+      if (uniqueAssemblies.length <= 10) {
+        const query1WithAssemblies = query(baseQuery1, where('assembly', 'in', uniqueAssemblies));
+        const query2WithAssemblies = query(baseQuery2, where('assembly', 'in', uniqueAssemblies));
+        queries.push(query1WithAssemblies, query2WithAssemblies);
+      } else {
+        // Chunk into groups of 10 and add all chunk queries
+        const chunks = [];
+        for (let i = 0; i < uniqueAssemblies.length; i += 10) {
+          chunks.push(uniqueAssemblies.slice(i, i + 10));
+        }
+        
+        console.log(`[getWtmSlpSummary] Chunking ${uniqueAssemblies.length} assemblies into ${chunks.length} queries`);
+        
+        chunks.forEach(chunk => {
+          queries.push(query(baseQuery1, where('assembly', 'in', chunk)));
+          queries.push(query(baseQuery2, where('assembly', 'in', chunk)));
         });
-        console.log('[getWtmSlpSummary] Sample assembly names in database:', Array.from(foundAssemblies));
-      }).catch(console.error);
+      }
+    } else {
+      // No assembly filter
+      queries.push(baseQuery1, baseQuery2);
     }
 
     // When SLP level is selected, return zero values for AC-level metrics
@@ -142,8 +151,6 @@ export async function getWtmSlpSummary(
       };
     }
 
-    // Add the final queries to the array
-    queries.push(baseQuery1, baseQuery2);
 
     console.log(`[getWtmSlpSummary] Executing ${queries.length} queries...`);
     

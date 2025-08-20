@@ -210,6 +210,38 @@ export interface LocalIssueVideoActivity {
 }
 
 /**
+ * Interface for Chaupal (Weekly Meeting) activities from the "slp-activity" collection
+ */
+export interface ChaupalActivity {
+  id: string;
+  form_type: 'weekly_meeting';
+  type?: 'weekly_meeting';
+  handler_id: string;
+  assembly?: string;
+  dateFormatted: string; // Date in YYYY-MM-DD format
+  meetingDate: string; // Date in DD-MM-YYYY format
+  location: string;
+  notes: string;
+  totalMembers: number;
+  selectedMembers: string[]; // Array of member IDs
+  trainingId: string;
+  audioUrl?: string;
+  videoUrl?: string;
+  videoDescription?: string;
+  photoUrls?: string[];
+  createdAt: number; // Epoch timestamp
+  updatedAt: number; // Epoch timestamp
+  date: number; // Epoch timestamp
+  parentVertical?: string;
+  // Additional fields for UI compatibility
+  dateOfVisit?: string; // Mapped from dateFormatted
+  coordinatorName?: string; // Mapped from handler_id
+  village?: string; // Mapped from location
+  topic?: string; // Mapped from notes
+  attendees?: number; // Mapped from totalMembers
+}
+
+/**
  * Interface for coordinator details including their performance metrics
  */
 export interface CoordinatorDetails {
@@ -232,4 +264,5 @@ export interface CoordinatorDetails {
   panchayatWaActivities?: PanchayatWaActivity[];
   maiBahinYojnaActivities?: MaiBahinYojnaActivity[];
   localIssueVideoActivities?: LocalIssueVideoActivity[];
+  chaupalActivities?: ChaupalActivity[];
 } 

@@ -7,6 +7,7 @@ import ActivitiesList from './ActivitiesList';
 import VideosList from './VideosList';
 import FormsList from './FormsList';
 import ClubsList from './ClubsList';
+import ChaupalsList from './ChaupalsList';
 
 interface Props {
   selectedCard?: string | null;
@@ -140,6 +141,10 @@ const DetailedView: React.FC<Props> = ({
 
     if (['clubs','shaktiClubs','centralWaGroups','assemblyWaGroups'].includes(selectedCard)) {
       return <ClubsList data={detailedData} loading={loading} activityType={selectedCard} />;
+    }
+
+    if (selectedCard === 'chaupals') {
+      return <ChaupalsList data={detailedData} loading={loading} />;
     }
 
     // For all other activity types, use ActivitiesList

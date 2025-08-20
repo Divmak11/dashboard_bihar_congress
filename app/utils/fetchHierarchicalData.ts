@@ -60,23 +60,6 @@ const getHierarchicalMemberActivity = async (assemblies?: string[], dateRange?: 
     let baseQuery1 = query(slpActivityCollection, where('form_type', '==', 'members'));
     let baseQuery2 = query(slpActivityCollection, where('type', '==', 'members'));
 
-    // Add assembly filter only if assemblies provided
-    if (assemblies && assemblies.length > 0) {
-      baseQuery1 = query(baseQuery1, where('assembly', 'in', assemblies));
-      baseQuery2 = query(baseQuery2, where('assembly', 'in', assemblies));
-      
-      // Debug: Check what assembly names exist in slp-activity collection
-      const debugQuery = query(slpActivityCollection, where('form_type', '==', 'members'), limit(10));
-      getDocs(debugQuery).then(debugSnapshot => {
-        const foundAssemblies = new Set();
-        debugSnapshot.docs.forEach(doc => {
-          const assembly = doc.data().assembly;
-          if (assembly) foundAssemblies.add(assembly);
-        });
-        console.log('[getHierarchicalMemberActivity] Sample assembly names in slp-activity:', Array.from(foundAssemblies));
-      }).catch(console.error);
-    }
-
     // Add handler_id filter if provided (for AC/SLP level)
     if (handler_id) {
       baseQuery1 = query(baseQuery1, where('handler_id', '==', handler_id));
@@ -95,19 +78,72 @@ const getHierarchicalMemberActivity = async (assemblies?: string[], dateRange?: 
       baseQuery2 = query(baseQuery2, where('dateOfVisit', '>=', startDateStr), where('dateOfVisit', '<=', endDateStr));
     }
 
-    const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
+    // Execute queries with assembly chunking to handle >10 assembly limit
+    let snap1Results = [];
+    let snap2Results = [];
+    
+    if (assemblies && assemblies.length > 0) {
+      const uniqueAssemblies = [...new Set(assemblies)];
+      
+      if (uniqueAssemblies.length <= 10) {
+        // Single query for <=10 assemblies
+        const query1WithAssemblies = query(baseQuery1, where('assembly', 'in', uniqueAssemblies));
+        const query2WithAssemblies = query(baseQuery2, where('assembly', 'in', uniqueAssemblies));
+        const [snap1, snap2] = await Promise.all([getDocs(query1WithAssemblies), getDocs(query2WithAssemblies)]);
+        snap1Results = [snap1];
+        snap2Results = [snap2];
+      } else {
+        // Chunk into groups of 10 and run parallel queries
+        const chunks = [];
+        for (let i = 0; i < uniqueAssemblies.length; i += 10) {
+          chunks.push(uniqueAssemblies.slice(i, i + 10));
+        }
+        
+        console.log(`[getHierarchicalMemberActivity] Chunking ${uniqueAssemblies.length} assemblies into ${chunks.length} queries`);
+        
+        const query1Promises = chunks.map(chunk => {
+          const chunkQuery = query(baseQuery1, where('assembly', 'in', chunk));
+          return getDocs(chunkQuery);
+        });
+        
+        const query2Promises = chunks.map(chunk => {
+          const chunkQuery = query(baseQuery2, where('assembly', 'in', chunk));
+          return getDocs(chunkQuery);
+        });
+        
+        const [query1Results, query2Results] = await Promise.all([
+          Promise.all(query1Promises),
+          Promise.all(query2Promises)
+        ]);
+        
+        snap1Results = query1Results;
+        snap2Results = query2Results;
+      }
+    } else {
+      // No assembly filter
+      const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
+      snap1Results = [snap1];
+      snap2Results = [snap2];
+    }
+
     const activitiesMap = new Map();
     
-    snap1.forEach((doc) => {
-      if (!activitiesMap.has(doc.id)) {
-        activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
-      }
+    // Process all snap1 results
+    snap1Results.forEach((snap) => {
+      snap.forEach((doc) => {
+        if (!activitiesMap.has(doc.id)) {
+          activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
+        }
+      });
     });
     
-    snap2.forEach((doc) => {
-      if (!activitiesMap.has(doc.id)) {
-        activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
-      }
+    // Process all snap2 results
+    snap2Results.forEach((snap) => {
+      snap.forEach((doc) => {
+        if (!activitiesMap.has(doc.id)) {
+          activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
+        }
+      });
     });
 
     const result = Array.from(activitiesMap.values());
@@ -511,26 +547,54 @@ const getHierarchicalShaktiSaathi = async (assemblies?: string[], dateRange?: { 
 
     const result = Array.from(activitiesMap.values());
     
-    // Enrich with coordinator names (SLP names from shakti-abhiyaan collection)
+    // Enrich with coordinator names using parentDocId for efficient lookup
     const coordinatorNamesMap = new Map<string, string>();
-    const uniqueHandlerIds = [...new Set(result.map((activity: any) => activity.handler_id).filter(Boolean))];
     
-    if (uniqueHandlerIds.length > 0) {
-      // Handle Firebase 'IN' query limit of 30 by batching
-      const batchSize = 30;
-      for (let i = 0; i < uniqueHandlerIds.length; i += batchSize) {
-        const batch = uniqueHandlerIds.slice(i, i + batchSize);
-        
-        // Look up SLP names directly from shakti-abhiyaan documents
-        const shaktiCollection = collection(db, 'shakti-abhiyaan');
-        const shaktiQuery = query(shaktiCollection, where('uid', 'in', batch));
-        const shaktiSnap = await getDocs(shaktiQuery);
-        
-        shaktiSnap.forEach((doc) => {
-          const data = doc.data();
-          coordinatorNamesMap.set(doc.id, data.name || data.recommendedPersonName || doc.id);
-        });
-      }
+    // Get unique parentDocIds from activities
+    const uniqueParentDocIds = [...new Set(result.map((activity: any) => activity.parentDocId).filter(Boolean))];
+    
+    if (uniqueParentDocIds.length > 0) {
+      // Fetch specific shakti-abhiyaan documents using parentDocId
+      const shaktiCollection = collection(db, 'shakti-abhiyaan');
+      const parentDocPromises = uniqueParentDocIds.map(docId => getDoc(doc(shaktiCollection, docId)));
+      const parentDocs = await Promise.all(parentDocPromises);
+      
+      // Create a map of parentDocId to its SLP data for quick lookup
+      const parentDocSLPMap = new Map<string, any[]>();
+      
+      parentDocs.forEach((parentDoc, index) => {
+        if (parentDoc.exists()) {
+          const data = parentDoc.data();
+          const parentDocId = uniqueParentDocIds[index];
+          const allSLPs: any[] = [];
+          
+          // Collect all SLPs from coveredAssemblyCoordinators array
+          if (data.coveredAssemblyCoordinators && Array.isArray(data.coveredAssemblyCoordinators)) {
+            data.coveredAssemblyCoordinators.forEach((coord: any) => {
+              if (coord.slps && Array.isArray(coord.slps)) {
+                allSLPs.push(...coord.slps);
+              }
+            });
+          }
+          
+          parentDocSLPMap.set(parentDocId, allSLPs);
+        }
+      });
+      
+      // Now map handler_ids to names using the parentDocId from each activity
+      result.forEach((activity: any) => {
+        if (activity.parentDocId && activity.handler_id) {
+          const slpsInParentDoc = parentDocSLPMap.get(activity.parentDocId);
+          if (slpsInParentDoc) {
+            const matchingSLP = slpsInParentDoc.find((slp: any) => 
+              slp.id === activity.handler_id || slp.uid === activity.handler_id
+            );
+            if (matchingSLP) {
+              coordinatorNamesMap.set(activity.handler_id, matchingSLP.name || activity.handler_id);
+            }
+          }
+        }
+      });
     }
     
     // Add coordinator names to activity records
@@ -754,35 +818,75 @@ const getHierarchicalShaktiLocalIssueVideoActivity = async (
       where('parentVertical', '==', 'shakti-abhiyaan'),
     );
 
-    if (assemblies && assemblies.length > 0) {
-      baseQuery1 = query(baseQuery1, where('assembly', 'in', assemblies));
-      baseQuery2 = query(baseQuery2, where('assembly', 'in', assemblies));
-    }
-
     if (handler_id) {
       baseQuery1 = query(baseQuery1, where('handler_id', '==', handler_id));
       baseQuery2 = query(baseQuery2, where('handler_id', '==', handler_id));
     }
 
     if (dateRange) {
-      const { startDate, endDate } = dateRange;
-      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
-      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDate), where('date_submitted', '<=', endDate));
+      const startDateStr = dateRange.startDate;
+      const endDateStr = dateRange.endDate;
+      
+      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr));
+      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr));
     }
 
-    const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
+    // Execute queries with assembly chunking to handle >10 assembly limit
+    let snap1Results = [];
+    let snap2Results = [];
+    
+    if (assemblies && assemblies.length > 0) {
+      const uniqueAssemblies = [...new Set(assemblies)];
+      
+      if (uniqueAssemblies.length <= 10) {
+        const query1WithAssemblies = query(baseQuery1, where('assembly', 'in', uniqueAssemblies));
+        const query2WithAssemblies = query(baseQuery2, where('assembly', 'in', uniqueAssemblies));
+        const [snap1, snap2] = await Promise.all([getDocs(query1WithAssemblies), getDocs(query2WithAssemblies)]);
+        snap1Results = [snap1];
+        snap2Results = [snap2];
+      } else {
+        const chunks = [];
+        for (let i = 0; i < uniqueAssemblies.length; i += 10) {
+          chunks.push(uniqueAssemblies.slice(i, i + 10));
+        }
+        
+        console.log(`[getHierarchicalShaktiLocalIssueVideoActivity] Chunking ${uniqueAssemblies.length} assemblies into ${chunks.length} queries`);
+        
+        const query1Promises = chunks.map(chunk => getDocs(query(baseQuery1, where('assembly', 'in', chunk))));
+        const query2Promises = chunks.map(chunk => getDocs(query(baseQuery2, where('assembly', 'in', chunk))));
+        
+        const [query1Results, query2Results] = await Promise.all([
+          Promise.all(query1Promises),
+          Promise.all(query2Promises)
+        ]);
+        
+        snap1Results = query1Results;
+        snap2Results = query2Results;
+      }
+    } else {
+      const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
+      snap1Results = [snap1];
+      snap2Results = [snap2];
+    }
+
     const activitiesMap = new Map();
-
-    snap1.forEach((doc) => {
-      if (!activitiesMap.has(doc.id)) {
-        activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
-      }
+    
+    // Process all snap1 results
+    snap1Results.forEach((snap) => {
+      snap.forEach((doc) => {
+        if (!activitiesMap.has(doc.id)) {
+          activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
+        }
+      });
     });
-
-    snap2.forEach((doc) => {
-      if (!activitiesMap.has(doc.id)) {
-        activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
-      }
+    
+    // Process all snap2 results
+    snap2Results.forEach((snap) => {
+      snap.forEach((doc) => {
+        if (!activitiesMap.has(doc.id)) {
+          activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
+        }
+      });
     });
 
     return Array.from(activitiesMap.values());
@@ -839,7 +943,15 @@ const getHierarchicalChaupals = async (assemblies?: string[], dateRange?: { star
 
     const result = Array.from(activitiesMap.values());
     const filteredResult = result.filter((doc: any) => doc.parentVertical !== 'shakti-abhiyaan');
-    return filteredResult;
+    
+    // Map dateFormatted to dateOfVisit for compatibility with ActivitiesList component
+    const mappedResult = filteredResult.map((doc: any) => ({
+      ...doc,
+      dateOfVisit: doc.dateFormatted || doc.dateOfVisit, // Use dateFormatted as dateOfVisit
+      coordinatorName: doc.handler_id || 'Unknown' // Add coordinator name for consistency
+    }));
+    
+    return mappedResult;
   } catch (error) {
     console.error('[getHierarchicalChaupals] Error:', error);
     return [];
@@ -1419,24 +1531,21 @@ export const fetchDetailedMeetings = async (options: FetchMetricsOptions): Promi
       baseQuery2 = query(baseQuery2, where('handler_id', '==', options.handler_id));
     }
 
-    // Add date filter if provided - meetings use created_at field with epoch ms format
+    // Add date filter if provided - meetings use dateOfVisit field with string format (YYYY-MM-DD)
     if (options.dateRange) {
       console.log('[fetchDetailedMeetings] Applying date filter:', options.dateRange);
       
-      // Use UTC boundaries to ensure full 24-hour coverage regardless of timezone
-      const startDateObj = new Date(`${options.dateRange.startDate}T00:00:00.000Z`);
-      const endDateObj = new Date(`${options.dateRange.endDate}T23:59:59.999Z`);
-      const startEpochMs = startDateObj.getTime();
-      const endEpochMs = endDateObj.getTime();
+      const startDateStr = options.dateRange.startDate; // Already in YYYY-MM-DD format
+      const endDateStr = options.dateRange.endDate;     // Already in YYYY-MM-DD format
       
-      console.log(`[fetchDetailedMeetings] Date filter range: ${startEpochMs} to ${endEpochMs}`);
+      console.log(`[fetchDetailedMeetings] Date filter range: ${startDateStr} to ${endDateStr}`);
       
-      baseQuery1 = query(baseQuery1, where('created_at', '>=', startEpochMs), where('created_at', '<=', endEpochMs), orderBy('created_at', 'desc'));
-      baseQuery2 = query(baseQuery2, where('created_at', '>=', startEpochMs), where('created_at', '<=', endEpochMs), orderBy('created_at', 'desc'));
+      baseQuery1 = query(baseQuery1, where('dateOfVisit', '>=', startDateStr), where('dateOfVisit', '<=', endDateStr), orderBy('dateOfVisit', 'desc'));
+      baseQuery2 = query(baseQuery2, where('dateOfVisit', '>=', startDateStr), where('dateOfVisit', '<=', endDateStr), orderBy('dateOfVisit', 'desc'));
     } else {
       // Add orderBy for consistent sorting even without date filter
-      baseQuery1 = query(baseQuery1, orderBy('created_at', 'desc'));
-      baseQuery2 = query(baseQuery2, orderBy('created_at', 'desc'));
+      baseQuery1 = query(baseQuery1, orderBy('dateOfVisit', 'desc'));
+      baseQuery2 = query(baseQuery2, orderBy('dateOfVisit', 'desc'));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
@@ -1518,12 +1627,6 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
     let baseQuery1 = query(slpActivityCollection, where('form_type', '==', 'members'));
     let baseQuery2 = query(slpActivityCollection, where('type', '==', 'members'));
 
-    // Add assembly filter if provided
-    if (options.assemblies && options.assemblies.length > 0) {
-      baseQuery1 = query(baseQuery1, where('assembly', 'in', options.assemblies));
-      baseQuery2 = query(baseQuery2, where('assembly', 'in', options.assemblies));
-    }
-
     // Add handler_id filter if provided (for AC/SLP level)
     if (options.handler_id) {
       baseQuery1 = query(baseQuery1, where('handler_id', '==', options.handler_id));
@@ -1552,50 +1655,106 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
       baseQuery2 = query(baseQuery2, orderBy('created_at', 'desc'));
     }
 
-    const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
-    console.log(`[fetchDetailedMembers] Query 1 (form_type='members') returned: ${snap1.size} documents`);
-    console.log(`[fetchDetailedMembers] Query 2 (type='members') returned: ${snap2.size} documents`);
+    // Execute queries with assembly chunking to handle >10 assembly limit
+    let snap1Results = [];
+    let snap2Results = [];
+    
+    if (options.assemblies && options.assemblies.length > 0) {
+      const uniqueAssemblies = [...new Set(options.assemblies)];
+      
+      if (uniqueAssemblies.length <= 10) {
+        // Single query for <=10 assemblies
+        const query1WithAssemblies = query(baseQuery1, where('assembly', 'in', uniqueAssemblies));
+        const query2WithAssemblies = query(baseQuery2, where('assembly', 'in', uniqueAssemblies));
+        const [snap1, snap2] = await Promise.all([getDocs(query1WithAssemblies), getDocs(query2WithAssemblies)]);
+        snap1Results = [snap1];
+        snap2Results = [snap2];
+      } else {
+        // Chunk into groups of 10 and run parallel queries
+        const chunks = [];
+        for (let i = 0; i < uniqueAssemblies.length; i += 10) {
+          chunks.push(uniqueAssemblies.slice(i, i + 10));
+        }
+        
+        console.log(`[fetchDetailedMembers] Chunking ${uniqueAssemblies.length} assemblies into ${chunks.length} queries`);
+        
+        const query1Promises = chunks.map(chunk => {
+          const chunkQuery = query(baseQuery1, where('assembly', 'in', chunk));
+          return getDocs(chunkQuery);
+        });
+        
+        const query2Promises = chunks.map(chunk => {
+          const chunkQuery = query(baseQuery2, where('assembly', 'in', chunk));
+          return getDocs(chunkQuery);
+        });
+        
+        const [query1Results, query2Results] = await Promise.all([
+          Promise.all(query1Promises),
+          Promise.all(query2Promises)
+        ]);
+        
+        snap1Results = query1Results;
+        snap2Results = query2Results;
+      }
+    } else {
+      // No assembly filter
+      const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
+      snap1Results = [snap1];
+      snap2Results = [snap2];
+    }
+    // Calculate total document counts from all result snapshots
+    const totalSnap1Docs = snap1Results.reduce((total, snap) => total + snap.size, 0);
+    const totalSnap2Docs = snap2Results.reduce((total, snap) => total + snap.size, 0);
+    
+    console.log(`[fetchDetailedMembers] Query 1 (form_type='members') returned: ${totalSnap1Docs} documents`);
+    console.log(`[fetchDetailedMembers] Query 2 (type='members') returned: ${totalSnap2Docs} documents`);
     
     const membersMap = new Map();
     let documentsWithoutCreatedAt = 0;
     let documentsOutsideRange = 0;
     
-    snap1.forEach((doc) => {
-      const data = doc.data();
-      if (!membersMap.has(doc.id)) {
-        // Debug created_at field
-        if (!data.created_at) {
-          documentsWithoutCreatedAt++;
-          console.log(`[fetchDetailedMembers] Document ${doc.id} missing created_at field`);
-        } else if (options.dateRange) {
-          const startEpochMs = new Date(`${options.dateRange.startDate}T00:00:00.000`).getTime();
-          const endEpochMs = new Date(`${options.dateRange.endDate}T23:59:59.999`).getTime();
-          if (data.created_at < startEpochMs || data.created_at > endEpochMs) {
-            documentsOutsideRange++;
-            console.log(`[fetchDetailedMembers] Document ${doc.id} created_at ${data.created_at} outside range`);
+    // Process all snap1 results
+    snap1Results.forEach((snap) => {
+      snap.forEach((doc) => {
+        const data = doc.data();
+        if (!membersMap.has(doc.id)) {
+          // Debug created_at field
+          if (!data.created_at) {
+            documentsWithoutCreatedAt++;
+            console.log(`[fetchDetailedMembers] Document ${doc.id} missing created_at field`);
+          } else if (options.dateRange) {
+            const startEpochMs = new Date(`${options.dateRange.startDate}T00:00:00.000`).getTime();
+            const endEpochMs = new Date(`${options.dateRange.endDate}T23:59:59.999`).getTime();
+            if (data.created_at < startEpochMs || data.created_at > endEpochMs) {
+              documentsOutsideRange++;
+              console.log(`[fetchDetailedMembers] Document ${doc.id} created_at ${data.created_at} outside range`);
+            }
           }
+          membersMap.set(doc.id, { ...data, id: doc.id });
         }
-        membersMap.set(doc.id, { ...data, id: doc.id });
-      }
+      });
     });
     
-    snap2.forEach((doc) => {
-      const data = doc.data();
-      if (!membersMap.has(doc.id)) {
-        // Debug created_at field
-        if (!data.created_at) {
-          documentsWithoutCreatedAt++;
-          console.log(`[fetchDetailedMembers] Document ${doc.id} missing created_at field`);
-        } else if (options.dateRange) {
-          const startEpochMs = new Date(`${options.dateRange.startDate}T00:00:00.000`).getTime();
-          const endEpochMs = new Date(`${options.dateRange.endDate}T23:59:59.999`).getTime();
-          if (data.created_at < startEpochMs || data.created_at > endEpochMs) {
-            documentsOutsideRange++;
-            console.log(`[fetchDetailedMembers] Document ${doc.id} created_at ${data.created_at} outside range`);
+    // Process all snap2 results
+    snap2Results.forEach((snap) => {
+      snap.forEach((doc) => {
+        const data = doc.data();
+        if (!membersMap.has(doc.id)) {
+          // Debug created_at field
+          if (!data.created_at) {
+            documentsWithoutCreatedAt++;
+            console.log(`[fetchDetailedMembers] Document ${doc.id} missing created_at field`);
+          } else if (options.dateRange) {
+            const startEpochMs = new Date(`${options.dateRange.startDate}T00:00:00.000`).getTime();
+            const endEpochMs = new Date(`${options.dateRange.endDate}T23:59:59.999`).getTime();
+            if (data.created_at < startEpochMs || data.created_at > endEpochMs) {
+              documentsOutsideRange++;
+              console.log(`[fetchDetailedMembers] Document ${doc.id} created_at ${data.created_at} outside range`);
+            }
           }
+          membersMap.set(doc.id, { ...data, id: doc.id });
         }
-        membersMap.set(doc.id, { ...data, id: doc.id });
-      }
+      });
     });
 
     console.log(`[fetchDetailedMembers] Total unique documents after merge: ${membersMap.size}`);
@@ -1683,12 +1842,6 @@ export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise
     let baseQuery1 = query(slpActivityCollection, where('form_type', '==', 'local-issue-video'));
     let baseQuery2 = query(slpActivityCollection, where('type', '==', 'local-issue-video'));
 
-    // Add assembly filter if provided
-    if (options.assemblies && options.assemblies.length > 0) {
-      baseQuery1 = query(baseQuery1, where('assembly', 'in', options.assemblies));
-      baseQuery2 = query(baseQuery2, where('assembly', 'in', options.assemblies));
-    }
-
     // Add handler_id filter if provided (for AC/SLP level)
     if (options.handler_id) {
       baseQuery1 = query(baseQuery1, where('handler_id', '==', options.handler_id));
@@ -1706,19 +1859,79 @@ export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise
       baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr));
     }
 
-    const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
+    // Execute queries with assembly chunking to handle >10 assembly limit
+    let snap1Results = [];
+    let snap2Results = [];
+    
+    if (options.assemblies && options.assemblies.length > 0) {
+      const uniqueAssemblies = [...new Set(options.assemblies)];
+      
+      if (uniqueAssemblies.length <= 10) {
+        // Single query for <=10 assemblies
+        const query1WithAssemblies = query(baseQuery1, where('assembly', 'in', uniqueAssemblies));
+        const query2WithAssemblies = query(baseQuery2, where('assembly', 'in', uniqueAssemblies));
+        const [snap1, snap2] = await Promise.all([getDocs(query1WithAssemblies), getDocs(query2WithAssemblies)]);
+        snap1Results = [snap1];
+        snap2Results = [snap2];
+      } else {
+        // Chunk into groups of 10 and run parallel queries
+        const chunks = [];
+        for (let i = 0; i < uniqueAssemblies.length; i += 10) {
+          chunks.push(uniqueAssemblies.slice(i, i + 10));
+        }
+        
+        console.log(`[fetchDetailedVideos] Chunking ${uniqueAssemblies.length} assemblies into ${chunks.length} queries`);
+        
+        const query1Promises = chunks.map(chunk => {
+          const chunkQuery = query(baseQuery1, where('assembly', 'in', chunk));
+          return getDocs(chunkQuery);
+        });
+        
+        const query2Promises = chunks.map(chunk => {
+          const chunkQuery = query(baseQuery2, where('assembly', 'in', chunk));
+          return getDocs(chunkQuery);
+        });
+        
+        const [query1Results, query2Results] = await Promise.all([
+          Promise.all(query1Promises),
+          Promise.all(query2Promises)
+        ]);
+        
+        snap1Results = query1Results;
+        snap2Results = query2Results;
+      }
+    } else {
+      // No assembly filter
+      const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
+      snap1Results = [snap1];
+      snap2Results = [snap2];
+    }
+    
+    // Calculate total document counts from all result snapshots
+    const totalSnap1Docs = snap1Results.reduce((total, snap) => total + snap.size, 0);
+    const totalSnap2Docs = snap2Results.reduce((total, snap) => total + snap.size, 0);
+    
+    console.log(`[fetchDetailedVideos] Query 1 (form_type='local-issue-video') returned: ${totalSnap1Docs} documents`);
+    console.log(`[fetchDetailedVideos] Query 2 (type='local-issue-video') returned: ${totalSnap2Docs} documents`);
+    
     const videosMap = new Map();
     
-    snap1.forEach((doc) => {
-      if (!videosMap.has(doc.id)) {
-        videosMap.set(doc.id, { ...doc.data(), id: doc.id });
-      }
+    // Process all snap1 results
+    snap1Results.forEach((snap) => {
+      snap.forEach((doc) => {
+        if (!videosMap.has(doc.id)) {
+          videosMap.set(doc.id, { ...doc.data(), id: doc.id });
+        }
+      });
     });
     
-    snap2.forEach((doc) => {
-      if (!videosMap.has(doc.id)) {
-        videosMap.set(doc.id, { ...doc.data(), id: doc.id });
-      }
+    // Process all snap2 results
+    snap2Results.forEach((snap) => {
+      snap.forEach((doc) => {
+        if (!videosMap.has(doc.id)) {
+          videosMap.set(doc.id, { ...doc.data(), id: doc.id });
+        }
+      });
     });
 
     const result = Array.from(videosMap.values());
