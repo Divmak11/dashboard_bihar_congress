@@ -656,16 +656,18 @@ export async function getCoordinatorDetails(
     endDateObj.setHours(23, 59, 59, 999); // Include the entire end day
     
     const filterByDateRange = (entries: WtmSlpEntry[]): WtmSlpEntry[] => {
+      const startEpochMs = startDateObj.getTime();
+      const endEpochMs = endDateObj.getTime();
+      
       return entries.filter((entry) => {
-        if (!entry.dateOfVisit) {
-          console.log(`[getCoordinatorDetails] Document ${entry.id} has no dateOfVisit field, excluding`);
+        if (!entry.created_at) {
+          console.log(`[getCoordinatorDetails] Document ${entry.id} has no created_at field, excluding`);
           return false;
         }
         
-        const entryDate = new Date(entry.dateOfVisit);
-        const isInRange = entryDate >= startDateObj && entryDate <= endDateObj;
+        const isInRange = entry.created_at >= startEpochMs && entry.created_at <= endEpochMs;
         if (!isInRange) {
-          console.log(`[getCoordinatorDetails] Document ${entry.id} date ${entry.dateOfVisit} is outside range, excluding`);
+          console.log(`[getCoordinatorDetails] Document ${entry.id} created_at ${entry.created_at} is outside range, excluding`);
         }
         return isInRange;
       });
@@ -768,22 +770,24 @@ export async function getSlpMemberActivity(
       
       // Apply date filtering if provided
       if (dateRange) {
-        // Use string comparison since dateOfVisit is stored as string (e.g., "2025-07-14")
-        const startDateStr = dateRange.startDate;
-        const endDateStr = dateRange.endDate;
+        // Convert date range to epoch milliseconds for created_at field
+        const startDateObj = new Date(`${dateRange.startDate}T00:00:00.000Z`);
+        const endDateObj = new Date(`${dateRange.endDate}T23:59:59.999Z`);
+        const startEpochMs = startDateObj.getTime();
+        const endEpochMs = endDateObj.getTime();
         
-        console.log(`[getSlpMemberActivity] Applying date filter: ${startDateStr} to ${endDateStr}`);
+        console.log(`[getSlpMemberActivity] Applying date filter: ${startEpochMs} to ${endEpochMs}`);
         
         baseFormTypeQuery = query(
           baseFormTypeQuery,
-          where('dateOfVisit', '>=', startDateStr),
-          where('dateOfVisit', '<=', endDateStr)
+          where('createdAt', '>=', startEpochMs),
+          where('createdAt', '<=', endEpochMs)
         );
         
         baseTypeQuery = query(
           baseTypeQuery,
-          where('dateOfVisit', '>=', startDateStr),
-          where('dateOfVisit', '<=', endDateStr)
+          where('createdAt', '>=', startEpochMs),
+          where('createdAt', '<=', endEpochMs)
         );
       }
       
@@ -838,22 +842,24 @@ export async function getSlpMemberActivity(
       
       // Apply date filtering if provided
       if (dateRange) {
-        // Use string comparison since dateOfVisit is stored as string (e.g., "2025-07-14")
-        const startDateStr = dateRange.startDate;
-        const endDateStr = dateRange.endDate;
+        // Convert date range to epoch milliseconds for created_at field
+        const startDateObj = new Date(`${dateRange.startDate}T00:00:00.000Z`);
+        const endDateObj = new Date(`${dateRange.endDate}T23:59:59.999Z`);
+        const startEpochMs = startDateObj.getTime();
+        const endEpochMs = endDateObj.getTime();
         
-        console.log(`[getSlpMemberActivity] Applying date filter: ${startDateStr} to ${endDateStr}`);
+        console.log(`[getSlpMemberActivity] Applying date filter: ${startEpochMs} to ${endEpochMs}`);
         
         baseFormTypeQuery = query(
           baseFormTypeQuery,
-          where('dateOfVisit', '>=', startDateStr),
-          where('dateOfVisit', '<=', endDateStr)
+          where('createdAt', '>=', startEpochMs),
+          where('createdAt', '<=', endEpochMs)
         );
         
         baseTypeQuery = query(
           baseTypeQuery,
-          where('dateOfVisit', '>=', startDateStr),
-          where('dateOfVisit', '<=', endDateStr)
+          where('createdAt', '>=', startEpochMs),
+          where('createdAt', '<=', endEpochMs)
         );
       }
       

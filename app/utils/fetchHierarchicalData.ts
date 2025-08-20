@@ -68,14 +68,16 @@ const getHierarchicalMemberActivity = async (assemblies?: string[], dateRange?: 
 
     // Add date filter if provided
     if (dateRange) {
-      // Use string comparison for dateOfVisit field (format: "2025-07-14")
-      const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
-      const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
+      // Convert date range to epoch milliseconds for created_at field
+      const startDateObj = new Date(`${dateRange.startDate}T00:00:00.000Z`);
+      const endDateObj = new Date(`${dateRange.endDate}T23:59:59.999Z`);
+      const startEpochMs = startDateObj.getTime();
+      const endEpochMs = endDateObj.getTime();
       
-      console.log('[getHierarchicalMemberActivity] Filtering by dateOfVisit:', startDateStr, 'to', endDateStr);
+      console.log('[getHierarchicalMemberActivity] Filtering by createdAt:', startEpochMs, 'to', endEpochMs);
       
-      baseQuery1 = query(baseQuery1, where('dateOfVisit', '>=', startDateStr), where('dateOfVisit', '<=', endDateStr));
-      baseQuery2 = query(baseQuery2, where('dateOfVisit', '>=', startDateStr), where('dateOfVisit', '<=', endDateStr));
+      baseQuery1 = query(baseQuery1, where('createdAt', '>=', startEpochMs), where('createdAt', '<=', endEpochMs));
+      baseQuery2 = query(baseQuery2, where('createdAt', '>=', startEpochMs), where('createdAt', '<=', endEpochMs));
     }
 
     // Execute queries with assembly chunking to handle >10 assembly limit
@@ -520,14 +522,16 @@ const getHierarchicalShaktiSaathi = async (assemblies?: string[], dateRange?: { 
     }
 
     if (dateRange) {
-      // Use string comparison for dateOfVisit field (format: "2025-07-14")
-      const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
-      const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
+      // Convert date range to epoch milliseconds for created_at field
+      const startDateObj = new Date(`${dateRange.startDate}T00:00:00.000Z`);
+      const endDateObj = new Date(`${dateRange.endDate}T23:59:59.999Z`);
+      const startEpochMs = startDateObj.getTime();
+      const endEpochMs = endDateObj.getTime();
       
-      console.log('[getHierarchicalShaktiSaathi] Filtering by dateOfVisit:', startDateStr, 'to', endDateStr);
+      console.log('[getHierarchicalShaktiSaathi] Filtering by createdAt:', startEpochMs, 'to', endEpochMs);
       
-      baseQuery1 = query(baseQuery1, where('dateOfVisit', '>=', startDateStr), where('dateOfVisit', '<=', endDateStr));
-      baseQuery2 = query(baseQuery2, where('dateOfVisit', '>=', startDateStr), where('dateOfVisit', '<=', endDateStr));
+      baseQuery1 = query(baseQuery1, where('createdAt', '>=', startEpochMs), where('createdAt', '<=', endEpochMs));
+      baseQuery2 = query(baseQuery2, where('createdAt', '>=', startEpochMs), where('createdAt', '<=', endEpochMs));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
@@ -1519,48 +1523,99 @@ export const fetchDetailedMeetings = async (options: FetchMetricsOptions): Promi
     let baseQuery1 = query(wtmSlpCollection, where('form_type', '==', 'meeting'));
     let baseQuery2 = query(wtmSlpCollection, where('type', '==', 'meeting'));
 
-    // Add assembly filter if provided
-    if (options.assemblies && options.assemblies.length > 0) {
-      baseQuery1 = query(baseQuery1, where('assembly', 'in', options.assemblies));
-      baseQuery2 = query(baseQuery2, where('assembly', 'in', options.assemblies));
-    }
-
     // Add handler_id filter if provided (for AC/SLP level)
     if (options.handler_id) {
       baseQuery1 = query(baseQuery1, where('handler_id', '==', options.handler_id));
       baseQuery2 = query(baseQuery2, where('handler_id', '==', options.handler_id));
     }
 
-    // Add date filter if provided - meetings use dateOfVisit field with string format (YYYY-MM-DD)
+    // Add date filter if provided - meetings use created_at field with epoch timestamp (to match getWtmSlpSummary)
     if (options.dateRange) {
       console.log('[fetchDetailedMeetings] Applying date filter:', options.dateRange);
       
-      const startDateStr = options.dateRange.startDate; // Already in YYYY-MM-DD format
-      const endDateStr = options.dateRange.endDate;     // Already in YYYY-MM-DD format
+      // Use UTC boundaries to match getWtmSlpSummary filtering logic
+      const startDateObj = new Date(`${options.dateRange.startDate}T00:00:00.000Z`);
+      const endDateObj = new Date(`${options.dateRange.endDate}T23:59:59.999Z`);
       
-      console.log(`[fetchDetailedMeetings] Date filter range: ${startDateStr} to ${endDateStr}`);
+      const startEpochMs = startDateObj.getTime();
+      const endEpochMs = endDateObj.getTime();
       
-      baseQuery1 = query(baseQuery1, where('dateOfVisit', '>=', startDateStr), where('dateOfVisit', '<=', endDateStr), orderBy('dateOfVisit', 'desc'));
-      baseQuery2 = query(baseQuery2, where('dateOfVisit', '>=', startDateStr), where('dateOfVisit', '<=', endDateStr), orderBy('dateOfVisit', 'desc'));
+      console.log(`[fetchDetailedMeetings] Date filter range: ${startEpochMs} to ${endEpochMs}`);
+      
+      baseQuery1 = query(baseQuery1, where('created_at', '>=', startEpochMs), where('created_at', '<=', endEpochMs), orderBy('created_at', 'desc'));
+      baseQuery2 = query(baseQuery2, where('created_at', '>=', startEpochMs), where('created_at', '<=', endEpochMs), orderBy('created_at', 'desc'));
     } else {
       // Add orderBy for consistent sorting even without date filter
-      baseQuery1 = query(baseQuery1, orderBy('dateOfVisit', 'desc'));
-      baseQuery2 = query(baseQuery2, orderBy('dateOfVisit', 'desc'));
+      baseQuery1 = query(baseQuery1, orderBy('created_at', 'desc'));
+      baseQuery2 = query(baseQuery2, orderBy('created_at', 'desc'));
     }
 
-    const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
+    // Execute queries with assembly chunking to handle >10 assembly limit
+    let snap1Results = [];
+    let snap2Results = [];
+    
+    if (options.assemblies && options.assemblies.length > 0) {
+      const uniqueAssemblies = [...new Set(options.assemblies)];
+      
+      if (uniqueAssemblies.length <= 10) {
+        // Single query for <=10 assemblies
+        const query1WithAssemblies = query(baseQuery1, where('assembly', 'in', uniqueAssemblies));
+        const query2WithAssemblies = query(baseQuery2, where('assembly', 'in', uniqueAssemblies));
+        const [snap1, snap2] = await Promise.all([getDocs(query1WithAssemblies), getDocs(query2WithAssemblies)]);
+        snap1Results = [snap1];
+        snap2Results = [snap2];
+      } else {
+        // Chunk into groups of 10 and run parallel queries
+        const chunks = [];
+        for (let i = 0; i < uniqueAssemblies.length; i += 10) {
+          chunks.push(uniqueAssemblies.slice(i, i + 10));
+        }
+        
+        console.log(`[fetchDetailedMeetings] Chunking ${uniqueAssemblies.length} assemblies into ${chunks.length} queries`);
+        
+        const query1Promises = chunks.map(chunk => {
+          const chunkQuery = query(baseQuery1, where('assembly', 'in', chunk));
+          return getDocs(chunkQuery);
+        });
+        
+        const query2Promises = chunks.map(chunk => {
+          const chunkQuery = query(baseQuery2, where('assembly', 'in', chunk));
+          return getDocs(chunkQuery);
+        });
+        
+        const [query1Results, query2Results] = await Promise.all([
+          Promise.all(query1Promises),
+          Promise.all(query2Promises)
+        ]);
+        
+        snap1Results = query1Results;
+        snap2Results = query2Results;
+      }
+    } else {
+      // No assembly filter
+      const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
+      snap1Results = [snap1];
+      snap2Results = [snap2];
+    }
+    
     const meetingsMap = new Map();
     
-    snap1.forEach((doc) => {
-      if (!meetingsMap.has(doc.id)) {
-        meetingsMap.set(doc.id, { ...doc.data(), id: doc.id });
-      }
+    // Process all snap1 results
+    snap1Results.forEach((snap) => {
+      snap.forEach((doc) => {
+        if (!meetingsMap.has(doc.id)) {
+          meetingsMap.set(doc.id, { ...doc.data(), id: doc.id });
+        }
+      });
     });
     
-    snap2.forEach((doc) => {
-      if (!meetingsMap.has(doc.id)) {
-        meetingsMap.set(doc.id, { ...doc.data(), id: doc.id });
-      }
+    // Process all snap2 results
+    snap2Results.forEach((snap) => {
+      snap.forEach((doc) => {
+        if (!meetingsMap.has(doc.id)) {
+          meetingsMap.set(doc.id, { ...doc.data(), id: doc.id });
+        }
+      });
     });
 
     const result = Array.from(meetingsMap.values());
@@ -1633,7 +1688,7 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
       baseQuery2 = query(baseQuery2, where('handler_id', '==', options.handler_id));
     }
 
-    // Add date filter if provided - members use created_at field with epoch ms format
+    // Add date filter if provided - members use createdAt field with epoch ms format (to match getHierarchicalMemberActivity)
     if (options.dateRange) {
       console.log('[fetchDetailedMembers] Applying date filter:', options.dateRange);
       
@@ -1647,12 +1702,12 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
       console.log(`[fetchDetailedMembers] Start date: ${startDateObj.toISOString()}`);
       console.log(`[fetchDetailedMembers] End date: ${endDateObj.toISOString()}`);
       
-      baseQuery1 = query(baseQuery1, where('created_at', '>=', startEpochMs), where('created_at', '<=', endEpochMs), orderBy('created_at', 'desc'));
-      baseQuery2 = query(baseQuery2, where('created_at', '>=', startEpochMs), where('created_at', '<=', endEpochMs), orderBy('created_at', 'desc'));
+      baseQuery1 = query(baseQuery1, where('createdAt', '>=', startEpochMs), where('createdAt', '<=', endEpochMs), orderBy('createdAt', 'desc'));
+      baseQuery2 = query(baseQuery2, where('createdAt', '>=', startEpochMs), where('createdAt', '<=', endEpochMs), orderBy('createdAt', 'desc'));
     } else {
       // Add orderBy for consistent sorting even without date filter
-      baseQuery1 = query(baseQuery1, orderBy('created_at', 'desc'));
-      baseQuery2 = query(baseQuery2, orderBy('created_at', 'desc'));
+      baseQuery1 = query(baseQuery1, orderBy('createdAt', 'desc'));
+      baseQuery2 = query(baseQuery2, orderBy('createdAt', 'desc'));
     }
 
     // Execute queries with assembly chunking to handle >10 assembly limit
@@ -1718,16 +1773,16 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
       snap.forEach((doc) => {
         const data = doc.data();
         if (!membersMap.has(doc.id)) {
-          // Debug created_at field
-          if (!data.created_at) {
+          // Debug createdAt field
+          if (!data.createdAt) {
             documentsWithoutCreatedAt++;
-            console.log(`[fetchDetailedMembers] Document ${doc.id} missing created_at field`);
+            console.log(`[fetchDetailedMembers] Document ${doc.id} missing createdAt field`);
           } else if (options.dateRange) {
-            const startEpochMs = new Date(`${options.dateRange.startDate}T00:00:00.000`).getTime();
-            const endEpochMs = new Date(`${options.dateRange.endDate}T23:59:59.999`).getTime();
-            if (data.created_at < startEpochMs || data.created_at > endEpochMs) {
+            const startEpochMs = new Date(`${options.dateRange.startDate}T00:00:00.000Z`).getTime();
+            const endEpochMs = new Date(`${options.dateRange.endDate}T23:59:59.999Z`).getTime();
+            if (data.createdAt < startEpochMs || data.createdAt > endEpochMs) {
               documentsOutsideRange++;
-              console.log(`[fetchDetailedMembers] Document ${doc.id} created_at ${data.created_at} outside range`);
+              console.log(`[fetchDetailedMembers] Document ${doc.id} createdAt ${data.createdAt} outside range`);
             }
           }
           membersMap.set(doc.id, { ...data, id: doc.id });
@@ -1740,16 +1795,16 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
       snap.forEach((doc) => {
         const data = doc.data();
         if (!membersMap.has(doc.id)) {
-          // Debug created_at field
-          if (!data.created_at) {
+          // Debug createdAt field
+          if (!data.createdAt) {
             documentsWithoutCreatedAt++;
-            console.log(`[fetchDetailedMembers] Document ${doc.id} missing created_at field`);
+            console.log(`[fetchDetailedMembers] Document ${doc.id} missing createdAt field`);
           } else if (options.dateRange) {
-            const startEpochMs = new Date(`${options.dateRange.startDate}T00:00:00.000`).getTime();
-            const endEpochMs = new Date(`${options.dateRange.endDate}T23:59:59.999`).getTime();
-            if (data.created_at < startEpochMs || data.created_at > endEpochMs) {
+            const startEpochMs = new Date(`${options.dateRange.startDate}T00:00:00.000Z`).getTime();
+            const endEpochMs = new Date(`${options.dateRange.endDate}T23:59:59.999Z`).getTime();
+            if (data.createdAt < startEpochMs || data.createdAt > endEpochMs) {
               documentsOutsideRange++;
-              console.log(`[fetchDetailedMembers] Document ${doc.id} created_at ${data.created_at} outside range`);
+              console.log(`[fetchDetailedMembers] Document ${doc.id} createdAt ${data.createdAt} outside range`);
             }
           }
           membersMap.set(doc.id, { ...data, id: doc.id });
@@ -1758,7 +1813,7 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
     });
 
     console.log(`[fetchDetailedMembers] Total unique documents after merge: ${membersMap.size}`);
-    console.log(`[fetchDetailedMembers] Documents without created_at: ${documentsWithoutCreatedAt}`);
+    console.log(`[fetchDetailedMembers] Documents without createdAt: ${documentsWithoutCreatedAt}`);
     console.log(`[fetchDetailedMembers] Documents outside date range: ${documentsOutsideRange}`);
 
     const result = Array.from(membersMap.values());
@@ -1776,7 +1831,7 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
     if (filteredResult.length > 0) {
       console.log('[fetchDetailedMembers] Sample documents:');
       filteredResult.slice(0, 3).forEach((doc, index) => {
-        console.log(`  ${index + 1}. ID: ${doc.id}, created_at: ${doc.created_at}, date: ${new Date(doc.created_at).toISOString()}`);
+        console.log(`  ${index + 1}. ID: ${doc.id}, createdAt: ${doc.createdAt}, date: ${new Date(doc.createdAt).toISOString()}`);
       });
     }
     
@@ -1848,15 +1903,19 @@ export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise
       baseQuery2 = query(baseQuery2, where('handler_id', '==', options.handler_id));
     }
 
-    // Add date filtering using Firestore queries - videos use date_submitted field with string comparison
+    // Add date filtering using Firestore queries - videos use date_submitted field with string comparison (YYYY-MM-DD format)
     if (options.dateRange) {
       const startDateStr = options.dateRange.startDate; // Already in YYYY-MM-DD format
       const endDateStr = options.dateRange.endDate;     // Already in YYYY-MM-DD format
       
       console.log('[fetchDetailedVideos] Applying Firestore date filter:', startDateStr, 'to', endDateStr);
       
-      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr));
-      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr));
+      baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr), orderBy('date_submitted', 'desc'));
+      baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr), orderBy('date_submitted', 'desc'));
+    } else {
+      // Add orderBy for consistent sorting even without date filter
+      baseQuery1 = query(baseQuery1, orderBy('date_submitted', 'desc'));
+      baseQuery2 = query(baseQuery2, orderBy('date_submitted', 'desc'));
     }
 
     // Execute queries with assembly chunking to handle >10 assembly limit
