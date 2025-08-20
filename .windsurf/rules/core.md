@@ -6,7 +6,7 @@ globs: **/*
 
 # Core Rules
 
-- For every implementation, use occam's razon principle of suggesting the simplest approach.
+- For every implementation, use occam's razor principle of suggesting the simplest approach.
 - Always use the smallest diff approach for any implementation and avoid refactoring unrelated code. 
 - Keep answers short, concise and upto the point.
 - Never elaborate if not specifically asked.

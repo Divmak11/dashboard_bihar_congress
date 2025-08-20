@@ -76,6 +76,11 @@ const ActivitiesList: React.FC<ActivitiesListProps> = ({ data, loading = false, 
         }
       },
       {
+        key: 'coordinatorName',
+        label: 'Coordinator Name',
+        sortable: true
+      },
+      {
         key: 'assembly',
         label: 'Assembly',
         sortable: true

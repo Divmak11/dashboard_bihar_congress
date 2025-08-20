@@ -9,7 +9,7 @@ import {
 
 import { CumulativeMetrics } from '../../models/hierarchicalTypes';
 import { db } from './firebase';
-import { collection, query, where, getDocs, doc, getDoc, QueryDocumentSnapshot, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, documentId, doc, getDoc, QueryDocumentSnapshot } from 'firebase/firestore';
 import { createAppError, logError, getFirebaseErrorCode, validateDateRange, validateAssemblyData, ERROR_CODES } from './errorUtils';
 
 /**
@@ -275,6 +275,7 @@ const getHierarchicalLocalIssueVideoActivity = async (assemblies?: string[], dat
 
     const result = Array.from(activitiesMap.values());
     const filteredResult = result.filter((doc: any) => doc.parentVertical !== 'shakti-abhiyaan');
+    console.log(`[getHierarchicalLocalIssueVideoActivity] Final result count: ${filteredResult.length}`);
     return filteredResult;
   } catch (error) {
     console.error('[getHierarchicalLocalIssueVideoActivity] Error:', error);
@@ -508,7 +509,37 @@ const getHierarchicalShaktiSaathi = async (assemblies?: string[], dateRange?: { 
       }
     });
 
-    return Array.from(activitiesMap.values());
+    const result = Array.from(activitiesMap.values());
+    
+    // Enrich with coordinator names (SLP names from shakti-abhiyaan collection)
+    const coordinatorNamesMap = new Map<string, string>();
+    const uniqueHandlerIds = [...new Set(result.map((activity: any) => activity.handler_id).filter(Boolean))];
+    
+    if (uniqueHandlerIds.length > 0) {
+      // Handle Firebase 'IN' query limit of 30 by batching
+      const batchSize = 30;
+      for (let i = 0; i < uniqueHandlerIds.length; i += batchSize) {
+        const batch = uniqueHandlerIds.slice(i, i + batchSize);
+        
+        // Look up SLP names directly from shakti-abhiyaan documents
+        const shaktiCollection = collection(db, 'shakti-abhiyaan');
+        const shaktiQuery = query(shaktiCollection, where('uid', 'in', batch));
+        const shaktiSnap = await getDocs(shaktiQuery);
+        
+        shaktiSnap.forEach((doc) => {
+          const data = doc.data();
+          coordinatorNamesMap.set(doc.id, data.name || data.recommendedPersonName || doc.id);
+        });
+      }
+    }
+    
+    // Add coordinator names to activity records
+    const enrichedResult = result.map((activity: any) => ({
+      ...activity,
+      coordinatorName: coordinatorNamesMap.get(activity.handler_id) || activity.handler_id || 'Unknown'
+    }));
+    
+    return enrichedResult;
   } catch (error) {
     console.error('[getHierarchicalShaktiSaathi] Error:', error);
     return [];
@@ -1388,12 +1419,24 @@ export const fetchDetailedMeetings = async (options: FetchMetricsOptions): Promi
       baseQuery2 = query(baseQuery2, where('handler_id', '==', options.handler_id));
     }
 
-    // Add date filter if provided - meetings use dateOfVisit field with string format "YYYY-MM-DD"
+    // Add date filter if provided - meetings use created_at field with epoch ms format
     if (options.dateRange) {
       console.log('[fetchDetailedMeetings] Applying date filter:', options.dateRange);
       
-      baseQuery1 = query(baseQuery1, where('dateOfVisit', '>=', options.dateRange.startDate), where('dateOfVisit', '<=', options.dateRange.endDate));
-      baseQuery2 = query(baseQuery2, where('dateOfVisit', '>=', options.dateRange.startDate), where('dateOfVisit', '<=', options.dateRange.endDate));
+      // Use UTC boundaries to ensure full 24-hour coverage regardless of timezone
+      const startDateObj = new Date(`${options.dateRange.startDate}T00:00:00.000Z`);
+      const endDateObj = new Date(`${options.dateRange.endDate}T23:59:59.999Z`);
+      const startEpochMs = startDateObj.getTime();
+      const endEpochMs = endDateObj.getTime();
+      
+      console.log(`[fetchDetailedMeetings] Date filter range: ${startEpochMs} to ${endEpochMs}`);
+      
+      baseQuery1 = query(baseQuery1, where('created_at', '>=', startEpochMs), where('created_at', '<=', endEpochMs), orderBy('created_at', 'desc'));
+      baseQuery2 = query(baseQuery2, where('created_at', '>=', startEpochMs), where('created_at', '<=', endEpochMs), orderBy('created_at', 'desc'));
+    } else {
+      // Add orderBy for consistent sorting even without date filter
+      baseQuery1 = query(baseQuery1, orderBy('created_at', 'desc'));
+      baseQuery2 = query(baseQuery2, orderBy('created_at', 'desc'));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
@@ -1412,8 +1455,52 @@ export const fetchDetailedMeetings = async (options: FetchMetricsOptions): Promi
     });
 
     const result = Array.from(meetingsMap.values());
-    console.log(`[fetchDetailedMeetings] Found ${result.length} meetings`);
-    return result;
+    
+    // Enrich with coordinator names (AC names from users collection)
+    const coordinatorNamesMap = new Map<string, string>();
+    const uniqueHandlerIds = [...new Set(result.map((meeting: any) => meeting.handler_id).filter(Boolean))];
+    
+    console.log(`[fetchDetailedMeetings] Found ${uniqueHandlerIds.length} unique handler IDs:`, uniqueHandlerIds);
+    
+    if (uniqueHandlerIds.length > 0) {
+      const usersCollection = collection(db, 'users');
+      
+      // Handle Firebase 'IN' query limit of 30 by batching
+      const batchSize = 30;
+      for (let i = 0; i < uniqueHandlerIds.length; i += batchSize) {
+        const batch = uniqueHandlerIds.slice(i, i + batchSize);
+        // Try querying by document ID first since handler_id might be the document ID
+        const usersQuery = query(usersCollection, where(documentId(), 'in', batch));
+        const usersSnap = await getDocs(usersQuery);
+        
+        console.log(`[fetchDetailedMeetings] Batch:`, batch);
+        console.log(`[fetchDetailedMeetings] Found ${usersSnap.size} user documents`);
+        
+        usersSnap.forEach((doc) => {
+          const userData = doc.data();
+          console.log(`[fetchDetailedMeetings] User doc ${doc.id}:`, { name: userData.name, uid: userData.uid, displayName: userData.displayName });
+          
+          // Try matching by document ID first, then by uid field
+          if (batch.includes(doc.id)) {
+            coordinatorNamesMap.set(doc.id, userData.name || userData.displayName || doc.id);
+            console.log(`[fetchDetailedMeetings] Mapped by doc.id: ${doc.id} -> ${userData.name || userData.displayName}`);
+          }
+          if (userData.uid && batch.includes(userData.uid)) {
+            coordinatorNamesMap.set(userData.uid, userData.name || userData.displayName || userData.uid);
+            console.log(`[fetchDetailedMeetings] Mapped by uid: ${userData.uid} -> ${userData.name || userData.displayName}`);
+          }
+        });
+      }
+    }
+    
+    // Add coordinator names to meeting records
+    const enrichedResult = result.map((meeting: any) => ({
+      ...meeting,
+      coordinatorName: coordinatorNamesMap.get(meeting.handler_id) || meeting.handler_id || 'Unknown'
+    }));
+    
+    console.log(`[fetchDetailedMeetings] Found ${enrichedResult.length} meetings with coordinator names`);
+    return enrichedResult;
   } catch (error) {
     console.error('[fetchDetailedMeetings] Error:', error);
     return [];
@@ -1443,33 +1530,126 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
       baseQuery2 = query(baseQuery2, where('handler_id', '==', options.handler_id));
     }
 
-    // Add date filter if provided - members use dateOfVisit field with string format "YYYY-MM-DD"
+    // Add date filter if provided - members use created_at field with epoch ms format
     if (options.dateRange) {
       console.log('[fetchDetailedMembers] Applying date filter:', options.dateRange);
       
-      baseQuery1 = query(baseQuery1, where('dateOfVisit', '>=', options.dateRange.startDate), where('dateOfVisit', '<=', options.dateRange.endDate));
-      baseQuery2 = query(baseQuery2, where('dateOfVisit', '>=', options.dateRange.startDate), where('dateOfVisit', '<=', options.dateRange.endDate));
+      // Use UTC boundaries to ensure full 24-hour coverage regardless of timezone
+      const startDateObj = new Date(`${options.dateRange.startDate}T00:00:00.000Z`);
+      const endDateObj = new Date(`${options.dateRange.endDate}T23:59:59.999Z`);
+      const startEpochMs = startDateObj.getTime();
+      const endEpochMs = endDateObj.getTime();
+      
+      console.log(`[fetchDetailedMembers] Date filter range: ${startEpochMs} to ${endEpochMs}`);
+      console.log(`[fetchDetailedMembers] Start date: ${startDateObj.toISOString()}`);
+      console.log(`[fetchDetailedMembers] End date: ${endDateObj.toISOString()}`);
+      
+      baseQuery1 = query(baseQuery1, where('created_at', '>=', startEpochMs), where('created_at', '<=', endEpochMs), orderBy('created_at', 'desc'));
+      baseQuery2 = query(baseQuery2, where('created_at', '>=', startEpochMs), where('created_at', '<=', endEpochMs), orderBy('created_at', 'desc'));
+    } else {
+      // Add orderBy for consistent sorting even without date filter
+      baseQuery1 = query(baseQuery1, orderBy('created_at', 'desc'));
+      baseQuery2 = query(baseQuery2, orderBy('created_at', 'desc'));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
+    console.log(`[fetchDetailedMembers] Query 1 (form_type='members') returned: ${snap1.size} documents`);
+    console.log(`[fetchDetailedMembers] Query 2 (type='members') returned: ${snap2.size} documents`);
+    
     const membersMap = new Map();
+    let documentsWithoutCreatedAt = 0;
+    let documentsOutsideRange = 0;
     
     snap1.forEach((doc) => {
+      const data = doc.data();
       if (!membersMap.has(doc.id)) {
-        membersMap.set(doc.id, { ...doc.data(), id: doc.id });
+        // Debug created_at field
+        if (!data.created_at) {
+          documentsWithoutCreatedAt++;
+          console.log(`[fetchDetailedMembers] Document ${doc.id} missing created_at field`);
+        } else if (options.dateRange) {
+          const startEpochMs = new Date(`${options.dateRange.startDate}T00:00:00.000`).getTime();
+          const endEpochMs = new Date(`${options.dateRange.endDate}T23:59:59.999`).getTime();
+          if (data.created_at < startEpochMs || data.created_at > endEpochMs) {
+            documentsOutsideRange++;
+            console.log(`[fetchDetailedMembers] Document ${doc.id} created_at ${data.created_at} outside range`);
+          }
+        }
+        membersMap.set(doc.id, { ...data, id: doc.id });
       }
     });
     
     snap2.forEach((doc) => {
+      const data = doc.data();
       if (!membersMap.has(doc.id)) {
-        membersMap.set(doc.id, { ...doc.data(), id: doc.id });
+        // Debug created_at field
+        if (!data.created_at) {
+          documentsWithoutCreatedAt++;
+          console.log(`[fetchDetailedMembers] Document ${doc.id} missing created_at field`);
+        } else if (options.dateRange) {
+          const startEpochMs = new Date(`${options.dateRange.startDate}T00:00:00.000`).getTime();
+          const endEpochMs = new Date(`${options.dateRange.endDate}T23:59:59.999`).getTime();
+          if (data.created_at < startEpochMs || data.created_at > endEpochMs) {
+            documentsOutsideRange++;
+            console.log(`[fetchDetailedMembers] Document ${doc.id} created_at ${data.created_at} outside range`);
+          }
+        }
+        membersMap.set(doc.id, { ...data, id: doc.id });
       }
     });
 
+    console.log(`[fetchDetailedMembers] Total unique documents after merge: ${membersMap.size}`);
+    console.log(`[fetchDetailedMembers] Documents without created_at: ${documentsWithoutCreatedAt}`);
+    console.log(`[fetchDetailedMembers] Documents outside date range: ${documentsOutsideRange}`);
+
     const result = Array.from(membersMap.values());
+    
+    // Debug parentVertical filtering
+    const beforeShaktiFilter = result.length;
     const filteredResult = result.filter((doc: any) => doc.parentVertical !== 'shakti-abhiyaan');
-    console.log(`[fetchDetailedMembers] Found ${filteredResult.length} members`);
-    return filteredResult;
+    const shaktiFiltered = beforeShaktiFilter - filteredResult.length;
+    
+    console.log(`[fetchDetailedMembers] Before shakti filter: ${beforeShaktiFilter}`);
+    console.log(`[fetchDetailedMembers] Shakti documents filtered out: ${shaktiFiltered}`);
+    console.log(`[fetchDetailedMembers] Final result count: ${filteredResult.length}`);
+    
+    // Sample a few documents for debugging
+    if (filteredResult.length > 0) {
+      console.log('[fetchDetailedMembers] Sample documents:');
+      filteredResult.slice(0, 3).forEach((doc, index) => {
+        console.log(`  ${index + 1}. ID: ${doc.id}, created_at: ${doc.created_at}, date: ${new Date(doc.created_at).toISOString()}`);
+      });
+    }
+    
+    // Enrich with coordinator names (SLP names from shakti-abhiyaan collection)
+    const coordinatorNamesMap = new Map<string, string>();
+    const uniqueHandlerIds = [...new Set(filteredResult.map((member: any) => member.handler_id).filter(Boolean))];
+    
+    if (uniqueHandlerIds.length > 0) {
+      // Handle Firebase 'IN' query limit of 30 by batching
+      const batchSize = 30;
+      for (let i = 0; i < uniqueHandlerIds.length; i += batchSize) {
+        const batch = uniqueHandlerIds.slice(i, i + batchSize);
+        
+        // Look up SLP names directly from shakti-abhiyaan documents
+        const shaktiCollection = collection(db, 'shakti-abhiyaan');
+        const shaktiQuery = query(shaktiCollection, where('uid', 'in', batch));
+        const shaktiSnap = await getDocs(shaktiQuery);
+        
+        shaktiSnap.forEach((doc) => {
+          const data = doc.data();
+          coordinatorNamesMap.set(doc.id, data.name || data.recommendedPersonName || doc.id);
+        });
+      }
+    }
+    
+    // Add coordinator names to member records
+    const enrichedResult = filteredResult.map((member: any) => ({
+      ...member,
+      coordinatorName: coordinatorNamesMap.get(member.handler_id) || member.handler_id || 'Unknown'
+    }));
+    
+    return enrichedResult;
   } catch (error) {
     console.error('[fetchDetailedMembers] Error:', error);
     return [];
@@ -1544,8 +1724,62 @@ export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise
     const result = Array.from(videosMap.values());
     const filteredResult = result.filter((doc: any) => doc.parentVertical !== 'shakti-abhiyaan');
     
-    console.log(`[fetchDetailedVideos] Found ${filteredResult.length} videos`);
-    return filteredResult;
+    // Enrich with coordinator names (SLP names from shakti-abhiyaan collection)
+    const coordinatorNamesMap = new Map<string, string>();
+    const uniqueHandlerIds = [...new Set(filteredResult.map((member: any) => member.handler_id).filter(Boolean))];
+    
+    if (uniqueHandlerIds.length > 0) {
+      // Handle Firebase 'IN' query limit of 30 by batching
+      const batchSize = 30;
+      for (let i = 0; i < uniqueHandlerIds.length; i += batchSize) {
+        const batch = uniqueHandlerIds.slice(i, i + batchSize);
+        
+        // Look up SLP names from shakti-abhiyaan collection structure
+        const shaktiCollection = collection(db, 'shakti-abhiyaan');
+        const shaktiQuery = query(shaktiCollection, where('form_type', '==', 'add-data'));
+        const shaktiSnap = await getDocs(shaktiQuery);
+        
+        shaktiSnap.forEach((doc) => {
+          const data = doc.data();
+          const coordinators = data.coveredAssemblyCoordinators || [];
+          
+          coordinators.forEach((coord: any) => {
+            if (coord.slps) {
+              coord.slps.forEach((slp: any) => {
+                // Check if this SLP's ID or handler_id matches our batch
+                if (batch.includes(slp.id) || batch.includes(slp.uid)) {
+                  coordinatorNamesMap.set(slp.id || slp.uid, slp.name || slp.id || slp.uid);
+                }
+                if (slp.handler_id && batch.includes(slp.handler_id)) {
+                  coordinatorNamesMap.set(slp.handler_id, slp.name || slp.handler_id);
+                }
+              });
+            }
+          });
+        });
+        
+        // Also try to look up from wtm-slp collection for meeting-based SLPs
+        const wtmSlpCollection = collection(db, 'wtm-slp');
+        const wtmSlpQuery = query(wtmSlpCollection, where('handler_id', 'in', batch));
+        const wtmSlpSnap = await getDocs(wtmSlpQuery);
+        
+        wtmSlpSnap.forEach((doc) => {
+          const data = doc.data();
+          if (data.name && batch.includes(data.handler_id)) {
+            coordinatorNamesMap.set(data.handler_id, data.name);
+          }
+        });
+      }
+    }
+    
+    // Add coordinator names to video records
+    const enrichedResult = filteredResult.map((video: any) => ({
+      ...video,
+      coordinatorName: coordinatorNamesMap.get(video.handler_id) || video.handler_id || 'Unknown'
+    }));
+    
+    console.log(`[fetchDetailedVideos] Found ${enrichedResult.length} videos with coordinator names`);
+    return enrichedResult;
   } catch (error) {
     console.error('[fetchDetailedVideos] Error:', error);
     return [];

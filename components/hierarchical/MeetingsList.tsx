@@ -48,6 +48,11 @@ const MeetingsList: React.FC<MeetingsListProps> = ({ data, loading = false }) =>
       }
     },
     {
+      key: 'coordinatorName',
+      label: 'Coordinator Name',
+      sortable: true
+    },
+    {
       key: 'assembly',
       label: 'Assembly',
       sortable: true

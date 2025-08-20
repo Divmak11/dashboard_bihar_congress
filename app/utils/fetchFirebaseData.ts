@@ -175,24 +175,27 @@ export async function getWtmSlpSummary(
       console.log('[getWtmSlpSummary] Sample document:', JSON.stringify(sampleDoc, null, 2));
     }
 
-    // Filter by date range if dates are provided
+    // Apply date filtering using created_at field (epoch ms) if dates are provided
     let filteredDocuments = Array.from(documentMap.values());
     
     if (startDate && endDate) {
-      const startDateObj = new Date(startDate);
-      const endDateObj = new Date(endDate);
-      endDateObj.setHours(23, 59, 59, 999); // Include the entire end day
+      // Use UTC boundaries to ensure full 24-hour coverage regardless of timezone
+      const startDateObj = new Date(`${startDate}T00:00:00.000Z`);
+      const endDateObj = new Date(`${endDate}T23:59:59.999Z`);
+      const startEpochMs = startDateObj.getTime();
+      const endEpochMs = endDateObj.getTime();
+      
+      console.log(`[getWtmSlpSummary] Date filter range: ${startEpochMs} to ${endEpochMs}`);
   
       filteredDocuments = filteredDocuments.filter((doc) => {
-        if (!doc.dateOfVisit) {
-          console.log(`[getWtmSlpSummary] Document ${doc.id} has no dateOfVisit field, excluding`);
+        if (!doc.created_at) {
+          console.log(`[getWtmSlpSummary] Document ${doc.id} has no created_at field, excluding`);
           return false;
         }
         
-        const docDate = new Date(doc.dateOfVisit);
-        const isInRange = docDate >= startDateObj && docDate <= endDateObj;
+        const isInRange = doc.created_at >= startEpochMs && doc.created_at <= endEpochMs;
         if (!isInRange) {
-          console.log(`[getWtmSlpSummary] Document ${doc.id} date ${doc.dateOfVisit} is outside range, excluding`);
+          console.log(`[getWtmSlpSummary] Document ${doc.id} created_at ${doc.created_at} is outside range, excluding`);
         }
         return isInRange;
       });
