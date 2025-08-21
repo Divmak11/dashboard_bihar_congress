@@ -103,7 +103,7 @@ export default function AuthPage() {
         email: user.email,
         assemblies: selectedAssemblies,
         role: 'zonal-incharge', // Default role as specified
-        parentVertical: 'wtm',
+        parentVertical: 'none',
         createdAt: serverTimestamp()
       });
       

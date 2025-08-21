@@ -27,7 +27,7 @@ export interface User {
 export interface AdminUser {
   id: string;           // Firebase Auth UID
   email: string;        // User's email address
-  role: 'zonal-incharge' | 'admin' | 'other'; // User role
+  role: 'zonal-incharge' | 'dept-head' | 'admin' | 'other'; // User role
   assemblies: string[]; // Array of assigned assembly constituencies
   createdAt: any;       // Timestamp of account creation
   parentVertical?: 'wtm' | 'shakti-abhiyaan' | string; // Vertical tag

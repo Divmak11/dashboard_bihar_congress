@@ -17,6 +17,8 @@ export interface NavigationProps {
   onAcChange: (acId: string) => void;
   onSlpChange: (slpId: string) => void;
   onVerticalChange: (vertical: string) => void;
+  hideVerticalSelector?: boolean;
+  disableVerticalSelector?: boolean;
 }
 
 import { Zone, AC, SLP } from '../../models/hierarchicalTypes';
@@ -36,21 +38,26 @@ const HierarchicalNavigation: React.FC<NavigationProps> = ({
   onAcChange,
   onSlpChange,
   onVerticalChange,
+  hideVerticalSelector,
+  disableVerticalSelector,
 }) => {
   return (
     <aside className="w-full md:w-1/4 p-4 border-r border-gray-200 space-y-4">
       {/* Vertical Dropdown */}
-      <div>
-        <label className="block text-sm font-medium mb-1">Vertical</label>
-        <select
-          className="w-full border rounded px-2 py-1"
-          value={selectedVertical}
-          onChange={(e) => onVerticalChange(e.target.value)}
-        >
-          <option value="wtm">WTM-Samvidhan Leader</option>
-          <option value="shakti-abhiyaan">Shakti-Abhiyaan</option>
-        </select>
-      </div>
+      {!hideVerticalSelector && (
+        <div>
+          <label className="block text-sm font-medium mb-1">Vertical</label>
+          <select
+            className="w-full border rounded px-2 py-1"
+            value={selectedVertical}
+            onChange={(e) => onVerticalChange(e.target.value)}
+            disabled={!!disableVerticalSelector}
+          >
+            <option value="wtm">WTM-Samvidhan Leader</option>
+            <option value="shakti-abhiyaan">Shakti-Abhiyaan</option>
+          </select>
+        </div>
+      )}
 
       {/* Zone Dropdown */}
       <div>

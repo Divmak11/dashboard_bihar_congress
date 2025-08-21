@@ -53,6 +53,11 @@ const HierarchicalDashboardPage: React.FC = () => {
 
   // Vertical selection state ('wtm' | 'shakti-abhiyaan')
   const [selectedVertical, setSelectedVertical] = useState<string>('wtm');
+  // Determine role-based vertical behavior
+  const isZonalIncharge = adminUser?.role === 'zonal-incharge';
+  const isDeptHead = adminUser?.role === 'dept-head';
+  const shouldLockVertical = isZonalIncharge || isDeptHead;
+  const lockedVertical = shouldLockVertical ? (adminUser?.parentVertical || 'wtm') : undefined;
 
   // Navigation state
   const [zones, setZones] = useState<Zone[]>([]);
@@ -103,6 +108,18 @@ const HierarchicalDashboardPage: React.FC = () => {
 
     loadZones().catch(console.error);
   }, [adminUser, selectedVertical]);
+
+  // Lock vertical based on role (zonal-incharge and dept-head)
+  React.useEffect(() => {
+    if (shouldLockVertical && lockedVertical && selectedVertical !== lockedVertical) {
+      setSelectedVertical(lockedVertical);
+      // reset hierarchy selections when vertical changes
+      setSelectedZoneId(null);
+      setSelectedAssembly(null);
+      setSelectedAcId(null);
+      setSelectedSlpId(null);
+    }
+  }, [shouldLockVertical, lockedVertical, selectedVertical]);
 
   // Load assemblies when zone changes
   React.useEffect(() => {
@@ -280,6 +297,7 @@ const HierarchicalDashboardPage: React.FC = () => {
 
   // Vertical change handler
   const handleVerticalChange = (vertical: string) => {
+    if (shouldLockVertical) return; // no-op when locked by role
     console.log('[Navigation] Vertical changed to:', vertical);
     setSelectedVertical(vertical);
     // reset hierarchy selections
@@ -310,6 +328,8 @@ const HierarchicalDashboardPage: React.FC = () => {
               <HierarchicalNavigation
                 selectedVertical={selectedVertical}
                 onVerticalChange={handleVerticalChange}
+                hideVerticalSelector={!!isZonalIncharge}
+                disableVerticalSelector={!!isDeptHead}
                 zones={zones}
                 assemblies={assemblies}
                 acs={acs}
