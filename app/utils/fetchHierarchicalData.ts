@@ -1835,26 +1835,34 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
       });
     }
     
-    // Enrich with coordinator names (SLP names from shakti-abhiyaan collection)
+    // Enrich with coordinator names (SLP names from wtm-slp collection)
     const coordinatorNamesMap = new Map<string, string>();
     const uniqueHandlerIds = [...new Set(filteredResult.map((member: any) => member.handler_id).filter(Boolean))];
     
     if (uniqueHandlerIds.length > 0) {
+      console.log(`[fetchDetailedMembers] Looking up ${uniqueHandlerIds.length} unique handler IDs for SLP names`);
+      
       // Handle Firebase 'IN' query limit of 30 by batching
       const batchSize = 30;
       for (let i = 0; i < uniqueHandlerIds.length; i += batchSize) {
         const batch = uniqueHandlerIds.slice(i, i + batchSize);
         
-        // Look up SLP names directly from shakti-abhiyaan documents
-        const shaktiCollection = collection(db, 'shakti-abhiyaan');
-        const shaktiQuery = query(shaktiCollection, where('uid', 'in', batch));
-        const shaktiSnap = await getDocs(shaktiQuery);
+        // Look up SLP names from wtm-slp collection using document IDs
+        const wtmSlpCollection = collection(db, 'wtm-slp');
+        const wtmSlpQuery = query(wtmSlpCollection, where(documentId(), 'in', batch));
+        const wtmSlpSnap = await getDocs(wtmSlpQuery);
         
-        shaktiSnap.forEach((doc) => {
+        console.log(`[fetchDetailedMembers] Batch ${Math.floor(i/batchSize) + 1}: Found ${wtmSlpSnap.size} SLP records for ${batch.length} handler IDs`);
+        
+        wtmSlpSnap.forEach((doc) => {
           const data = doc.data();
-          coordinatorNamesMap.set(doc.id, data.name || data.recommendedPersonName || doc.id);
+          const slpName = data.name || data.recommendedPersonName || doc.id;
+          coordinatorNamesMap.set(doc.id, slpName);
+          console.log(`[fetchDetailedMembers] Mapped handler_id ${doc.id} to SLP name: ${slpName}`);
         });
       }
+      
+      console.log(`[fetchDetailedMembers] Successfully mapped ${coordinatorNamesMap.size} handler IDs to SLP names`);
     }
     
     // Add coordinator names to member records
