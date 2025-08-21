@@ -6,7 +6,7 @@ import {
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword 
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { auth, db } from '../utils/firebase';
 import Link from 'next/link';
 
@@ -27,6 +27,7 @@ export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState('');
   const [selectedAssemblies, setSelectedAssemblies] = useState<string[]>([]);
   const [assemblies, setAssemblies] = useState<string[]>([]);
   const [assemblySearch, setAssemblySearch] = useState('');
@@ -61,7 +62,20 @@ export default function AuthPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       // Set auth token cookie
       document.cookie = `auth-token=${await userCredential.user.getIdToken()}; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 days
-      router.push('/');
+      // Fetch role and redirect accordingly
+      try {
+        const userDocRef = doc(db, 'admin-users', userCredential.user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        const role = userDocSnap.exists() ? (userDocSnap.data()?.role as string | undefined) : undefined;
+        if (role && role === 'admin') {
+          router.push('/');
+        } else {
+          router.push('/wtm-slp-new');
+        }
+      } catch (roleErr) {
+        console.warn('Failed to fetch user role, defaulting to wtm-slp-new:', roleErr);
+        router.push('/wtm-slp-new');
+      }
     } catch (error: any) {
       console.error('Sign in error:', error);
       setError(error.message || 'Failed to sign in. Please check your credentials.');
@@ -75,7 +89,7 @@ export default function AuthPage() {
     setError('');
     
     // Validate inputs
-    if (!email || !password || !confirmPassword) {
+    if (!email || !password || !confirmPassword || !name.trim()) {
       setError('Please fill in all fields');
       return;
     }
@@ -96,13 +110,15 @@ export default function AuthPage() {
       // Create the user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+      const newUserRole: string = 'zonal-incharge'; // Default role as specified
       
       // Create a document in the admin-users collection
       await setDoc(doc(db, 'admin-users', user.uid), {
         id: user.uid,
         email: user.email,
+        name: name.trim(),
         assemblies: selectedAssemblies,
-        role: 'zonal-incharge', // Default role as specified
+        role: newUserRole,
         parentVertical: 'none',
         createdAt: serverTimestamp()
       });
@@ -110,7 +126,11 @@ export default function AuthPage() {
       // Set auth token cookie
       document.cookie = `auth-token=${await user.getIdToken()}; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 days
       
-      router.push('/');
+      if (newUserRole === 'admin') {
+        router.push('/');
+      } else {
+        router.push('/wtm-slp-new');
+      }
     } catch (error: any) {
       console.error('Create account error:', error);
       setError(error.message || 'Failed to create account. Please try again.');
@@ -263,6 +283,23 @@ export default function AuthPage() {
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="create-name" className="block text-sm font-medium text-gray-700">
+                  Name
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="create-name"
+                    name="name"
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                     className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                 </div>

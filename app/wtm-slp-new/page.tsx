@@ -2,6 +2,7 @@
 // app/wtm-slp-new/page.tsx
 // Main page for the hierarchical WTM-SLP dashboard – Basic Page Layout
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import HierarchicalNavigation, { NavigationProps } from '../../components/hierarchical/HierarchicalNavigation';
 import CumulativeDataCards from '../../components/hierarchical/CumulativeDataCards';
 import DetailedView from '../../components/hierarchical/DetailedView';
@@ -14,6 +15,7 @@ import { CumulativeMetrics } from '../../models/hierarchicalTypes';
 import { AppError } from '../utils/errorUtils';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../utils/firebase';
+import { signOut } from 'firebase/auth';
 import { getCurrentAdminUser } from '../utils/fetchFirebaseData';
 import { AdminUser } from '../../models/types';
 
@@ -43,6 +45,7 @@ const HierarchicalDashboardPage: React.FC = () => {
   const { toasts, removeToast, showError, showSuccess, showWarning } = useToast();
   
   // Authentication state
+  const router = useRouter();
   const [user, authLoading, authError] = useAuthState(auth);
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   
@@ -271,6 +274,18 @@ const HierarchicalDashboardPage: React.FC = () => {
     setSelectedCard(cardId);
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      // Clear the auth token cookie to avoid middleware redirecting back to '/'
+      document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      router.push('/auth');
+    } catch (e) {
+      console.error('Logout error:', e);
+      showError('Logout Failed', 'Could not log out. Please try again.');
+    }
+  };
+
   // Custom navigation handlers to ensure proper state reset
   const handleZoneChange = (zoneId: string) => {
     console.log('[Navigation] Zone changed to:', zoneId);
@@ -311,8 +326,8 @@ const HierarchicalDashboardPage: React.FC = () => {
     <>
       <HierarchicalErrorBoundary componentName="Hierarchical Dashboard">
         <div className="flex flex-col h-full">
-          {/* Top bar with date filter */}
-          <div className="flex justify-end p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
+          {/* Top bar with date filter and logout */}
+          <div className="flex items-center justify-end gap-3 p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
             <DateRangeFilter
               label="Global"
               startDate={startDate}
@@ -320,6 +335,12 @@ const HierarchicalDashboardPage: React.FC = () => {
               selectedOption={dateOption}
               onDateChange={handleDateChange}
             />
+            <button
+              onClick={handleLogout}
+              className="px-3 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md"
+            >
+              Logout
+            </button>
           </div>
 
           {/* Main 3-panel layout */}
