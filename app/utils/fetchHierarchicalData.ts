@@ -1221,7 +1221,8 @@ export const fetchZones = async (): Promise<Zone[]> => {
       const assemblies: string[] = data.assemblies || [];
       const zonalName: string = data.name ? String(data.name) : 'Unknown';
       const name = `Zone ${counter} - ${zonalName}`;
-      zones.push({ id, name, assemblies });
+      const parentVertical: string = data.parentVertical || 'wtm';
+      zones.push({ id, name, assemblies, parentVertical });
     });
     // Sort alphabetically
     zones.sort((a, b) => a.name.localeCompare(b.name));

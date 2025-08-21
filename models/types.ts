@@ -30,6 +30,7 @@ export interface AdminUser {
   role: 'zonal-incharge' | 'admin' | 'other'; // User role
   assemblies: string[]; // Array of assigned assembly constituencies
   createdAt: any;       // Timestamp of account creation
+  parentVertical?: 'wtm' | 'shakti-abhiyaan' | string; // Vertical tag
 }
 
 /**
