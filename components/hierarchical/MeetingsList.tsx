@@ -9,6 +9,7 @@ interface MeetingsListProps {
 }
 
 import ColumnValueFilter, { ColumnOption } from './ColumnValueFilter';
+import { exportMeetingsToXlsx } from '@/app/utils/exporters/meetingsXlsx';
 
 const MeetingsList: React.FC<MeetingsListProps> = ({ data, loading = false }) => {
   // Columns eligible for filtering
@@ -136,8 +137,16 @@ const MeetingsList: React.FC<MeetingsListProps> = ({ data, loading = false }) =>
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h4 className="text-lg font-medium text-gray-900">Meeting Details</h4>
-        <div className="text-sm text-gray-500">
-          Total meetings: {data.length}
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-gray-500">Total meetings: {data.length}</div>
+          <button
+            type="button"
+            onClick={() => exportMeetingsToXlsx(filteredData)}
+            disabled={loading || !data?.length}
+            className="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700"
+          >
+            Export XLSX
+          </button>
         </div>
       </div>
       
