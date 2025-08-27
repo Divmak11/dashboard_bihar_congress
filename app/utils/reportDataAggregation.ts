@@ -553,8 +553,9 @@ export async function aggregateReportData(
     checkAndAddMetric(overallMetrics.volunteers, 'Volunteers');
     checkAndAddMetric(overallMetrics.slps, 'Samvidhan Leaders');
     
-    // Only show AC Videos (not combined)
-    checkAndAddMetric(overallMetrics.acVideos, 'Videos');
+    // Show both video types separately
+    checkAndAddMetric(overallMetrics.acVideos, 'AC Videos');
+    checkAndAddMetric(overallMetrics.videos, 'SLP Videos');
     
     // Add other dashboard metrics that should appear
     checkAndAddMetric(overallMetrics.saathi, 'Saathi Members');
@@ -777,6 +778,8 @@ function transformZoneData(zones: ZoneReportData[]): ZoneData[] {
             leaders: Number(ac.metrics.shaktiLeaders) || 0,
             slps: Number(ac.metrics.slps) || 0,
             videos: Number(ac.metrics.acVideos) || 0,
+            acVideos: Number(ac.metrics.acVideos) || 0,
+            slpVideos: Number(ac.metrics.videos) || 0,
             clubs: Number(ac.metrics.clubs) || 0,
             forms: Number(ac.metrics.forms) || 0,
             chaupals: Number(ac.metrics.chaupals) || 0,
@@ -798,6 +801,8 @@ function transformZoneData(zones: ZoneReportData[]): ZoneData[] {
           leaders: Number(assembly.metrics.shaktiLeaders) || 0,
           slps: Number(assembly.metrics.slps) || 0,
           videos: Number(assembly.metrics.acVideos) || 0,
+          acVideos: Number(assembly.metrics.acVideos) || 0,
+          slpVideos: Number(assembly.metrics.videos) || 0,
           clubs: Number(assembly.metrics.clubs) || 0,
           forms: Number(assembly.metrics.forms) || 0,
           assemblyWaGroups: Number(assembly.metrics.assemblyWaGroups) || 0,
@@ -806,16 +811,30 @@ function transformZoneData(zones: ZoneReportData[]): ZoneData[] {
       };
     });
 
-    // Calculate zone-level metrics by aggregating from assemblies
-    const zoneMetrics: ReportMetric[] = [
-      { name: 'Meetings', value: Number(zone.metrics.meetings) || 0 },
-      { name: 'Saathi Members', value: Number(zone.metrics.saathi) || 0 },
-      { name: 'Volunteers', value: Number(zone.metrics.volunteers) || 0 },
-      { name: 'Samvidhan Leaders', value: Number(zone.metrics.slps) || 0 },
-      { name: 'Videos', value: Number(zone.metrics.acVideos) || 0 },
-      { name: 'Clubs', value: Number(zone.metrics.clubs) || 0 },
-      { name: 'Forms', value: Number(zone.metrics.forms) || 0 }
-    ].filter(m => m.value > 0); // Only show non-zero metrics
+    // Calculate zone-level metrics by aggregating from assemblies - show ALL non-zero metrics like Executive Summary
+    const zoneMetrics: ReportMetric[] = [];
+    
+    // Add all possible zone metrics that have values > 0
+    const addZoneMetric = (value: any, name: string) => {
+      const numValue = Number(value || 0);
+      if (numValue > 0) {
+        zoneMetrics.push({ name, value: numValue });
+      }
+    };
+    
+    addZoneMetric(zone.metrics.meetings, 'Meetings');
+    addZoneMetric(zone.metrics.volunteers, 'Volunteers');
+    addZoneMetric(zone.metrics.slps, 'Samvidhan Leaders');
+    addZoneMetric(zone.metrics.acVideos, 'AC Videos');
+    addZoneMetric(zone.metrics.videos, 'SLP Videos');
+    addZoneMetric(zone.metrics.saathi, 'Saathi Members');
+    addZoneMetric(zone.metrics.clubs, 'Clubs');
+    addZoneMetric(zone.metrics.forms, 'Mai-Bahin Forms');
+    addZoneMetric(zone.metrics.shaktiBaithaks, 'Shakti Baithaks');
+    addZoneMetric(zone.metrics.assemblyWaGroups, 'Assembly WA Groups');
+    addZoneMetric(zone.metrics.centralWaGroups, 'Central WA Groups');
+    addZoneMetric(zone.metrics.chaupals, 'Chaupals');
+    addZoneMetric(zone.metrics.shaktiLeaders, 'Shakti Leaders');
 
     return {
       name: zone.name,
