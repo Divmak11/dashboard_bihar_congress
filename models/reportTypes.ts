@@ -20,6 +20,8 @@ export interface ACPerformance {
     leaders: number;
     slps: number;
     videos: number;
+    acVideos?: number;
+    slpVideos?: number;
     clubs: number;
     forms: number;
     chaupals: number;
@@ -40,6 +42,8 @@ export interface AssemblyData {
     leaders: number;
     slps: number;
     videos: number;
+    acVideos?: number;
+    slpVideos?: number;
     clubs: number;
     forms: number;
     assemblyWaGroups: number;

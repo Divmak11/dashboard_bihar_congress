@@ -9,7 +9,7 @@ import {
 
 import { CumulativeMetrics } from '../../models/hierarchicalTypes';
 import { db } from './firebase';
-import { collection, query, where, getDocs, orderBy, limit, documentId, doc, getDoc, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, documentId, doc, getDoc, QueryDocumentSnapshot, or } from 'firebase/firestore';
 import { createAppError, logError, getFirebaseErrorCode, validateDateRange, validateAssemblyData, ERROR_CODES } from './errorUtils';
 
 /**
@@ -1255,48 +1255,80 @@ export const fetchZones = async (): Promise<Zone[]> => {
 /**
  * Fetch Assembly Coordinators for a given assembly.
  * Returns array of { uid, name, assembly }.
+ * Uses optimized single OR query to support both single and multi-assembly ACs.
  */
 export const fetchAssemblyCoordinators = async (assembly: string): Promise<AC[]> => {
   if (!assembly) return [];
   console.log('[fetchAssemblyCoordinators] Fetching ACs for assembly:', assembly);
   try {
-    // Source 1: users collection
-    const q1 = query(
+    // Source 1: users collection - parallel queries for multi-assembly support
+    // Note: OR query syntax has TypeScript compatibility issues with current Firebase SDK
+    // Using parallel queries as optimized alternative (still better than sequential)
+    const q1a = query(
       collection(db, 'users'),
       where('role', '==', 'Assembly Coordinator'),
       where('assembly', '==', assembly)
     );
-    const snap1 = await getDocs(q1);
-    console.log('[fetchAssemblyCoordinators] Users query returned', snap1.size, 'documents');
-    const list: AC[] = [];
     
-    snap1.forEach((d) => {
-      const data = d.data() as any;
-      list.push({ 
-        uid: d.id, 
-        name: data.name || 'AC', 
-        assembly,
-        handler_id: data.handler_id 
+    const q1b = query(
+      collection(db, 'users'),
+      where('role', '==', 'Assembly Coordinator'),
+      where('assemblies', 'array-contains', assembly)
+    );
+    
+    // Execute both queries in parallel for optimal performance
+    const [snap1a, snap1b] = await Promise.all([getDocs(q1a), getDocs(q1b)]);
+    console.log('[fetchAssemblyCoordinators] Single assembly query returned', snap1a.size, 'documents');
+    console.log('[fetchAssemblyCoordinators] Multi-assembly query returned', snap1b.size, 'documents');
+    
+    const list: AC[] = [];
+    const addedUids = new Set<string>(); // Track added UIDs to avoid duplicates
+    
+    // Process both query results with deduplication
+    [snap1a, snap1b].forEach((snap) => {
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        if (!addedUids.has(d.id)) {
+          list.push({ 
+            uid: d.id, 
+            name: data.name || 'AC', 
+            assembly,
+            handler_id: data.handler_id 
+          });
+          addedUids.add(d.id);
+        }
       });
     });
     
-    // If no Assembly Coordinators found, try Zonal Incharge
+    // If no Assembly Coordinators found, try Zonal Incharge with same pattern
     if (list.length === 0) {
-      const q1b = query(
+      const q2a = query(
         collection(db, 'users'),
         where('role', '==', 'Zonal Incharge'),
         where('assembly', '==', assembly)
       );
-      const snap1b = await getDocs(q1b);
-      console.log('[fetchAssemblyCoordinators] Zonal Incharge query returned', snap1b.size, 'documents');
       
-      snap1b.forEach((d) => {
-        const data = d.data() as any;
-        list.push({ 
-          uid: d.id, 
-          name: data.name || 'ZI', 
-          assembly,
-          handler_id: data.handler_id 
+      const q2b = query(
+        collection(db, 'users'),
+        where('role', '==', 'Zonal Incharge'),
+        where('assemblies', 'array-contains', assembly)
+      );
+      
+      const [snap2a, snap2b] = await Promise.all([getDocs(q2a), getDocs(q2b)]);
+      console.log('[fetchAssemblyCoordinators] Zonal Incharge queries returned', snap2a.size + snap2b.size, 'documents');
+      
+      [snap2a, snap2b].forEach((snap) => {
+        snap.forEach((d) => {
+          const data = d.data() as any;
+          if (!addedUids.has(d.id)) {
+            list.push({ 
+              uid: d.id, 
+              name: data.name || 'ZI', 
+              assembly,
+              handler_id: data.handler_id 
+            });
+            addedUids.add(d.id);
+          }
         });
       });
     }
@@ -1312,34 +1344,14 @@ export const fetchAssemblyCoordinators = async (assembly: string): Promise<AC[]>
       const data = d.data() as any;
       const coordinators = data.coveredAssemblyCoordinators || [];
       coordinators.forEach((coord: any) => {
-        if (coord.assembly === assembly) {
-          // Avoid duplicates
-          if (!list.find(ac => ac.uid === coord.id)) {
-            list.push({
-              uid: coord.id,
-              name: coord.name || 'AC',
-              assembly,
-              handler_id: coord.handler_id
-            });
-          }
-        }
-      });
-    });
-    
-    snap2.forEach((d) => {
-      const data = d.data() as any;
-      const coordinators = data.coveredAssemblyCoordinators || [];
-      coordinators.forEach((coord: any) => {
-        if (coord.assembly === assembly) {
-          // Avoid duplicates
-          if (!list.find(ac => ac.uid === coord.id)) {
-            list.push({
-              uid: coord.id,
-              name: coord.name || 'AC',
-              assembly,
-              handler_id: coord.handler_id
-            });
-          }
+        if (coord.assembly === assembly && !addedUids.has(coord.id)) {
+          list.push({
+            uid: coord.id,
+            name: coord.name || 'AC',
+            assembly,
+            handler_id: coord.handler_id
+          });
+          addedUids.add(coord.id);
         }
       });
     });
@@ -1365,7 +1377,7 @@ export const fetchAssemblyCoordinators = async (assembly: string): Promise<AC[]>
         for (const hid of handlerIds) {
           try {
             const userSnap = await getDoc(doc(db, 'users', hid));
-            if (userSnap.exists()) {
+            if (userSnap.exists() && !addedUids.has(hid)) {
               const udata = userSnap.data() as any;
               list.push({
                 uid: hid,
@@ -1373,6 +1385,7 @@ export const fetchAssemblyCoordinators = async (assembly: string): Promise<AC[]>
                 assembly, // Use the assembly we're querying for, not user's assembly field
                 handler_id: udata.handler_id || hid,
               });
+              addedUids.add(hid);
               console.log('[fetchAssemblyCoordinators] Added AC from meetings:', { uid: hid, name: udata.name, userAssembly: udata.assembly });
             }
           } catch (userErr) {

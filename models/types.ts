@@ -11,6 +11,7 @@ export interface User {
   departmentHead: string;
   name: string;
   assembly?: string;
+  assemblies?: string[]; // Optional array for multi-assembly ACs
   village?: string;
   block?: string;
   district?: string;

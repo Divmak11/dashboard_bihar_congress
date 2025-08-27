@@ -6,12 +6,13 @@ globs: **/*
 
 # Core Rules
 
-- For every implementation, use occam's razor principle of suggesting the simplest approach.
-- Always use the smallest diff approach for any implementation and avoid refactoring unrelated code. 
-- Keep answers short, concise and upto the point.
-- Never elaborate if not specifically asked.
-- Only do the task which is asked or suggested and never extend.
-- DOn't start any implementation until asked for or confirmed/
+ 
+- Update CodeMap (.windsurf/codeMap.md) with every file change or refactoring to keep it updated. 
 - Follow the project's coding standards and best practices (e.g., TypeScript, React, functional components, named exports).
 - Ask for clarification if any requirement or instruction is ambiguous.
 - Only touch files where implementation is needed and nothing outside the scope.
+
+- Follow the PRD Creation rules when PRD creation is requested 
+- Follow PRD Implementation Rules when Implementation following the PRD is requested
+- Follow Cascading Modification/Issue Handling Rules, as per you understanding of the task
+- Follow the Error Solving Rules for handling or fixing issues.

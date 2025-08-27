@@ -6,7 +6,8 @@ import type {
   DetailedActivity,
   ExecutiveSummary,
   ReportHeader,
-  ReportGenerationOptions
+  ReportGenerationOptions,
+  ReportMetric
 } from '../../models/reportTypes';
 import type { CumulativeMetrics, Zone, AC, SLP } from '../../models/hierarchicalTypes';
 import { 
@@ -196,12 +197,13 @@ export async function aggregateReportData(
     };
 
     try {
-      const [meetings, members, volunteers, leaders, videos, forms, clubs, assemblyWaGroups, centralWaGroups] = await Promise.all([
+      const [meetings, members, volunteers, leaders, videos, acVideos, forms, clubs, assemblyWaGroups, centralWaGroups] = await Promise.all([
         fetchDetailedMeetings(fetchOptions),
         fetchDetailedMembers(fetchOptions),
         fetchDetailedVolunteers(fetchOptions),
         fetchDetailedLeaders(fetchOptions),
         fetchDetailedData('videos', fetchOptions),
+        fetchDetailedData('acVideos', fetchOptions),
         fetchDetailedData('forms', fetchOptions),
         fetchDetailedData('clubs', fetchOptions),
         fetchDetailedData('assemblyWaGroups', fetchOptions),
@@ -216,6 +218,9 @@ export async function aggregateReportData(
       detailedData.forms = forms;
       detailedData.clubs = clubs;
       detailedData.waGroups = [...assemblyWaGroups, ...centralWaGroups];
+      
+      // Add AC Videos to detailed data
+      (detailedData as any).acVideos = acVideos;
 
       console.log(`[aggregateReportData] Fetched detailed data:`, {
         meetings: meetings.length,
@@ -223,6 +228,7 @@ export async function aggregateReportData(
         volunteers: volunteers.length,
         leaders: leaders.length,
         videos: videos.length,
+        acVideos: acVideos.length,
         forms: forms.length,
         clubs: clubs.length,
         assemblyWaGroups: assemblyWaGroups.length,
@@ -245,6 +251,7 @@ export async function aggregateReportData(
         volunteers: any[];
         leaders: any[];
         videos: any[];
+        acVideos: any[];
         forms: any[];
         clubs: any[];
         waGroups: any[];
@@ -276,6 +283,7 @@ export async function aggregateReportData(
             volunteers: [],
             leaders: [],
             videos: [],
+            acVideos: [],
             forms: [],
             clubs: [],
             waGroups: []
@@ -322,6 +330,7 @@ export async function aggregateReportData(
         }
       }
       else if (activityType === 'videos') acData.metrics.videos = Number(acData.metrics.videos) + 1;
+      else if (activityType === 'acVideos') acData.metrics.acVideos = Number(acData.metrics.acVideos) + 1;
       else if (activityType === 'forms') acData.metrics.forms = Number(acData.metrics.forms) + 1;
       else if (activityType === 'clubs') acData.metrics.clubs = Number(acData.metrics.clubs) + 1;
     };
@@ -332,6 +341,9 @@ export async function aggregateReportData(
     detailedData.volunteers.forEach(item => addActivityToAC(item, 'volunteers'));
     detailedData.leaders.forEach(item => addActivityToAC(item, 'leaders'));
     detailedData.videos.forEach(item => addActivityToAC(item, 'videos'));
+    if ((detailedData as any).acVideos) {
+      (detailedData as any).acVideos.forEach((item: any) => addActivityToAC(item, 'acVideos'));
+    }
     detailedData.forms.forEach(item => addActivityToAC(item, 'forms'));
     detailedData.clubs.forEach(item => addActivityToAC(item, 'clubs'));
     detailedData.waGroups.forEach(item => {
@@ -376,6 +388,7 @@ export async function aggregateReportData(
             volunteers: [],
             leaders: [],
             videos: [],
+            acVideos: [],
             forms: [],
             clubs: [],
             waGroups: []
@@ -521,29 +534,51 @@ export async function aggregateReportData(
     };
     
     // Build key metrics array (only show metrics > 0)
-    const keyMetrics: { name: string; value: number }[] = [];
+    const keyMetrics: ReportMetric[] = [];
     
-    if (Number(overallMetrics.meetings) > 0) {
-      keyMetrics.push({ name: 'Meetings', value: Number(overallMetrics.meetings) });
+    console.log('[aggregateReportData] DEBUG: Overall metrics for Executive Summary:', JSON.stringify(overallMetrics, null, 2));
+    console.log('[aggregateReportData] DEBUG: Available metrics properties:', Object.keys(overallMetrics));
+    
+    // Add all metrics that have values > 0 - exactly as shown on dashboard
+    const checkAndAddMetric = (value: any, name: string) => {
+      const numValue = Number(value || 0);
+      console.log(`  Checking ${name}:`, numValue, 'from:', value);
+      if (numValue > 0) {
+        keyMetrics.push({ name, value: numValue });
+      }
+    };
+    
+    // Add metrics in order they appear on dashboard
+    checkAndAddMetric(overallMetrics.meetings, 'Total Meetings');
+    checkAndAddMetric(overallMetrics.volunteers, 'Volunteers');
+    checkAndAddMetric(overallMetrics.slps, 'Samvidhan Leaders');
+    
+    // Only show AC Videos (not combined)
+    checkAndAddMetric(overallMetrics.acVideos, 'Videos');
+    
+    // Add other dashboard metrics that should appear
+    checkAndAddMetric(overallMetrics.saathi, 'Saathi Members');
+    checkAndAddMetric(overallMetrics.clubs, 'Clubs');
+    checkAndAddMetric(overallMetrics.forms, 'Mai-Bahin Forms');
+    checkAndAddMetric(overallMetrics.shaktiBaithaks, 'Shakti Baithaks');
+    checkAndAddMetric(overallMetrics.assemblyWaGroups, 'Assembly WA Groups');
+    checkAndAddMetric(overallMetrics.centralWaGroups, 'Central WA Groups');
+    checkAndAddMetric(overallMetrics.chaupals, 'Chaupals');
+    checkAndAddMetric(overallMetrics.shaktiLeaders, 'Shakti Leaders');
+    
+    // For debugging - force add some metrics if they exist but aren't showing
+    console.log('[aggregateReportData] FORCE CHECK: If metrics exist but not showing...');
+    if (overallMetrics.saathi && Number(overallMetrics.saathi) === 0) {
+      console.log('  Saathi exists but is 0:', overallMetrics.saathi);
     }
-    if (Number(overallMetrics.volunteers) > 0) {
-      keyMetrics.push({ name: 'Volunteers', value: Number(overallMetrics.volunteers) });
+    if (overallMetrics.clubs && Number(overallMetrics.clubs) === 0) {
+      console.log('  Clubs exists but is 0:', overallMetrics.clubs);
     }
-    if (Number(overallMetrics.slps) > 0) {
-      keyMetrics.push({ name: 'Samvidhan Leaders', value: Number(overallMetrics.slps) });
-    }
-    if (Number(overallMetrics.shaktiLeaders) > 0) {
-      keyMetrics.push({ name: 'Shakti Leaders', value: Number(overallMetrics.shaktiLeaders) });
-    }
-    if (Number(overallMetrics.clubs) > 0) {
-      keyMetrics.push({ name: 'Clubs', value: Number(overallMetrics.clubs) });
-    }
-    if (Number(overallMetrics.assemblyWaGroups) > 0) {
-      keyMetrics.push({ name: 'Assembly WA Groups', value: Number(overallMetrics.assemblyWaGroups) });
-    }
-    if (Number(overallMetrics.chaupals) > 0) {
-      keyMetrics.push({ name: 'Chaupals', value: Number(overallMetrics.chaupals) });
-    }
+    
+    // All metrics checked above
+    
+    console.log('[aggregateReportData] DEBUG: Final key metrics generated:', keyMetrics.length);
+    keyMetrics.forEach(m => console.log(`  - ${m.name}: ${m.value}`));
     
     const executiveSummary: ExecutiveSummary = {
       totalZones: options?.selectedZone ? 1 : 0, // Only show zones if zone is selected
@@ -741,7 +776,7 @@ function transformZoneData(zones: ZoneReportData[]): ZoneData[] {
             volunteers: Number(ac.metrics.volunteers) || 0,
             leaders: Number(ac.metrics.shaktiLeaders) || 0,
             slps: Number(ac.metrics.slps) || 0,
-            videos: Number(ac.metrics.videos) || 0,
+            videos: Number(ac.metrics.acVideos) || 0,
             clubs: Number(ac.metrics.clubs) || 0,
             forms: Number(ac.metrics.forms) || 0,
             chaupals: Number(ac.metrics.chaupals) || 0,
@@ -762,7 +797,7 @@ function transformZoneData(zones: ZoneReportData[]): ZoneData[] {
           volunteers: Number(assembly.metrics.volunteers) || 0,
           leaders: Number(assembly.metrics.shaktiLeaders) || 0,
           slps: Number(assembly.metrics.slps) || 0,
-          videos: Number(assembly.metrics.videos) || 0,
+          videos: Number(assembly.metrics.acVideos) || 0,
           clubs: Number(assembly.metrics.clubs) || 0,
           forms: Number(assembly.metrics.forms) || 0,
           assemblyWaGroups: Number(assembly.metrics.assemblyWaGroups) || 0,
@@ -770,6 +805,17 @@ function transformZoneData(zones: ZoneReportData[]): ZoneData[] {
         }
       };
     });
+
+    // Calculate zone-level metrics by aggregating from assemblies
+    const zoneMetrics: ReportMetric[] = [
+      { name: 'Meetings', value: Number(zone.metrics.meetings) || 0 },
+      { name: 'Saathi Members', value: Number(zone.metrics.saathi) || 0 },
+      { name: 'Volunteers', value: Number(zone.metrics.volunteers) || 0 },
+      { name: 'Samvidhan Leaders', value: Number(zone.metrics.slps) || 0 },
+      { name: 'Videos', value: Number(zone.metrics.acVideos) || 0 },
+      { name: 'Clubs', value: Number(zone.metrics.clubs) || 0 },
+      { name: 'Forms', value: Number(zone.metrics.forms) || 0 }
+    ].filter(m => m.value > 0); // Only show non-zero metrics
 
     return {
       name: zone.name,
@@ -780,18 +826,7 @@ function transformZoneData(zones: ZoneReportData[]): ZoneData[] {
       activeACs: zone.assemblies.reduce((sum, a) => 
         sum + a.coordinators.filter(ac => Number(ac.metrics.meetings) > 0).length, 0
       ),
-      metrics: [
-        { name: 'Meetings', value: Number(zone.metrics.meetings) || 0 },
-        { name: 'Members', value: Number(zone.metrics.saathi) || 0 },
-        { name: 'Volunteers', value: Number(zone.metrics.volunteers) || 0 },
-        { name: 'Leaders', value: Number(zone.metrics.shaktiLeaders) || 0 },
-        { name: 'Videos', value: Number(zone.metrics.videos) || 0 },
-        { name: 'Clubs', value: Number(zone.metrics.clubs) || 0 },
-        { name: 'Forms', value: Number(zone.metrics.forms) || 0 },
-        { name: 'Chaupals', value: Number(zone.metrics.chaupals) || 0 },
-        { name: 'Assembly WA Groups', value: Number(zone.metrics.assemblyWaGroups) || 0 },
-        { name: 'Central WA Groups', value: Number(zone.metrics.centralWaGroups) || 0 }
-      ]
+      metrics: zoneMetrics
     };
   });
 }
