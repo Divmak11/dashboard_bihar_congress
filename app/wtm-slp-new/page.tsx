@@ -10,6 +10,7 @@ import DateRangeFilter from '../../components/DateRangeFilter';
 import HierarchicalErrorBoundary from '../../components/hierarchical/HierarchicalErrorBoundary';
 import { ToastContainer, useToast } from '../../components/Toast';
 import { Zone, AC, SLP } from '../../models/hierarchicalTypes';
+import ReportGenerator from '../../components/ReportGenerator';
 import { fetchZones, fetchAssemblies, fetchAssemblyCoordinators, fetchSlpsForAc, fetchCumulativeMetrics } from '../utils/fetchHierarchicalData';
 import { CumulativeMetrics } from '../../models/hierarchicalTypes';
 import { AppError } from '../utils/errorUtils';
@@ -334,6 +335,15 @@ const HierarchicalDashboardPage: React.FC = () => {
               endDate={endDate}
               selectedOption={dateOption}
               onDateChange={handleDateChange}
+            />
+            <ReportGenerator
+              adminUser={adminUser}
+              currentDateFilter={{
+                startDate,
+                endDate,
+                dateOption
+              }}
+              selectedVertical={selectedVertical}
             />
             <button
               onClick={handleLogout}
