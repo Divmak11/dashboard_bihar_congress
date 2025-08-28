@@ -16,7 +16,8 @@ import {
   fetchDetailedMembers,
   fetchDetailedVolunteers,
   fetchDetailedLeaders,
-  fetchDetailedData
+  fetchDetailedData,
+  fetchZones
 } from './fetchHierarchicalData';
 import { db } from './firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -478,51 +479,150 @@ export async function aggregateReportData(
 
     console.log(`[aggregateReportData] Grouped data for ${assemblyMap.size} assemblies`);
 
-    // Step 5: Build final report structure (simplified)
-    const zoneReportData: any[] = [];
+    // Step 5: Fetch zones from Firebase and group assemblies by zone
+    const zones = await fetchZones();
+    const wtmZones = zones.filter(z => z.parentVertical === 'wtm');
+    console.log(`[aggregateReportData] Fetched ${wtmZones.length} WTM zones from Firebase`);
     
-    if (options?.selectedZone) {
-      // If a specific zone is selected, build zone structure
-      const zoneAssemblies = Array.from(assemblyMap.values()).filter(a => a.zone === options.selectedZone);
+    // Create a map of assembly to zone for quick lookup
+    const assemblyToZoneMap = new Map<string, { zoneId: string; zoneName: string; inchargeName: string }>();
+    wtmZones.forEach(zone => {
+      const inchargeName = zone.name.split(' - ')[1] || 'Unknown'; // Extract incharge name from "Zone X - Name" format
+      zone.assemblies.forEach(assembly => {
+        assemblyToZoneMap.set(assembly, {
+          zoneId: zone.id,
+          zoneName: zone.name,
+          inchargeName
+        });
+      });
+    });
+    
+    // Step 6: Group assemblies under their respective zones
+    const zoneReportData: ZoneReportData[] = [];
+    const zoneDataMap = new Map<string, ZoneReportData>();
+    
+    // Process each assembly and group under zones
+    for (const [assemblyName, assemblyData] of assemblyMap) {
+      const zoneInfo = assemblyToZoneMap.get(assemblyName);
       
-      zoneReportData.push({
-        id: options.selectedZone,
-        name: options.selectedZone,
-        inchargeName: options.selectedZone,
-        assemblies: zoneAssemblies.map(assembly => ({
-          id: assembly.assembly,
-          name: assembly.assembly,
-          coordinators: assembly.coordinators,
-          metrics: assembly.metrics
-        })),
-        metrics: overallMetrics
-      });
-    } else {
-      // No specific zone selected, group all assemblies
-      const allAssemblies = Array.from(assemblyMap.values());
-      zoneReportData.push({
-        id: 'all',
-        name: 'All Areas',
-        inchargeName: 'All Areas',
-        assemblies: allAssemblies.map(assembly => ({
-          id: assembly.assembly,
-          name: assembly.assembly,
-          coordinators: assembly.coordinators,
-          metrics: assembly.metrics
-        })),
-        metrics: overallMetrics
-      });
+      if (zoneInfo) {
+        // Assembly belongs to a zone
+        if (!zoneDataMap.has(zoneInfo.zoneId)) {
+          // Create new zone entry
+          const newZone: ZoneReportData = {
+            id: zoneInfo.zoneId,
+            name: zoneInfo.zoneName,
+            inchargeName: zoneInfo.inchargeName,
+            assemblies: [],
+            metrics: {
+              meetings: 0,
+              volunteers: 0,
+              slps: 0,
+              saathi: 0,
+              clubs: 0,
+              videos: 0,
+              acVideos: 0,
+              forms: 0,
+              chaupals: 0,
+              assemblyWaGroups: 0,
+              centralWaGroups: 0,
+              shaktiLeaders: 0,
+              shaktiBaithaks: 0,
+              shaktiSaathi: 0,
+              shaktiClubs: 0,
+              shaktiForms: 0,
+              shaktiVideos: 0
+            }
+          };
+          zoneDataMap.set(zoneInfo.zoneId, newZone);
+        }
+        
+        const zoneData = zoneDataMap.get(zoneInfo.zoneId)!;
+        
+        // Add assembly to zone
+        zoneData.assemblies.push({
+          id: assemblyData.assembly,
+          name: assemblyData.assembly,
+          coordinators: assemblyData.coordinators,
+          metrics: assemblyData.metrics
+        });
+        
+        // Aggregate zone-level metrics
+        Object.keys(assemblyData.metrics).forEach(key => {
+          const numValue = Number(assemblyData.metrics[key as keyof CumulativeMetrics]) || 0;
+          const currentValue = Number(zoneData.metrics[key as keyof CumulativeMetrics]) || 0;
+          (zoneData.metrics as any)[key] = currentValue + numValue;
+        });
+      } else {
+        // Assembly doesn't belong to any zone (shouldn't happen, but handle gracefully)
+        console.log(`[aggregateReportData] Warning: Assembly '${assemblyName}' not found in any zone`);
+        // Create a default zone for unassigned assemblies
+        if (!zoneDataMap.has('unassigned')) {
+          const unassignedZone: ZoneReportData = {
+            id: 'unassigned',
+            name: 'Unassigned Areas',
+            inchargeName: 'Unassigned',
+            assemblies: [],
+            metrics: {
+              meetings: 0,
+              volunteers: 0,
+              slps: 0,
+              saathi: 0,
+              clubs: 0,
+              videos: 0,
+              acVideos: 0,
+              forms: 0,
+              chaupals: 0,
+              assemblyWaGroups: 0,
+              centralWaGroups: 0,
+              shaktiLeaders: 0,
+              shaktiBaithaks: 0,
+              shaktiSaathi: 0,
+              shaktiClubs: 0,
+              shaktiForms: 0,
+              shaktiVideos: 0
+            }
+          };
+          zoneDataMap.set('unassigned', unassignedZone);
+        }
+        
+        const unassignedZone = zoneDataMap.get('unassigned')!;
+        unassignedZone.assemblies.push({
+          id: assemblyData.assembly,
+          name: assemblyData.assembly,
+          coordinators: assemblyData.coordinators,
+          metrics: assemblyData.metrics
+        });
+        
+        // Aggregate metrics for unassigned zone
+        Object.keys(assemblyData.metrics).forEach(key => {
+          const numValue = Number(assemblyData.metrics[key as keyof CumulativeMetrics]) || 0;
+          const currentValue = Number(unassignedZone.metrics[key as keyof CumulativeMetrics]) || 0;
+          (unassignedZone.metrics as any)[key] = currentValue + numValue;
+        });
+      }
     }
+    
+    // Convert map to array and sort by zone name
+    zoneReportData.push(...Array.from(zoneDataMap.values()));
+    zoneReportData.sort((a, b) => {
+      // Put unassigned at the end
+      if (a.id === 'unassigned') return 1;
+      if (b.id === 'unassigned') return -1;
+      return a.name.localeCompare(b.name);
+    });
 
     console.log(`[aggregateReportData] Grouped data for ${zoneReportData.length} zones, ${assemblyMap.size} assemblies, ${acMap.size} ACs`);
     console.log('[aggregateReportData] Zone data structure:', zoneReportData.map(z => ({
       name: z.name,
+      inchargeName: z.inchargeName,
       assembliesCount: z.assemblies.length,
       firstAssembly: z.assemblies[0]?.name,
-      firstAssemblyACs: z.assemblies[0]?.coordinators?.length || 0
+      firstAssemblyACs: z.assemblies[0]?.coordinators?.length || 0,
+      totalMeetings: z.metrics.meetings
     })));
 
-    // Step 6: Calculate summary metrics
+    // Step 7: Calculate summary metrics
     const totalACs = acMap.size;
     const totalSLPs = 0; // Simplified - not tracking SLPs in this approach
     
@@ -582,7 +682,7 @@ export async function aggregateReportData(
     keyMetrics.forEach(m => console.log(`  - ${m.name}: ${m.value}`));
     
     const executiveSummary: ExecutiveSummary = {
-      totalZones: options?.selectedZone ? 1 : 0, // Only show zones if zone is selected
+      totalZones: zoneReportData.filter(z => z.id !== 'unassigned').length, // Count actual zones
       totalAssemblies: assemblyMap.size,
       totalACs,
       totalSLPs,
@@ -700,7 +800,7 @@ function calculatePerformanceSummary(zones: ZoneReportData[]): { high: number; m
     zone.assemblies.forEach(assembly => {
       assembly.coordinators.forEach(ac => {
         const meetingCount = Number(ac.metrics.meetings) || 0;
-        if (meetingCount >= 10) {
+        if (meetingCount >= 7) {
           high++;
         } else if (meetingCount >= 5) {
           moderate++;
@@ -759,7 +859,7 @@ function transformZoneData(zones: ZoneReportData[]): ZoneData[] {
       const acs: ACPerformance[] = assembly.coordinators.map(ac => {
         const meetingCount = Number(ac.metrics.meetings) || 0;
         let performanceLevel: 'high' | 'moderate' | 'poor' = 'poor';
-        if (meetingCount >= 10) {
+        if (meetingCount >= 7) {
           performanceLevel = 'high';
         } else if (meetingCount >= 5) {
           performanceLevel = 'moderate';

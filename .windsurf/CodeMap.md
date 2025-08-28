@@ -48,7 +48,9 @@ my-dashboard/
 │       ├── fetchFirebaseData.ts  # Firebase data fetching
 │       ├── fetchHierarchicalData.ts # Hierarchical data logic
 │       ├── firebase.ts           # Firebase config
-│       └── errorUtils.ts         # Error handling
+│       ├── errorUtils.ts         # Error handling
+│       ├── reportDataAggregation.ts # Zone-wise report aggregation
+│       └── pdfGenerator.tsx      # PDF report generation
 ├── components/                   # Reusable components
 │   ├── hierarchical/             # Hierarchical dashboard components
 │   │   ├── DetailedView.tsx     # Detailed data view
@@ -58,13 +60,14 @@ my-dashboard/
 │   │   ├── MembersList.tsx      # Members table
 │   │   ├── VideosList.tsx       # Videos table
 │   │   └── [other lists]        # Other activity tables
+│   ├── ReportGenerator.tsx       # Report generation component
 │   ├── DashboardHome.tsx         # Dashboard home component
 │   ├── DateRangeFilter.tsx      # Date filtering component
 │   └── NavBar.tsx                # Navigation bar
 ├── models/                       # TypeScript type definitions
 │   ├── types.ts                  # Core data types
 │   ├── hierarchicalTypes.ts     # Hierarchy-specific types
-│   └── reportTypes.ts            # Report types
+│   └── reportTypes.ts            # Report types (Zone-wise structure)
 └── .windsurf/                    # Project documentation
     ├── PRD.md                    # Product requirements
     ├── Plan.md                   # Implementation plan
@@ -180,6 +183,20 @@ my-dashboard/
   // Activity fields
   parentVertical: 'shakti-abhiyaan',
   // Similar structure to slp-activity
+}
+```
+
+### 6. **zones** Collection (for Report Generation)
+```typescript
+{
+  id: string,                     // Zone ID (Document ID)
+  name: string,                   // Zone name with format: "Zone X - Incharge Name"
+  parentVertical: 'wtm' | 'shakti-abhiyaan',  // Vertical assignment
+  assemblies: string[],           // List of assembly names under this zone
+  zonalIncharge?: string,         // Zonal coordinator UID
+  active?: boolean,               // Zone status
+  createdAt?: Timestamp,
+  updatedAt?: Timestamp
 }
 ```
 
@@ -504,7 +521,31 @@ app/wtm-slp-new/page.tsx (Main Page)
 - **Pattern**: Fetch all, then filter in JavaScript
 - **Assembly Chunking**: Applied for >10 assemblies
 
+#### 5. **Report Generation Functions**
+
+##### **aggregateReportData** (`reportDataAggregation.ts`)
+- **Purpose**: Main report data aggregation with zone hierarchy
+- **Process**:
+  1. Fetches zones filtered by `parentVertical='wtm'`
+  2. Creates assembly-to-zone mapping
+  3. Groups assemblies under zones
+  4. Aggregates zone-level metrics
+  5. Handles unassigned assemblies
+- **Returns**: Complete report data with Zone → Assembly → AC hierarchy
+
+##### **fetchZones** (`fetchHierarchicalData.ts`)
+- **Collection**: admin-users (role='zonal-incharge')
+- **Returns**: Zone data with assemblies and incharge names
+- **Filter**: parentVertical='wtm' for report generation
+
+##### **transformZoneData** (`reportDataAggregation.ts`)
+- **Purpose**: Converts raw zone data to report format
+- **Maps**: Zone metrics, assemblies, and performance levels
+- **Output**: ZoneData[] for PDF generation
+
 ### Data Flow Example
+
+#### Hierarchical Dashboard Flow
 ```
 User selects Zone 3
   → fetchZones() returns zone data
@@ -521,6 +562,25 @@ User clicks "Meetings" card
   → fetchDetailedMeetings({ level: 'zone', assemblies: [...] })
   → Returns WtmSlpEntry[]
   → DetailedView shows MeetingsList component
+```
+
+#### Report Generation Flow
+```
+User clicks Generate Report
+  → aggregateReportData() called
+    → fetchZones() with parentVertical='wtm' filter
+    → Creates assemblyToZoneMap from zone.assemblies[]
+    → fetchAllActivities() for all assemblies
+    → Groups assemblies under zones
+    → Aggregates zone metrics (sum of assembly metrics)
+    → Creates "Unassigned Areas" zone for orphan assemblies
+    → transformZoneData() converts to report format
+  → generateAndDownloadPDF(reportData)
+    → Renders PDF with Zone → Assembly → AC hierarchy
+    → ZoneSection component for each zone
+    → AssemblySection nested under zones
+    → ACSection nested under assemblies
+  → PDF downloaded to user
 ```
 
 ---
@@ -566,6 +626,14 @@ User clicks "Meetings" card
 ### 10. Build Errors with Undefined Values
 **Problem**: TypeScript errors with optional chaining
 **Solution**: Proper null checks and fallback values
+
+### 11. Zone Hierarchy in Reports
+**Problem**: Reports need zone-level grouping for assemblies
+**Solution**: Fetch zones from admin-users, map assemblies to zones, handle unassigned assemblies
+
+### 12. Zone-Assembly Mapping
+**Problem**: Some assemblies may not be assigned to any zone
+**Solution**: Create "Unassigned Areas" zone for orphan assemblies with aggregated metrics
 
 ---
 
@@ -621,6 +689,9 @@ console.log(`[functionName] Chunking ${items.length} items into ${chunks.length}
 | Get zones | `fetchZones` | fetchHierarchicalData.ts |
 | Get ACs for assembly | `fetchAssemblyCoordinators` | fetchHierarchicalData.ts |
 | Get SLPs for AC | `fetchSlpsForAc` | fetchHierarchicalData.ts |
+| Generate zone report | `aggregateReportData` | reportDataAggregation.ts |
+| Transform zone data | `transformZoneData` | reportDataAggregation.ts |
+| Generate PDF report | `generateAndDownloadPDF` | pdfGenerator.tsx |
 
 ### Environment Variables
 ```env
