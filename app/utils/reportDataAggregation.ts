@@ -20,7 +20,7 @@ import {
   fetchZones
 } from './fetchHierarchicalData';
 import { db } from './firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { getWtmSlpSummary } from './fetchFirebaseData';
 
 export interface DateFilter {
@@ -96,49 +96,72 @@ export async function aggregateReportData(
   const startTime = Date.now();
   
   /**
-   * Resolve AC names from users collection for ACs without coordinator names
+   * Resolve AC names from users collection using handler_id as document ID
    */
   const resolveACNames = async (
     acMap: Map<string, any>, 
     acNameCache: Map<string, string>
   ) => {
-    const missingNameACs = [];
+    const acIdsToResolve = [];
     
-    // Find ACs that need name resolution
+    // Find ACs that need name resolution (those without proper coordinator names)
     for (const [acId, acData] of acMap) {
-      if (acData.acName.startsWith('AC-') && acId !== 'unknown') {
-        missingNameACs.push(acId);
+      if (!acData.acName || acData.acName === 'Unknown AC' || acId === 'unknown') {
+        continue; // Skip unknown or already resolved ACs
+      }
+      // Check if we need to resolve this AC's name
+      if (!acNameCache.has(acId)) {
+        acIdsToResolve.push(acId);
       }
     }
     
-    if (missingNameACs.length === 0) {
-      console.log('[resolveACNames] All AC names already resolved');
+    if (acIdsToResolve.length === 0) {
+      console.log('[resolveACNames] All AC names already resolved or cached');
       return;
     }
     
-    console.log(`[resolveACNames] Resolving names for ${missingNameACs.length} ACs`);
+    console.log(`[resolveACNames] Resolving names for ${acIdsToResolve.length} ACs using direct document fetch`);
     
     try {
-      // Batch query users collection
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('uid', 'in', missingNameACs));
-      const snapshot = await getDocs(q);
-      
-      snapshot.forEach(doc => {
-        const userData = doc.data();
-        const acId = userData.uid;
-        const acName = userData.name || userData.displayName || `AC-${acId.substring(0, 8)}`;
-        
-        // Update cache and AC map
-        acNameCache.set(acId, acName);
-        if (acMap.has(acId)) {
-          acMap.get(acId)!.acName = acName;
+      // Fetch each AC document directly using handler_id as document ID
+      const resolvePromises = acIdsToResolve.map(async (handlerId) => {
+        try {
+          const userDocRef = doc(db, 'users', handlerId);
+          const userDoc = await getDoc(userDocRef);
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            const acName = userData.name; // Use only 'name' property
+            
+            if (acName) {
+              // Update cache and AC map
+              acNameCache.set(handlerId, acName);
+              if (acMap.has(handlerId)) {
+                acMap.get(handlerId)!.acName = acName;
+                console.log(`[resolveACNames] Resolved AC ${handlerId}: ${acName}`);
+              }
+              return { handlerId, acName, found: true };
+            } else {
+              console.warn(`[resolveACNames] AC ${handlerId} found but no 'name' property`);
+              return { handlerId, acName: null, found: false };
+            }
+          } else {
+            console.warn(`[resolveACNames] AC document not found for handler_id: ${handlerId}`);
+            return { handlerId, acName: null, found: false };
+          }
+        } catch (error) {
+          console.error(`[resolveACNames] Error fetching AC ${handlerId}:`, error);
+          return { handlerId, acName: null, found: false };
         }
       });
       
-      console.log(`[resolveACNames] Resolved ${snapshot.size} AC names from users collection`);
+      const results = await Promise.all(resolvePromises);
+      const resolved = results.filter(r => r.found).length;
+      const notFound = results.filter(r => !r.found).length;
+      
+      console.log(`[resolveACNames] Resolution complete: ${resolved} resolved, ${notFound} not found`);
     } catch (error) {
-      console.error('[resolveACNames] Error resolving AC names:', error);
+      console.error('[resolveACNames] Error during AC name resolution:', error);
     }
   };
   
@@ -428,7 +451,56 @@ export async function aggregateReportData(
       metrics: CumulativeMetrics;
     }>();
 
+    // Step 4: Verify AC roles and group by Assembly
+    // First, fetch role information for all ACs to filter only Assembly Coordinators
+    const acRoleVerification = new Map<string, boolean>();
+    
+    console.log(`[aggregateReportData] Verifying roles for ${acMap.size} ACs`);
+    
+    // Verify AC roles in parallel
+    const roleVerificationPromises = Array.from(acMap.keys()).map(async (acId) => {
+      if (acId === 'unknown') {
+        acRoleVerification.set(acId, false);
+        return;
+      }
+      
+      try {
+        const userDocRef = doc(db, 'users', acId);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const isAssemblyCoordinator = userData.role === 'Assembly Coordinator';
+          acRoleVerification.set(acId, isAssemblyCoordinator);
+          
+          if (!isAssemblyCoordinator) {
+            console.log(`[aggregateReportData] Filtering out non-AC user: ${acId}, role: ${userData.role}`);
+          }
+        } else {
+          console.warn(`[aggregateReportData] User document not found for AC: ${acId}`);
+          acRoleVerification.set(acId, false);
+        }
+      } catch (error) {
+        console.error(`[aggregateReportData] Error verifying role for AC ${acId}:`, error);
+        acRoleVerification.set(acId, false);
+      }
+    });
+    
+    await Promise.all(roleVerificationPromises);
+    
+    const verifiedACs = Array.from(acRoleVerification.entries()).filter(([_, isAC]) => isAC).length;
+    const filteredACs = Array.from(acRoleVerification.entries()).filter(([_, isAC]) => !isAC).length;
+    
+    console.log(`[aggregateReportData] Role verification complete: ${verifiedACs} verified ACs, ${filteredACs} filtered out`);
+
+    // Now group only verified Assembly Coordinators by assembly
     acMap.forEach((acData, acId) => {
+      // Only include verified Assembly Coordinators
+      if (!acRoleVerification.get(acId)) {
+        console.log(`[aggregateReportData] Skipping non-AC user ${acId} (${acData.acName}) from assembly grouping`);
+        return;
+      }
+      
       const assembly = acData.assembly;
       
       if (!assemblyMap.has(assembly)) {
@@ -460,7 +532,7 @@ export async function aggregateReportData(
       
       const assemblyData = assemblyMap.get(assembly)!;
       
-      // Add AC to assembly
+      // Add verified AC to assembly
       assemblyData.coordinators.push({
         id: acData.acId,
         name: acData.acName,
@@ -469,7 +541,7 @@ export async function aggregateReportData(
         slps: [] // We don't fetch SLP details in this approach
       });
       
-      // Aggregate assembly metrics
+      // Aggregate assembly metrics from verified ACs only
       Object.keys(acData.metrics).forEach(key => {
         const numValue = Number(acData.metrics[key as keyof CumulativeMetrics]) || 0;
         const currentValue = Number(assemblyData.metrics[key as keyof CumulativeMetrics]) || 0;
