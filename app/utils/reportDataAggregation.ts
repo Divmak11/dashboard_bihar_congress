@@ -14,8 +14,6 @@ import {
   fetchCumulativeMetrics,
   fetchDetailedMeetings,
   fetchDetailedMembers,
-  fetchDetailedVolunteers,
-  fetchDetailedLeaders,
   fetchDetailedData,
   fetchZones
 } from './fetchHierarchicalData';
@@ -221,11 +219,9 @@ export async function aggregateReportData(
     };
 
     try {
-      const [meetings, members, volunteers, leaders, videos, acVideos, forms, clubs, assemblyWaGroups, centralWaGroups] = await Promise.all([
+      const [meetings, members, videos, acVideos, forms, clubs, assemblyWaGroups, centralWaGroups] = await Promise.all([
         fetchDetailedMeetings(fetchOptions),
         fetchDetailedMembers(fetchOptions),
-        fetchDetailedVolunteers(fetchOptions),
-        fetchDetailedLeaders(fetchOptions),
         fetchDetailedData('videos', fetchOptions),
         fetchDetailedData('acVideos', fetchOptions),
         fetchDetailedData('forms', fetchOptions),
@@ -233,11 +229,17 @@ export async function aggregateReportData(
         fetchDetailedData('assemblyWaGroups', fetchOptions),
         fetchDetailedData('centralWaGroups', fetchOptions)
       ]);
+      
+      // Filter meetings locally instead of making redundant API calls
+      const volunteers = meetings.filter(m => (m.onboardingStatus || '').toLowerCase() === 'onboarded');
+      const leaders = meetings.filter(m => (m.recommendedPosition || '').toLowerCase() === 'slp');
+      
+      console.log(`[aggregateReportData] Filtered from ${meetings.length} meetings: ${volunteers.length} volunteers, ${leaders.length} leaders`);
 
       detailedData.meetings = meetings;
       detailedData.members = members;
-      detailedData.volunteers = volunteers;
-      detailedData.leaders = leaders;
+      detailedData.volunteers = volunteers; // Filtered locally from meetings
+      detailedData.leaders = leaders; // Filtered locally from meetings
       detailedData.videos = videos;
       detailedData.forms = forms;
       detailedData.clubs = clubs;
@@ -836,12 +838,14 @@ async function getRecentActivities(
   };
 
   try {
-    const [meetings, members, volunteers, leaders] = await Promise.all([
+    const [meetings, members] = await Promise.all([
       fetchDetailedMeetings(options),
-      fetchDetailedMembers(options),
-      fetchDetailedVolunteers(options),
-      fetchDetailedLeaders(options)
+      fetchDetailedMembers(options)
     ]);
+    
+    // Filter meetings locally instead of making redundant API calls
+    const volunteers = meetings.filter(m => (m.onboardingStatus || '').toLowerCase() === 'onboarded');
+    const leaders = meetings.filter(m => (m.recommendedPosition || '').toLowerCase() === 'slp');
 
     return {
       meetings: meetings.slice(0, 10), // Limit to 10 most recent
