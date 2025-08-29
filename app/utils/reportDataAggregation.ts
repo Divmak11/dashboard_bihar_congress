@@ -15,7 +15,8 @@ import {
   fetchDetailedMeetings,
   fetchDetailedMembers,
   fetchDetailedData,
-  fetchZones
+  fetchZones,
+  fetchAssemblyCoordinators
 } from './fetchHierarchicalData';
 import { db } from './firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
@@ -184,6 +185,44 @@ export async function aggregateReportData(
     }
   };
   
+  /**
+   * Build complete AC roster for all assemblies in the selected vertical
+   */
+  const buildACRosterForVertical = async (assemblies: string[], vertical: string) => {
+    const acRoster = new Map<string, any[]>(); // assembly -> AC[]
+    console.log(`[buildACRosterForVertical] Building AC roster for ${assemblies.length} assemblies in vertical: ${vertical}`);
+    
+    // Performance optimization: Process assemblies in chunks to avoid overwhelming Firestore
+    const chunkSize = 10; // Process 10 assemblies at a time
+    let totalACs = 0;
+    
+    for (let i = 0; i < assemblies.length; i += chunkSize) {
+      const chunk = assemblies.slice(i, i + chunkSize);
+      console.log(`[buildACRosterForVertical] Processing chunk ${Math.floor(i/chunkSize) + 1}/${Math.ceil(assemblies.length/chunkSize)} (${chunk.length} assemblies)`);
+      
+      const rosterPromises = chunk.map(async (assembly) => {
+        try {
+          const acs = await fetchAssemblyCoordinators(assembly);
+          console.log(`[buildACRosterForVertical] Found ${acs.length} ACs for assembly: ${assembly}`);
+          return { assembly, acs };
+        } catch (error) {
+          console.error(`[buildACRosterForVertical] Error fetching ACs for assembly ${assembly}:`, error);
+          return { assembly, acs: [] };
+        }
+      });
+      
+      const chunkResults = await Promise.all(rosterPromises);
+      
+      chunkResults.forEach(({ assembly, acs }) => {
+        acRoster.set(assembly, acs);
+        totalACs += acs.length;
+      });
+    }
+    
+    console.log(`[buildACRosterForVertical] Built roster: ${totalACs} total ACs across ${assemblies.length} assemblies`);
+    return acRoster;
+  };
+
   try {
     // Step 1: Get overall metrics from dashboard (already fetched)
     const handler_id = vertical === 'shakti-abhiyaan' ? 'shakti-abhiyaan' : undefined;
@@ -202,6 +241,28 @@ export async function aggregateReportData(
       };
       console.log('[aggregateReportData] Adjusted All Time filter to 6 months:', adjustedDateFilter);
     }
+    
+    // Step 1.5: Fetch zones and assemblies for selected vertical first
+    const zones = await fetchZones();
+    const verticalZones = zones.filter(z => 
+      vertical === 'shakti-abhiyaan' ? z.parentVertical === 'shakti-abhiyaan' : z.parentVertical === 'wtm'
+    );
+    const allAssemblies = verticalZones.flatMap(zone => zone.assemblies);
+    console.log(`[aggregateReportData] Found ${allAssemblies.length} assemblies in ${verticalZones.length} zones for vertical: ${vertical}`);
+    
+    // Create assembly-to-zone mapping early for reference
+    const assemblyToZoneMap = new Map<string, { zoneId: string; zoneName: string; inchargeName: string }>();
+    verticalZones.forEach(zone => {
+      const inchargeName = zone.name.split(' - ')[1] || 'Unknown'; // Extract incharge name from "Zone X - Name" format
+      zone.assemblies.forEach(assembly => {
+        assemblyToZoneMap.set(assembly, {
+          zoneId: zone.id,
+          zoneName: zone.name,
+          inchargeName
+        });
+      });
+    });
+    console.log(`[aggregateReportData] Created assembly-to-zone mapping for ${assemblyToZoneMap.size} assemblies`);
     
     const summaryMetrics = await fetchCumulativeMetrics({
       level: 'zone', // Use 'zone' with no specific assemblies to get all data
@@ -375,6 +436,9 @@ export async function aggregateReportData(
       // Continue with empty arrays if fetch fails
     }
 
+    // Step 2: Build complete AC roster for all assemblies
+    const acRoster = await buildACRosterForVertical(allAssemblies, vertical);
+    
     // Step 3: Group data by Assembly-AC combination
     // This allows the same AC to appear under multiple assemblies with assembly-specific metrics
     const assemblyAcMap = new Map<string, {
@@ -405,6 +469,71 @@ export async function aggregateReportData(
 
     // Helper function to create assembly-AC key
     const getAssemblyAcKey = (assembly: string, acId: string) => `${assembly}::${acId}`;
+    
+    // Step 3.5: Pre-seed assemblyAcMap with complete AC roster
+    let totalPreseededACs = 0;
+    
+    for (const [assembly, acs] of acRoster) {
+      const zoneInfo = assemblyToZoneMap.get(assembly);
+      const zone = zoneInfo?.zoneName || 'Unknown Zone';
+      
+      for (const ac of acs) {
+        const key = getAssemblyAcKey(assembly, ac.uid);
+        
+        if (!assemblyAcMap.has(key)) {
+          // Cache AC info for later use
+          if (ac.name) {
+            acInfoCache.set(ac.uid, {
+              name: ac.name,
+              primaryAssembly: assembly // This is the assembly they're assigned to
+            });
+          }
+          
+          assemblyAcMap.set(key, {
+            acId: ac.uid,
+            acName: ac.name || `Pending-${ac.uid.substring(0, 8)}`,
+            assembly,
+            zone,
+            primaryAssembly: assembly,
+            activities: {
+              meetings: [],
+              members: [],
+              volunteers: [],
+              leaders: [],
+              videos: [],
+              acVideos: [],
+              forms: [],
+              clubs: [],
+              waGroups: []
+            },
+            metrics: {
+              meetings: 0,
+              volunteers: 0,
+              slps: 0,
+              saathi: 0,
+              shaktiLeaders: 0,
+              shaktiSaathi: 0,
+              clubs: 0,
+              shaktiClubs: 0,
+              forms: 0,
+              shaktiForms: 0,
+              videos: 0,
+              shaktiVideos: 0,
+              acVideos: 0,
+              chaupals: 0,
+              shaktiBaithaks: 0,
+              centralWaGroups: 0,
+              assemblyWaGroups: 0
+            }
+          });
+          
+          uniqueAcIds.add(ac.uid);
+          totalPreseededACs++;
+        }
+      }
+    }
+    
+    console.log(`[aggregateReportData] Pre-seeded ${totalPreseededACs} assembly-AC combinations from roster`);
     
     // Helper function to add activity to assembly-AC combination
     const addActivityToAssemblyAc = async (item: any, activityType: string) => {
@@ -816,23 +945,8 @@ export async function aggregateReportData(
       });
     });
 
-    // Step 5: Fetch zones from Firebase and group assemblies by zone
-    const zones = await fetchZones();
-    const wtmZones = zones.filter(z => z.parentVertical === 'wtm');
-    console.log(`[aggregateReportData] Fetched ${wtmZones.length} WTM zones from Firebase`);
-    
-    // Create a map of assembly to zone for quick lookup
-    const assemblyToZoneMap = new Map<string, { zoneId: string; zoneName: string; inchargeName: string }>();
-    wtmZones.forEach(zone => {
-      const inchargeName = zone.name.split(' - ')[1] || 'Unknown'; // Extract incharge name from "Zone X - Name" format
-      zone.assemblies.forEach(assembly => {
-        assemblyToZoneMap.set(assembly, {
-          zoneId: zone.id,
-          zoneName: zone.name,
-          inchargeName
-        });
-      });
-    });
+    // Step 5: Group assemblies by zone (zones and mapping already created in Step 1.5)
+    console.log(`[aggregateReportData] Using ${verticalZones.length} zones for vertical: ${vertical}`);
     
     // Step 6: Group assemblies under their respective zones
     const zoneReportData: ZoneReportData[] = [];

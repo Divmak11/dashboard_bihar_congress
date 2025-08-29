@@ -538,6 +538,11 @@ app/wtm-slp-new/page.tsx (Main Page)
   5. Aggregates zone-level metrics
   6. Handles unassigned assemblies
 - **Returns**: Complete report data with Zone → Assembly → AC hierarchy
+- **Pre-seeding Approach**: NEW - Fetches ALL ACs for ALL assemblies in selected vertical before processing activities
+  - Uses `buildACRosterForVertical()` to get complete AC roster from zones and assemblies
+  - Pre-populates assemblyAcMap with ALL ACs under their assigned assemblies with zeroed metrics
+  - Ensures ACs with zero activity still appear in reports (shown in red)
+  - Preserves cross-assembly behavior when ACs work elsewhere
 - **Assembly-Scoped Aggregation**:
   - Groups activities by assembly first, then by AC within each assembly
   - Each AC appears once per assembly where they worked
@@ -550,6 +555,10 @@ app/wtm-slp-new/page.tsx (Main Page)
   - Updates all assembly-AC combinations for each AC
   - Sets 'Unknown' for ACs without name property
 - **Helper Functions**:
+  - **buildACRosterForVertical**: NEW - Builds complete AC roster for all assemblies
+    - Fetches zones filtered by selected vertical (wtm/shakti-abhiyaan)
+    - Uses existing fetchAssemblyCoordinators() for each assembly
+    - Processes assemblies in chunks of 10 for performance
   - **addActivityToAssemblyAc**: Associates activities with correct assembly-AC combination
     - Does NOT use coordinatorName from activities (prevents participant name contamination)
     - Fetches AC's profile assembly when activity assembly is missing/invalid
@@ -558,7 +567,6 @@ app/wtm-slp-new/page.tsx (Main Page)
     - Only uses 'name' property, no displayName fallback
     - Fetches assembly information from user profile
   - **getAssemblyAcKey**: Creates unique key for assembly-AC combinations
-  - **addMetric**: Helper for metric addition with proper number conversion
 
 ##### **transformZoneData** (`reportDataAggregation.ts`)
 - **Purpose**: Converts raw zone data to report format
