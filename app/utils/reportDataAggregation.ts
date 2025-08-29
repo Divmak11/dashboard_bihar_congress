@@ -1187,11 +1187,30 @@ export async function aggregateReportData(
     const totalACs = uniqueAcIds.size;
     const totalSLPs = 0; // Simplified - not tracking SLPs in this approach
     
+    // Calculate performance zones based on meeting counts
+    let activeACs = 0; // Green zone: meetings >= 7
+    let moderateACs = 0; // Orange zone: meetings >= 5 and < 7
+    let poorACs = 0; // Red zone: meetings < 5
+    
+    // Count ACs by performance zone (excluding placeholder entries)
+    assemblyAcMap.forEach((acData) => {
+      if (acData.acId !== 'no-ac-assigned') {
+        const meetingCount = Number(acData.metrics.meetings) || 0;
+        if (meetingCount >= 7) {
+          activeACs++; // Green zone
+        } else if (meetingCount >= 5) {
+          moderateACs++; // Orange zone
+        } else {
+          poorACs++; // Red zone (including 0 meetings)
+        }
+      }
+    });
+    
     // Build performance summary
     const performanceSummary = {
-      high: 0,
-      moderate: 0,
-      poor: 0
+      high: activeACs,
+      moderate: moderateACs,
+      poor: poorACs
     };
     
     // Build key metrics array (only show metrics > 0)
@@ -1247,7 +1266,7 @@ export async function aggregateReportData(
       totalAssemblies: assemblyMap.size,
       totalACs,
       totalSLPs,
-      activeACs: totalACs, // Simplified - assume all ACs are active
+      activeACs: activeACs, // Only green zone ACs (meetings >= 7)
       activeSLPs: 0, // Simplified - not tracking SLPs in this approach
       keyMetrics,
       performanceSummary

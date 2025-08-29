@@ -531,14 +531,20 @@ app/wtm-slp-new/page.tsx (Main Page)
 ##### **aggregateReportData** (`app/utils/reportDataAggregation.ts`)
 - **Purpose**: Main report data aggregation with zone hierarchy
 - **Process**:
-  1. Fetches zones filtered by selected vertical (WTM/Shakti)
-  2. **Pre-seeds with complete AC roster** using `buildACRosterForVertical()`
-  3. Creates assembly-to-zone mapping
-  4. Overlays activity data on pre-seeded roster
-  5. Aggregates zone-level metrics
-  6. **Ensures ALL assemblies are included** (even those with no ACs)
-  7. Handles unassigned assemblies
-- **Returns**: Complete report data with Zone → Assembly → AC hierarchy
+  1.### Report Generation (`app/utils/reportDataAggregation.ts`)
+- **aggregateReportData**: Main function that:
+  - Pre-seeds assembly-AC map with complete AC roster using `buildACRosterForVertical`
+  - Fetches zones using `fetchZonesForWTM` for WTM vertical
+  - Fetches summary metrics and detailed activity data
+  - Groups data by assembly-AC combinations
+  - Applies role verification (allows 'no-ac-assigned' placeholder)
+  - Ensures all assemblies appear in final report with placeholder for no AC assemblies
+  - Calculates performance zones:
+    - Active ACs (green zone): meetings >= 7
+    - Moderate ACs (orange zone): meetings >= 5 and < 7
+    - Poor ACs (red zone): meetings < 5
+  - Generates executive summary with correct zone-based counts
+  - Returns complete report data structureh Zone → Assembly → AC hierarchy
 - **Pre-seeding Enhancement**:
   - Fetches all assemblies from zones for selected vertical
   - Uses vertical-specific fetch functions for WTM:

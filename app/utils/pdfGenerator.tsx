@@ -241,6 +241,16 @@ const styles = StyleSheet.create({
     color: '#000',  // Black text
     textAlign: 'center' as 'center',
   },
+  noAcMessage: {
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noAcText: {
+    fontSize: 10,
+    color: '#6b7280',
+    textAlign: 'center' as 'center',
+  },
 });
 
 interface PDFReportProps {
@@ -373,15 +383,22 @@ const AssemblySection: React.FC<{ assembly: AssemblyData }> = ({ assembly }) => 
       </View>
     </View>
     
-    {assembly.acs
-      .sort((a, b) => {
-        // Sort by performance: high (green) -> moderate (orange) -> poor (red)
-        const performanceOrder = { high: 0, moderate: 1, poor: 2 };
-        return performanceOrder[a.performanceLevel] - performanceOrder[b.performanceLevel];
-      })
-      .map((ac, idx) => (
-        <ACSection key={`ac-${idx}`} ac={ac} />
-      ))}
+    {assembly.acs.length === 0 || (assembly.acs.length === 1 && assembly.acs[0].id === 'no-ac-assigned') ? (
+      <View style={styles.noAcMessage}>
+        <Text style={styles.noAcText}>No AC assigned for this assembly</Text>
+      </View>
+    ) : (
+      assembly.acs
+        .filter(ac => ac.id !== 'no-ac-assigned') // Filter out placeholder entries
+        .sort((a, b) => {
+          // Sort by performance: high (green) -> moderate (orange) -> poor (red)
+          const performanceOrder = { high: 0, moderate: 1, poor: 2 };
+          return performanceOrder[a.performanceLevel] - performanceOrder[b.performanceLevel];
+        })
+        .map((ac, idx) => (
+          <ACSection key={`ac-${idx}`} ac={ac} />
+        ))
+    )}
   </View>
   );
 };
