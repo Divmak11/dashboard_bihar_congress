@@ -182,12 +182,12 @@ export async function aggregateReportData(
       console.log('[aggregateReportData] Adjusted All Time filter to 6 months:', adjustedDateFilter);
     }
     
-    const overallMetrics = await fetchCumulativeMetrics({
+    const summaryMetrics = await fetchCumulativeMetrics({
       level: 'zone', // Use 'zone' with no specific assemblies to get all data
       dateRange: adjustedDateFilter,
       handler_id
     });
-    console.log('[aggregateReportData] Overall metrics:', overallMetrics);
+    console.log('[aggregateReportData] Overall metrics:', summaryMetrics);
 
     // Step 2: Fetch detailed view data for each metric > 0
     const detailedData: {
@@ -210,31 +210,120 @@ export async function aggregateReportData(
       waGroups: []
     };
 
-    // Fetch all detailed data to ensure we capture all ACs regardless of overall metrics
-    // This is crucial because different ACs may have different activity types
+    // Step 1: Get overall summary metrics to determine which cards have data
     const fetchOptions = {
       level: 'zone' as const,
       dateRange: adjustedDateFilter,
       handler_id 
     };
 
+    const overallMetrics = await fetchCumulativeMetrics(fetchOptions);
+    console.log('[aggregateReportData] Summary metrics:', overallMetrics);
+
     try {
-      const [meetings, members, videos, acVideos, forms, clubs, assemblyWaGroups, centralWaGroups] = await Promise.all([
-        fetchDetailedMeetings(fetchOptions),
-        fetchDetailedMembers(fetchOptions),
-        fetchDetailedData('videos', fetchOptions),
-        fetchDetailedData('acVideos', fetchOptions),
-        fetchDetailedData('forms', fetchOptions),
-        fetchDetailedData('clubs', fetchOptions),
-        fetchDetailedData('assemblyWaGroups', fetchOptions),
-        fetchDetailedData('centralWaGroups', fetchOptions)
-      ]);
+      // Step 2: Build dynamic fetch array based on non-zero metrics
+      const fetchPromises: Promise<any>[] = [];
+      const fetchTypes: string[] = [];
+
+      // Conditionally fetch meetings only if count > 0
+      if (Number(overallMetrics.meetings) > 0) {
+        fetchPromises.push(fetchDetailedMeetings(fetchOptions));
+        fetchTypes.push('meetings');
+      }
+
+      // Conditionally fetch members only if count > 0
+      if (Number(overallMetrics.saathi) > 0) {
+        fetchPromises.push(fetchDetailedMembers(fetchOptions));
+        fetchTypes.push('members');
+      }
+
+      // Conditionally fetch other data types based on summary counts
+      if (Number(overallMetrics.videos) > 0) {
+        fetchPromises.push(fetchDetailedData('videos', fetchOptions));
+        fetchTypes.push('videos');
+      }
+
+      if (Number(overallMetrics.acVideos) > 0) {
+        fetchPromises.push(fetchDetailedData('acVideos', fetchOptions));
+        fetchTypes.push('acVideos');
+      }
+
+      if (Number(overallMetrics.forms) > 0) {
+        fetchPromises.push(fetchDetailedData('forms', fetchOptions));
+        fetchTypes.push('forms');
+      }
+
+      if (Number(overallMetrics.clubs) > 0) {
+        fetchPromises.push(fetchDetailedData('clubs', fetchOptions));
+        fetchTypes.push('clubs');
+      }
+
+      if (Number(overallMetrics.assemblyWaGroups) > 0) {
+        fetchPromises.push(fetchDetailedData('assemblyWaGroups', fetchOptions));
+        fetchTypes.push('assemblyWaGroups');
+      }
+
+      if (Number(overallMetrics.centralWaGroups) > 0) {
+        fetchPromises.push(fetchDetailedData('centralWaGroups', fetchOptions));
+        fetchTypes.push('centralWaGroups');
+      }
+
+      console.log(`[aggregateReportData] Fetching detailed data for: ${fetchTypes.join(', ')}`);
       
-      // Filter meetings locally instead of making redundant API calls
+      // Step 3: Execute only necessary fetches
+      const results = await Promise.all(fetchPromises);
+      
+      // Step 4: Map results back to data structure with defaults
+      let resultIndex = 0;
+      
+      // Initialize with empty arrays
+      let meetings: any[] = [];
+      let members: any[] = [];
+      let videos: any[] = [];
+      let acVideos: any[] = [];
+      let forms: any[] = [];
+      let clubs: any[] = [];
+      let assemblyWaGroups: any[] = [];
+      let centralWaGroups: any[] = [];
+      
+      // Map conditional results based on what was fetched
+      if (Number(overallMetrics.meetings) > 0) {
+        meetings = results[resultIndex++];
+      }
+      
+      if (Number(overallMetrics.saathi) > 0) {
+        members = results[resultIndex++];
+      }
+      
+      if (Number(overallMetrics.videos) > 0) {
+        videos = results[resultIndex++];
+      }
+      
+      if (Number(overallMetrics.acVideos) > 0) {
+        acVideos = results[resultIndex++];
+      }
+      
+      if (Number(overallMetrics.forms) > 0) {
+        forms = results[resultIndex++];
+      }
+      
+      if (Number(overallMetrics.clubs) > 0) {
+        clubs = results[resultIndex++];
+      }
+      
+      if (Number(overallMetrics.assemblyWaGroups) > 0) {
+        assemblyWaGroups = results[resultIndex++];
+      }
+      
+      if (Number(overallMetrics.centralWaGroups) > 0) {
+        centralWaGroups = results[resultIndex++];
+      }
+      
+      // Filter meetings locally for volunteers/leaders (only if meetings were fetched)
       const volunteers = meetings.filter(m => (m.onboardingStatus || '').toLowerCase() === 'onboarded');
       const leaders = meetings.filter(m => (m.recommendedPosition || '').toLowerCase() === 'slp');
       
-      console.log(`[aggregateReportData] Filtered from ${meetings.length} meetings: ${volunteers.length} volunteers, ${leaders.length} leaders`);
+      console.log(`[aggregateReportData] Processed data - meetings: ${meetings.length}, volunteers: ${volunteers.length}, leaders: ${leaders.length}`);
 
       detailedData.meetings = meetings;
       detailedData.members = members;
@@ -710,8 +799,8 @@ export async function aggregateReportData(
     // Build key metrics array (only show metrics > 0)
     const keyMetrics: ReportMetric[] = [];
     
-    console.log('[aggregateReportData] DEBUG: Overall metrics for Executive Summary:', JSON.stringify(overallMetrics, null, 2));
-    console.log('[aggregateReportData] DEBUG: Available metrics properties:', Object.keys(overallMetrics));
+    console.log('[aggregateReportData] DEBUG: Overall metrics for Executive Summary:', JSON.stringify(summaryMetrics, null, 2));
+    console.log('[aggregateReportData] DEBUG: Available metrics properties:', Object.keys(summaryMetrics));
     
     // Add all metrics that have values > 0 - exactly as shown on dashboard
     const checkAndAddMetric = (value: any, name: string) => {
@@ -723,31 +812,31 @@ export async function aggregateReportData(
     };
     
     // Add metrics in order they appear on dashboard
-    checkAndAddMetric(overallMetrics.meetings, 'Total Meetings');
-    checkAndAddMetric(overallMetrics.volunteers, 'Volunteers');
-    checkAndAddMetric(overallMetrics.slps, 'Samvidhan Leaders');
+    checkAndAddMetric(summaryMetrics.meetings, 'Total Meetings');
+    checkAndAddMetric(summaryMetrics.volunteers, 'Volunteers');
+    checkAndAddMetric(summaryMetrics.slps, 'Samvidhan Leaders');
     
     // Show both video types separately
-    checkAndAddMetric(overallMetrics.acVideos, 'AC Videos');
-    checkAndAddMetric(overallMetrics.videos, 'SLP Videos');
+    checkAndAddMetric(summaryMetrics.acVideos, 'AC Videos');
+    checkAndAddMetric(summaryMetrics.videos, 'SLP Videos');
     
     // Add other dashboard metrics that should appear
-    checkAndAddMetric(overallMetrics.saathi, 'Saathi Members');
-    checkAndAddMetric(overallMetrics.clubs, 'Clubs');
-    checkAndAddMetric(overallMetrics.forms, 'Mai-Bahin Forms');
-    checkAndAddMetric(overallMetrics.shaktiBaithaks, 'Shakti Baithaks');
-    checkAndAddMetric(overallMetrics.assemblyWaGroups, 'Assembly WA Groups');
-    checkAndAddMetric(overallMetrics.centralWaGroups, 'Central WA Groups');
-    checkAndAddMetric(overallMetrics.chaupals, 'Chaupals');
-    checkAndAddMetric(overallMetrics.shaktiLeaders, 'Shakti Leaders');
+    checkAndAddMetric(summaryMetrics.saathi, 'Saathi Members');
+    checkAndAddMetric(summaryMetrics.clubs, 'Clubs');
+    checkAndAddMetric(summaryMetrics.forms, 'Mai-Bahin Forms');
+    checkAndAddMetric(summaryMetrics.shaktiBaithaks, 'Shakti Baithaks');
+    checkAndAddMetric(summaryMetrics.assemblyWaGroups, 'Assembly WA Groups');
+    checkAndAddMetric(summaryMetrics.centralWaGroups, 'Central WA Groups');
+    checkAndAddMetric(summaryMetrics.chaupals, 'Chaupals');
+    checkAndAddMetric(summaryMetrics.shaktiLeaders, 'Shakti Leaders');
     
     // For debugging - force add some metrics if they exist but aren't showing
     console.log('[aggregateReportData] FORCE CHECK: If metrics exist but not showing...');
-    if (overallMetrics.saathi && Number(overallMetrics.saathi) === 0) {
-      console.log('  Saathi exists but is 0:', overallMetrics.saathi);
+    if (summaryMetrics.saathi && Number(summaryMetrics.saathi) === 0) {
+      console.log('  Saathi exists but is 0:', summaryMetrics.saathi);
     }
-    if (overallMetrics.clubs && Number(overallMetrics.clubs) === 0) {
-      console.log('  Clubs exists but is 0:', overallMetrics.clubs);
+    if (summaryMetrics.clubs && Number(summaryMetrics.clubs) === 0) {
+      console.log('  Clubs exists but is 0:', summaryMetrics.clubs);
     }
     
     // All metrics checked above
