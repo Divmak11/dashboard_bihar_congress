@@ -97,54 +97,75 @@ export async function aggregateReportData(
    * Resolve AC names from users collection using handler_id as document ID
    */
   const resolveACNames = async (
-    acMap: Map<string, any>, 
+    assemblyAcMap: Map<string, any>, 
     acNameCache: Map<string, string>
   ) => {
-    const acIdsToResolve = [];
+    const acIdsToResolve = new Set<string>();
     
-    // Find ACs that need name resolution (those without proper coordinator names)
-    for (const [acId, acData] of acMap) {
-      if (!acData.acName || acData.acName === 'Unknown AC' || acId === 'unknown') {
-        continue; // Skip unknown or already resolved ACs
+    // Find unique AC IDs that need name resolution
+    for (const [key, acData] of assemblyAcMap) {
+      const acId = acData.acId;
+      if (acId === 'unknown') {
+        continue; // Skip unknown ACs
       }
-      // Check if we need to resolve this AC's name
-      if (!acNameCache.has(acId)) {
-        acIdsToResolve.push(acId);
+      
+      // Check if name needs resolution (temporary names start with 'Pending-')
+      if (acData.acName && acData.acName.startsWith('Pending-')) {
+        if (!acNameCache.has(acId)) {
+          acIdsToResolve.add(acId);
+        }
       }
     }
     
-    if (acIdsToResolve.length === 0) {
+    if (acIdsToResolve.size === 0) {
       console.log('[resolveACNames] All AC names already resolved or cached');
       return;
     }
     
-    console.log(`[resolveACNames] Resolving names for ${acIdsToResolve.length} ACs using direct document fetch`);
+    console.log(`[resolveACNames] Resolving names for ${acIdsToResolve.size} unique ACs from users collection`);
     
     try {
       // Fetch each AC document directly using handler_id as document ID
-      const resolvePromises = acIdsToResolve.map(async (handlerId) => {
+      const resolvePromises = Array.from(acIdsToResolve).map(async (handlerId) => {
         try {
           const userDocRef = doc(db, 'users', handlerId);
           const userDoc = await getDoc(userDocRef);
           
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            const acName = userData.name; // Use only 'name' property
+            const acName = userData.name; // Use only 'name' property, no fallback to displayName
             
             if (acName) {
-              // Update cache and AC map
+              // Update cache
               acNameCache.set(handlerId, acName);
-              if (acMap.has(handlerId)) {
-                acMap.get(handlerId)!.acName = acName;
-                console.log(`[resolveACNames] Resolved AC ${handlerId}: ${acName}`);
+              
+              // Update all assembly-AC combinations for this AC
+              for (const [key, acData] of assemblyAcMap) {
+                if (acData.acId === handlerId) {
+                  acData.acName = acName;
+                  console.log(`[resolveACNames] Resolved AC ${handlerId}: ${acName} for assembly ${acData.assembly}`);
+                }
               }
+              
               return { handlerId, acName, found: true };
             } else {
               console.warn(`[resolveACNames] AC ${handlerId} found but no 'name' property`);
+              // Set to 'Unknown' for ACs without name
+              for (const [key, acData] of assemblyAcMap) {
+                if (acData.acId === handlerId) {
+                  acData.acName = 'Unknown';
+                }
+              }
               return { handlerId, acName: null, found: false };
             }
           } else {
             console.warn(`[resolveACNames] AC document not found for handler_id: ${handlerId}`);
+            // Set to 'Unknown' for missing AC documents
+            for (const [key, acData] of assemblyAcMap) {
+              if (acData.acId === handlerId) {
+                acData.acName = 'Unknown';
+              }
+            }
             return { handlerId, acName: null, found: false };
           }
         } catch (error) {
@@ -157,7 +178,7 @@ export async function aggregateReportData(
       const resolved = results.filter(r => r.found).length;
       const notFound = results.filter(r => !r.found).length;
       
-      console.log(`[resolveACNames] Resolution complete: ${resolved} resolved, ${notFound} not found`);
+      console.log(`[resolveACNames] Resolution complete: ${resolved} resolved, ${notFound} not found or missing name property`);
     } catch (error) {
       console.error('[resolveACNames] Error during AC name resolution:', error);
     }
@@ -354,12 +375,14 @@ export async function aggregateReportData(
       // Continue with empty arrays if fetch fails
     }
 
-    // Step 3: Group detailed data by AC and Assembly
-    const acMap = new Map<string, {
+    // Step 3: Group data by Assembly-AC combination
+    // This allows the same AC to appear under multiple assemblies with assembly-specific metrics
+    const assemblyAcMap = new Map<string, {
       acId: string;
       acName: string;
       assembly: string;
-      zone?: string;
+      zone: string;
+      primaryAssembly?: string; // AC's primary assembly from user profile
       activities: {
         meetings: any[];
         members: any[];
@@ -374,22 +397,80 @@ export async function aggregateReportData(
       metrics: CumulativeMetrics;
     }>();
     
-    // Cache for AC names to avoid duplicate queries
-    const acNameCache = new Map<string, string>();
+    // Cache for AC names and primary assemblies to avoid duplicate queries
+    const acInfoCache = new Map<string, { name: string; primaryAssembly?: string }>();
+    
+    // Track unique ACs for later resolution
+    const uniqueAcIds = new Set<string>();
 
-    // Helper function to extract AC info and add to map
-    const addActivityToAC = (item: any, activityType: string) => {
+    // Helper function to create assembly-AC key
+    const getAssemblyAcKey = (assembly: string, acId: string) => `${assembly}::${acId}`;
+    
+    // Helper function to add activity to assembly-AC combination
+    const addActivityToAssemblyAc = async (item: any, activityType: string) => {
       const acId = item.handler_id || 'unknown';
-      const assembly = item.assembly || item.assemblyName || 'Unknown Assembly';
-      const zone = item.zone || item.zoneName;
+      let assembly = item.assembly || item.assemblyName;
+      const zone = item.zone || item.zoneName || 'Unknown Zone';
       
-      // Get AC name from Coordinator Name field if available
-      let acName = item.coordinatorName || item['Coordinator Name'] || null;
+      // Fallback: If assembly is missing or seems incorrect, try to get from AC's profile
+      if (!assembly || assembly === 'Unknown Assembly' || assembly === 'unknown') {
+        if (acId !== 'unknown') {
+          // Check cache first
+          const cachedInfo = acInfoCache.get(acId);
+          if (cachedInfo?.primaryAssembly) {
+            assembly = cachedInfo.primaryAssembly;
+            console.log(`[addActivityToAssemblyAc] Using cached primary assembly '${assembly}' for AC ${acId}`);
+          } else {
+            // Fetch from user profile if not cached
+            try {
+              const userDocRef = doc(db, 'users', acId);
+              const userDoc = await getDoc(userDocRef);
+              if (userDoc.exists()) {
+                const userData = userDoc.data();
+                const profileAssembly = userData.assembly || userData.primaryAssembly || userData.assignedAssembly;
+                if (profileAssembly) {
+                  assembly = profileAssembly;
+                  // Cache for future use
+                  acInfoCache.set(acId, {
+                    name: userData.name || 'Unknown',
+                    primaryAssembly: assembly
+                  });
+                  console.log(`[addActivityToAssemblyAc] Using AC's profile assembly '${assembly}' for AC ${acId}`);
+                }
+              }
+            } catch (error) {
+              console.error(`[addActivityToAssemblyAc] Error fetching assembly for AC ${acId}:`, error);
+            }
+          }
+        }
+      }
       
-      if (!acMap.has(acId)) {
-        acMap.set(acId, {
+      // Final fallback if still no assembly
+      if (!assembly || assembly === 'unknown') {
+        assembly = 'Unknown Assembly';
+        console.warn(`[addActivityToAssemblyAc] No valid assembly found for activity of AC ${acId}, using 'Unknown Assembly'`);
+      }
+      
+      // Track unique AC IDs for later resolution
+      uniqueAcIds.add(acId);
+      
+      // IMPORTANT: Do not use coordinatorName from activity as it may contain participant names
+      // AC name will be resolved later from users collection only
+      let acName = null;
+      
+      // Check cache for AC name
+      const cachedInfo = acInfoCache.get(acId);
+      if (cachedInfo?.name) {
+        acName = cachedInfo.name;
+      }
+      
+      // Create unique key for assembly-AC combination
+      const key = getAssemblyAcKey(assembly, acId);
+      
+      if (!assemblyAcMap.has(key)) {
+        assemblyAcMap.set(key, {
           acId,
-          acName: acName || `AC-${acId.substring(0, 8)}`, // Temporary name, will be resolved later
+          acName: acName || `Pending-${acId.substring(0, 8)}`, // Temporary name, will be resolved from users collection
           assembly,
           zone,
           activities: {
@@ -421,20 +502,20 @@ export async function aggregateReportData(
             shaktiBaithaks: 0,
             centralWaGroups: 0,
             assemblyWaGroups: 0
-          } as CumulativeMetrics
+          }
         });
       } else {
         // Update AC name if we found a better one
-        const acData = acMap.get(acId)!;
-        if (acName && !acData.acName.startsWith('AC-')) {
+        const acData = assemblyAcMap.get(key)!;
+        if (acName && acData.acName.startsWith('Pending-')) {
           acData.acName = acName;
         }
       }
       
-      const acData = acMap.get(acId)!;
+      const acData = assemblyAcMap.get(key)!;
       (acData.activities as any)[activityType].push(item);
       
-      // Update metrics count
+      // Update metrics count - ASSEMBLY-SCOPED
       if (activityType === 'meetings') acData.metrics.meetings = Number(acData.metrics.meetings) + 1;
       else if (activityType === 'members') acData.metrics.saathi = Number(acData.metrics.saathi) + 1;
       else if (activityType === 'volunteers') acData.metrics.volunteers = Number(acData.metrics.volunteers) + 1;
@@ -450,18 +531,20 @@ export async function aggregateReportData(
       else if (activityType === 'clubs') acData.metrics.clubs = Number(acData.metrics.clubs) + 1;
     };
 
-    // Process all detailed data
-    detailedData.meetings.forEach(item => addActivityToAC(item, 'meetings'));
-    detailedData.members.forEach(item => addActivityToAC(item, 'members'));
-    detailedData.volunteers.forEach(item => addActivityToAC(item, 'volunteers'));
-    detailedData.leaders.forEach(item => addActivityToAC(item, 'leaders'));
-    detailedData.videos.forEach(item => addActivityToAC(item, 'videos'));
-    if ((detailedData as any).acVideos) {
-      (detailedData as any).acVideos.forEach((item: any) => addActivityToAC(item, 'acVideos'));
-    }
-    detailedData.forms.forEach(item => addActivityToAC(item, 'forms'));
-    detailedData.clubs.forEach(item => addActivityToAC(item, 'clubs'));
-    detailedData.waGroups.forEach(item => {
+    // Process all detailed data with assembly-scoped aggregation
+    // Use Promise.all for async processing
+    await Promise.all([
+      ...detailedData.meetings.map(item => addActivityToAssemblyAc(item, 'meetings')),
+      ...detailedData.members.map(item => addActivityToAssemblyAc(item, 'members')),
+      ...detailedData.volunteers.map(item => addActivityToAssemblyAc(item, 'volunteers')),
+      ...detailedData.leaders.map(item => addActivityToAssemblyAc(item, 'leaders')),
+      ...detailedData.videos.map(item => addActivityToAssemblyAc(item, 'videos')),
+      ...((detailedData as any).acVideos || []).map((item: any) => addActivityToAssemblyAc(item, 'acVideos')),
+      ...detailedData.forms.map(item => addActivityToAssemblyAc(item, 'forms')),
+      ...detailedData.clubs.map(item => addActivityToAssemblyAc(item, 'clubs'))
+    ]);
+    // Process WA Groups separately as they have different handling
+    await Promise.all(detailedData.waGroups.map(async item => {
       // For WA Groups, use handler_id if ac_id is not available
       const acId = item.ac_id || item.uid || item.handler_id;
       if (!acId) {
@@ -469,15 +552,22 @@ export async function aggregateReportData(
         return;
       }
       
-      // Get or create AC data
-      let acData = acMap.get(acId);
+      const assembly = item.assembly || 'Unknown Assembly';
+      const zone = item.zone || 'Unknown Zone';
+      const key = getAssemblyAcKey(assembly, acId);
+      
+      // Track unique AC IDs
+      uniqueAcIds.add(acId);
+      
+      // Get or create assembly-AC data
+      let acData = assemblyAcMap.get(key);
       if (!acData) {
-        // Create a new AC entry if it doesn't exist
+        // Create a new assembly-AC entry if it doesn't exist
         const newAcData = {
           acId: acId,
-          acName: 'Unknown AC',
-          assembly: item.assembly || 'Unknown',
-          zone: item.zone || 'Unknown Zone',
+          acName: item.handler_name || item.ac_name || 'Pending-' + acId.substring(0, 8),
+          assembly,
+          zone,
           metrics: {
             meetings: 0,
             volunteers: 0,
@@ -509,30 +599,83 @@ export async function aggregateReportData(
             waGroups: []
           }
         };
-        acMap.set(acId, newAcData);
+        assemblyAcMap.set(key, newAcData);
         acData = newAcData;
-        
-        // Mark for name resolution if needed
-        if (!item.handler_name && !item.ac_name && item.handler_id) {
-          // Will be resolved in resolveACNames function
-        }
       }
       
       // Add to activities
       acData.activities.waGroups.push(item);
       
-      // Count WA groups based on their type
+      // Count WA groups based on their type - ASSEMBLY-SCOPED
       if (item.type === 'assemblyWaGroups' || item.form_type === 'assembly-wa') {
         acData.metrics.assemblyWaGroups = (Number(acData.metrics.assemblyWaGroups) || 0) + 1;
       } else if (item.type === 'centralWaGroups' || item.form_type === 'central-wa') {
         acData.metrics.centralWaGroups = (Number(acData.metrics.centralWaGroups) || 0) + 1;
       }
-    });
+    }));
     
-    // Step 3.5: Resolve missing AC names from users collection
-    await resolveACNames(acMap, acNameCache);
+    // Step 3.5: Resolve remaining AC names from users collection
+    // Only fetch for ACs not already in cache
+    const resolveRemainingACInfo = async () => {
+      const uncachedAcIds = Array.from(uniqueAcIds).filter(acId => 
+        acId !== 'unknown' && !acInfoCache.has(acId)
+      );
+      
+      if (uncachedAcIds.length > 0) {
+        console.log(`[aggregateReportData] Resolving info for ${uncachedAcIds.length} uncached ACs`);
+        
+        const resolvePromises = uncachedAcIds.map(async (acId) => {
+          try {
+            const userDocRef = doc(db, 'users', acId);
+            const userDoc = await getDoc(userDocRef);
+            
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              // IMPORTANT: Only use 'name' property, no fallback to displayName to prevent participant name leakage
+              const acName = userData.name || 'Unknown';
+              
+              acInfoCache.set(acId, {
+                name: acName,
+                primaryAssembly: userData.assembly || userData.primaryAssembly || userData.assignedAssembly
+              });
+              
+              console.log(`[aggregateReportData] Resolved AC ${acId}: name='${acName}', assembly='${userData.assembly || userData.primaryAssembly || 'not set'}'`);
+            } else {
+              console.warn(`[aggregateReportData] User document not found for AC: ${acId}`);
+              acInfoCache.set(acId, {
+                name: 'Unknown',
+                primaryAssembly: undefined
+              });
+            }
+          } catch (error) {
+            console.error(`[aggregateReportData] Error fetching user info for ${acId}:`, error);
+            acInfoCache.set(acId, {
+              name: 'Unknown',
+              primaryAssembly: undefined
+            });
+          }
+        });
+        
+        await Promise.all(resolvePromises);
+      }
+      
+      // Update all assembly-AC entries with resolved names
+      assemblyAcMap.forEach((acData, key) => {
+        const cachedInfo = acInfoCache.get(acData.acId);
+        if (cachedInfo) {
+          // Update name if it's still a temporary placeholder
+          if (cachedInfo.name && (acData.acName.startsWith('Pending-') || acData.acName === 'Unknown')) {
+            acData.acName = cachedInfo.name;
+            console.log(`[aggregateReportData] Updated AC name for ${acData.acId} in assembly ${acData.assembly}: ${cachedInfo.name}`);
+          }
+          // Primary assembly already set during activity processing
+        }
+      });
+    };
+    
+    await resolveRemainingACInfo();
 
-    console.log(`[aggregateReportData] Grouped data for ${acMap.size} ACs`);
+    console.log(`[aggregateReportData] Grouped data for ${assemblyAcMap.size} Assembly-AC combinations from ${uniqueAcIds.size} unique ACs`);
 
     // Step 4: Group ACs by Assembly and Zone
     const assemblyMap = new Map<string, {
@@ -543,13 +686,13 @@ export async function aggregateReportData(
     }>();
 
     // Step 4: Verify AC roles and group by Assembly
-    // First, fetch role information for all ACs to filter only Assembly Coordinators
+    // First, fetch role information for all unique ACs to filter only Assembly Coordinators
     const acRoleVerification = new Map<string, boolean>();
     
-    console.log(`[aggregateReportData] Verifying roles for ${acMap.size} ACs`);
+    console.log(`[aggregateReportData] Verifying roles for ${uniqueAcIds.size} unique ACs`);
     
     // Verify AC roles in parallel
-    const roleVerificationPromises = Array.from(acMap.keys()).map(async (acId) => {
+    const roleVerificationPromises = Array.from(uniqueAcIds).map(async (acId) => {
       if (acId === 'unknown') {
         acRoleVerification.set(acId, false);
         return;
@@ -584,11 +727,29 @@ export async function aggregateReportData(
     
     console.log(`[aggregateReportData] Role verification complete: ${verifiedACs} verified ACs, ${filteredACs} filtered out`);
 
+    // Step 4.5: Implement zero-filling for all AC-assembly combinations
+    // Create a set of all assemblies where each AC has worked
+    const acAssemblyWorkMap = new Map<string, Set<string>>(); // acId -> Set of assemblies
+    
+    assemblyAcMap.forEach((acData, key) => {
+      const [assembly, acId] = key.split('::');
+      if (!acAssemblyWorkMap.has(acId)) {
+        acAssemblyWorkMap.set(acId, new Set());
+      }
+      acAssemblyWorkMap.get(acId)!.add(assembly);
+    });
+    
+    console.log(`[aggregateReportData] AC-Assembly work map:`);
+    acAssemblyWorkMap.forEach((assemblies, acId) => {
+      const acName = acInfoCache.get(acId)?.name || 'Unknown';
+      console.log(`  AC ${acName} (${acId}) worked in ${assemblies.size} assemblies: ${Array.from(assemblies).join(', ')}`);
+    });
+    
     // Now group only verified Assembly Coordinators by assembly
-    acMap.forEach((acData, acId) => {
+    assemblyAcMap.forEach((acData, key) => {
       // Only include verified Assembly Coordinators
-      if (!acRoleVerification.get(acId)) {
-        console.log(`[aggregateReportData] Skipping non-AC user ${acId} (${acData.acName}) from assembly grouping`);
+      if (!acRoleVerification.get(acData.acId)) {
+        console.log(`[aggregateReportData] Skipping non-AC user ${acData.acId} (${acData.acName}) from assembly grouping`);
         return;
       }
       
@@ -623,16 +784,18 @@ export async function aggregateReportData(
       
       const assemblyData = assemblyMap.get(assembly)!;
       
-      // Add verified AC to assembly
+      // Add verified AC to assembly with zero-filled metrics
+      // The metrics here are already assembly-scoped from the assemblyAcMap
       assemblyData.coordinators.push({
         id: acData.acId,
         name: acData.acName,
         assembly: acData.assembly,
-        metrics: acData.metrics,
+        metrics: acData.metrics, // These are already assembly-scoped metrics
         slps: [] // We don't fetch SLP details in this approach
       });
       
       // Aggregate assembly metrics from verified ACs only
+      // Since metrics are already assembly-scoped, we add them directly
       Object.keys(acData.metrics).forEach(key => {
         const numValue = Number(acData.metrics[key as keyof CumulativeMetrics]) || 0;
         const currentValue = Number(assemblyData.metrics[key as keyof CumulativeMetrics]) || 0;
@@ -641,6 +804,17 @@ export async function aggregateReportData(
     });
 
     console.log(`[aggregateReportData] Grouped data for ${assemblyMap.size} assemblies`);
+    
+    // Log assembly-AC distribution for verification
+    console.log('[aggregateReportData] Assembly-AC distribution:');
+    assemblyMap.forEach((assemblyData, assembly) => {
+      console.log(`  ${assembly}: ${assemblyData.coordinators.length} ACs`);
+      assemblyData.coordinators.forEach(ac => {
+        const totalActivities = Number(ac.metrics.meetings || 0) + Number(ac.metrics.videos || 0) + Number(ac.metrics.acVideos || 0) + 
+                               Number(ac.metrics.saathi || 0) + Number(ac.metrics.clubs || 0) + Number(ac.metrics.forms || 0);
+        console.log(`    - ${ac.name} (${ac.id}): ${totalActivities} total activities`);
+      });
+    });
 
     // Step 5: Fetch zones from Firebase and group assemblies by zone
     const zones = await fetchZones();
@@ -775,7 +949,7 @@ export async function aggregateReportData(
       return a.name.localeCompare(b.name);
     });
 
-    console.log(`[aggregateReportData] Grouped data for ${zoneReportData.length} zones, ${assemblyMap.size} assemblies, ${acMap.size} ACs`);
+    console.log(`[aggregateReportData] Grouped data for ${zoneReportData.length} zones, ${assemblyMap.size} assemblies, ${uniqueAcIds.size} unique ACs`);
     console.log('[aggregateReportData] Zone data structure:', zoneReportData.map(z => ({
       name: z.name,
       inchargeName: z.inchargeName,
@@ -786,7 +960,7 @@ export async function aggregateReportData(
     })));
 
     // Step 7: Calculate summary metrics
-    const totalACs = acMap.size;
+    const totalACs = uniqueAcIds.size;
     const totalSLPs = 0; // Simplified - not tracking SLPs in this approach
     
     // Build performance summary
@@ -878,7 +1052,7 @@ export async function aggregateReportData(
       summary: executiveSummary,
       zones: transformedZones,
       metadata: {
-        totalRecords: acMap.size, // Simplified
+        totalRecords: assemblyAcMap.size, // Total assembly-AC combinations
         processingTime: Date.now() - startTime,
         dataSource: 'Firebase Firestore'
       }

@@ -45,6 +45,33 @@ const isShaktiAC = async (acId: string): Promise<boolean> => {
   }
 };
 
+// Helper: Resolve AC/user names from 'users' collection by handler_id (batched 'in' queries)
+const resolveUserNamesByIds = async (handlerIds: string[]): Promise<Map<string, string>> => {
+  const nameMap = new Map<string, string>();
+  const uniqueIds = [...new Set((handlerIds || []).filter(Boolean))];
+  if (uniqueIds.length === 0) return nameMap;
+
+  const usersCol = collection(db, 'users');
+  const chunkSize = 10;
+  for (let i = 0; i < uniqueIds.length; i += chunkSize) {
+    const batch = uniqueIds.slice(i, i + chunkSize);
+    try {
+      const qUsers = query(usersCol, where(documentId(), 'in', batch));
+      const snap = await getDocs(qUsers);
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        const id = d.id;
+        // Only use 'name' property, never displayName or fallback to ID
+        const name = data?.name || 'Unknown';
+        nameMap.set(id, name);
+      });
+    } catch (err) {
+      console.error('[resolveUserNamesByIds] Error resolving batch:', err);
+    }
+  }
+  return nameMap;
+};
+
 // Duplicated and modified SLP activity functions for hierarchical aggregation
 
 /**
@@ -949,10 +976,11 @@ const getHierarchicalChaupals = async (assemblies?: string[], dateRange?: { star
     const filteredResult = result.filter((doc: any) => doc.parentVertical !== 'shakti-abhiyaan');
     
     // Map dateFormatted to dateOfVisit for compatibility with ActivitiesList component
+    // Note: Chaupals are SLP activities, not AC activities, so no coordinatorName should be added
     const mappedResult = filteredResult.map((doc: any) => ({
       ...doc,
-      dateOfVisit: doc.dateFormatted || doc.dateOfVisit, // Use dateFormatted as dateOfVisit
-      coordinatorName: doc.handler_id || 'Unknown' // Add coordinator name for consistency
+      dateOfVisit: doc.dateFormatted || doc.dateOfVisit // Use dateFormatted as dateOfVisit
+      // Removed coordinatorName - Chaupals are SLP-created, not AC activities
     }));
     
     return mappedResult;
@@ -1656,16 +1684,13 @@ export const fetchDetailedMeetings = async (options: FetchMetricsOptions): Promi
         
         usersSnap.forEach((doc) => {
           const userData = doc.data();
-          console.log(`[fetchDetailedMeetings] User doc ${doc.id}:`, { name: userData.name, uid: userData.uid, displayName: userData.displayName });
+          console.log(`[fetchDetailedMeetings] User doc ${doc.id}:`, { name: userData.name });
           
-          // Try matching by document ID first, then by uid field
+          // Only match by document ID (handler_id should be the document ID)
           if (batch.includes(doc.id)) {
-            coordinatorNamesMap.set(doc.id, userData.name || userData.displayName || doc.id);
-            console.log(`[fetchDetailedMeetings] Mapped by doc.id: ${doc.id} -> ${userData.name || userData.displayName}`);
-          }
-          if (userData.uid && batch.includes(userData.uid)) {
-            coordinatorNamesMap.set(userData.uid, userData.name || userData.displayName || userData.uid);
-            console.log(`[fetchDetailedMeetings] Mapped by uid: ${userData.uid} -> ${userData.name || userData.displayName}`);
+            // Only use 'name' property, fallback to 'Unknown'
+            coordinatorNamesMap.set(doc.id, userData.name || 'Unknown');
+            console.log(`[fetchDetailedMeetings] Mapped: ${doc.id} -> ${userData.name || 'Unknown'}`);
           }
         });
       }
@@ -1674,7 +1699,7 @@ export const fetchDetailedMeetings = async (options: FetchMetricsOptions): Promi
     // Add coordinator names to meeting records
     const enrichedResult = result.map((meeting: any) => ({
       ...meeting,
-      coordinatorName: coordinatorNamesMap.get(meeting.handler_id) || meeting.handler_id || 'Unknown'
+      coordinatorName: coordinatorNamesMap.get(meeting.handler_id) || 'Unknown'
     }));
     
     console.log(`[fetchDetailedMeetings] Found ${enrichedResult.length} meetings with coordinator names`);

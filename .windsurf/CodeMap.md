@@ -504,6 +504,7 @@ app/wtm-slp-new/page.tsx (Main Page)
 - **Purpose**: Main entry point for fetching all metrics
 - **Returns**: CumulativeMetrics object with all counts
 - **Calls**: Multiple specialized functions based on options
+- **AC Name Resolution**: Uses `resolveUserNamesByIds` helper for profile-based names
 
 #### 2. **getWtmSlpSummary** (`fetchFirebaseData.ts`)
 - **Collections**: wtm-slp
@@ -520,23 +521,44 @@ app/wtm-slp-new/page.tsx (Main Page)
 - **Purpose**: Get detailed records for table display
 - **Pattern**: Fetch all, then filter in JavaScript
 - **Assembly Chunking**: Applied for >10 assemblies
+- **AC Name Resolution**: 
+  - `fetchDetailedMeetings`: Resolves AC names from users collection using only 'name' property
+  - No displayName or uid fallback - uses 'Unknown' if name not found
+  - Chaupals (SLP activities) don't include coordinatorName field
 
 #### 5. **Report Generation Functions**
 
-##### **aggregateReportData** (`reportDataAggregation.ts`)
+##### **aggregateReportData** (`app/utils/reportDataAggregation.ts`)
 - **Purpose**: Main report data aggregation with zone hierarchy
 - **Process**:
   1. Fetches zones filtered by `parentVertical='wtm'`
   2. Creates assembly-to-zone mapping
   3. Groups assemblies under zones
-  4. Aggregates zone-level metrics
-  5. Handles unassigned assemblies
+  4. Implements assembly-scoped AC aggregation
+  5. Aggregates zone-level metrics
+  6. Handles unassigned assemblies
 - **Returns**: Complete report data with Zone → Assembly → AC hierarchy
-
-##### **fetchZones** (`fetchHierarchicalData.ts`)
-- **Collection**: admin-users (role='zonal-incharge')
-- **Returns**: Zone data with assemblies and incharge names
-- **Filter**: parentVertical='wtm' for report generation
+- **Assembly-Scoped Aggregation**:
+  - Groups activities by assembly first, then by AC within each assembly
+  - Each AC appears once per assembly where they worked
+  - Metrics are counted per AC per assembly (no double counting)
+  - Zero-fills metrics for AC-assembly combinations with no activities
+  - Handles fallback for activities with missing assembly data
+- **AC Name Resolution**:
+  - Uses `resolveACNames` helper that fetches from users collection
+  - Only uses 'name' property, never displayName or raw handler_id
+  - Updates all assembly-AC combinations for each AC
+  - Sets 'Unknown' for ACs without name property
+- **Helper Functions**:
+  - **addActivityToAssemblyAc**: Associates activities with correct assembly-AC combination
+    - Does NOT use coordinatorName from activities (prevents participant name contamination)
+    - Fetches AC's profile assembly when activity assembly is missing/invalid
+    - Caches AC info for performance
+  - **resolveRemainingACInfo**: Fetches uncached AC information
+    - Only uses 'name' property, no displayName fallback
+    - Fetches assembly information from user profile
+  - **getAssemblyAcKey**: Creates unique key for assembly-AC combinations
+  - **addMetric**: Helper for metric addition with proper number conversion
 
 ##### **transformZoneData** (`reportDataAggregation.ts`)
 - **Purpose**: Converts raw zone data to report format
@@ -635,6 +657,14 @@ User clicks Generate Report
 **Problem**: Some assemblies may not be assigned to any zone
 **Solution**: Create "Unassigned Areas" zone for orphan assemblies with aggregated metrics
 
+### 13. Assembly-Scoped AC Metrics in Reports
+**Problem**: ACs working across multiple assemblies had metrics aggregated at AC level, not per assembly
+**Solution**: Implement assembly-first aggregation that groups activities by assembly, then by AC within each assembly
+
+### 14. Profile-Based AC Name Resolution
+**Problem**: AC names were inconsistently resolved using displayName, uid, or raw handler_id
+**Solution**: Enforce profile-based resolution using only 'name' property from users collection with 'Unknown' fallback
+
 ---
 
 ## Debugging Helpers
@@ -719,5 +749,6 @@ When modifying the codebase:
 
 ---
 
-*Last Updated: August 27, 2025*
-*Version: 1.0.0*
+*Last Updated: January 2025*
+*Version: 1.2.0*
+*Changes: Added profile-based AC name resolution documentation*
