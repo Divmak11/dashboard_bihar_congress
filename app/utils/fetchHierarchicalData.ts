@@ -1262,6 +1262,40 @@ export const fetchZones = async (): Promise<Zone[]> => {
 };
 
 /**
+ * Fetch list of zones specifically for WTM vertical.
+ * Filters by parentVertical='wtm' AND role='zonal-incharge' from admin-users collection.
+ */
+export const fetchZonesForWTM = async (): Promise<Zone[]> => {
+  try {
+    const q = query(
+      collection(db, 'admin-users'), 
+      where('role', '==', 'zonal-incharge'),
+      where('parentVertical', '==', 'wtm')
+    );
+    const snap = await getDocs(q);
+    const zones: Zone[] = [];
+    let counter = 0;
+    snap.forEach((d: QueryDocumentSnapshot) => {
+      counter += 1;
+      const data = d.data() as any;
+      const id = d.id;
+      const assemblies: string[] = data.assemblies || [];
+      const zonalName: string = data.name ? String(data.name) : 'Unknown';
+      const name = `Zone ${counter} - ${zonalName}`;
+      const parentVertical: string = 'wtm'; // Always WTM for this function
+      zones.push({ id, name, assemblies, parentVertical });
+    });
+    // Sort alphabetically
+    zones.sort((a, b) => a.name.localeCompare(b.name));
+    console.log(`[fetchZonesForWTM] Fetched ${zones.length} WTM zones`);
+    return zones;
+  } catch (err) {
+    console.error('[fetchZonesForWTM] error', err);
+    return [];
+  }
+};
+
+/**
  * Fetch assemblies belonging to a zone.
  * Fetch assemblies by reading `assemblies` array from selected zone document in `admin-users` collection.
  */
@@ -1280,6 +1314,95 @@ export const fetchZones = async (): Promise<Zone[]> => {
     return [];
   }
 };
+/**
+ * Fetch Assembly Coordinators for WTM vertical (excludes shakti-abhiyaan collection).
+ * Only queries users collection for Assembly Coordinators and Zonal Incharges.
+ */
+export const fetchAssemblyCoordinatorsForWTM = async (assembly: string): Promise<AC[]> => {
+  if (!assembly) return [];
+  
+  try {
+    // Query 1a: ACs with single assembly field
+    const q1a = query(
+      collection(db, 'users'),
+      where('role', '==', 'Assembly Coordinator'),
+      where('assembly', '==', assembly)
+    );
+    
+    // Query 1b: ACs with multiple assemblies field
+    const q1b = query(
+      collection(db, 'users'),
+      where('role', '==', 'Assembly Coordinator'),
+      where('assemblies', 'array-contains', assembly)
+    );
+    
+    // Execute both queries in parallel
+    const [snap1a, snap1b] = await Promise.all([getDocs(q1a), getDocs(q1b)]);
+    console.log('[fetchAssemblyCoordinatorsForWTM] AC queries returned', snap1a.size + snap1b.size, 'documents for assembly:', assembly);
+    
+    const list: AC[] = [];
+    const addedUids = new Set<string>(); // Track added UIDs to avoid duplicates
+    
+    // Process both query results with deduplication
+    [snap1a, snap1b].forEach((snap) => {
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        if (!addedUids.has(d.id)) {
+          list.push({ 
+            uid: d.id, 
+            name: data.name || 'AC', 
+            assembly,
+            handler_id: data.handler_id 
+          });
+          addedUids.add(d.id);
+        }
+      });
+    });
+    
+    // If no Assembly Coordinators found, try Zonal Incharge as fallback
+    if (list.length === 0) {
+      const q2a = query(
+        collection(db, 'users'),
+        where('role', '==', 'Zonal Incharge'),
+        where('assembly', '==', assembly)
+      );
+      
+      const q2b = query(
+        collection(db, 'users'),
+        where('role', '==', 'Zonal Incharge'),
+        where('assemblies', 'array-contains', assembly)
+      );
+      
+      const [snap2a, snap2b] = await Promise.all([getDocs(q2a), getDocs(q2b)]);
+      console.log('[fetchAssemblyCoordinatorsForWTM] Zonal Incharge fallback returned', snap2a.size + snap2b.size, 'documents');
+      
+      [snap2a, snap2b].forEach((snap) => {
+        snap.forEach((d) => {
+          const data = d.data() as any;
+          if (!addedUids.has(d.id)) {
+            list.push({ 
+              uid: d.id, 
+              name: data.name || 'ZI', 
+              assembly,
+              handler_id: data.handler_id 
+            });
+            addedUids.add(d.id);
+          }
+        });
+      });
+    }
+    
+    // NOTE: Explicitly excluding shakti-abhiyaan collection source for WTM vertical
+    // Also excluding meeting handler_id fallback to keep AC list clean
+    
+    console.log(`[fetchAssemblyCoordinatorsForWTM] Found ${list.length} ACs for assembly ${assembly} (WTM only)`);
+    return list;
+  } catch (err) {
+    console.error('[fetchAssemblyCoordinatorsForWTM] Error:', err);
+    return [];
+  }
+};
+
 /**
  * Fetch Assembly Coordinators for a given assembly.
  * Returns array of { uid, name, assembly }.

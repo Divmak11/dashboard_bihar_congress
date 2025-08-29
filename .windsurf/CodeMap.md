@@ -531,34 +531,41 @@ app/wtm-slp-new/page.tsx (Main Page)
 ##### **aggregateReportData** (`app/utils/reportDataAggregation.ts`)
 - **Purpose**: Main report data aggregation with zone hierarchy
 - **Process**:
-  1. Fetches zones filtered by `parentVertical='wtm'`
-  2. Creates assembly-to-zone mapping
-  3. Groups assemblies under zones
-  4. Implements assembly-scoped AC aggregation
+  1. Fetches zones filtered by selected vertical (WTM/Shakti)
+  2. **Pre-seeds with complete AC roster** using `buildACRosterForVertical()`
+  3. Creates assembly-to-zone mapping
+  4. Overlays activity data on pre-seeded roster
   5. Aggregates zone-level metrics
-  6. Handles unassigned assemblies
+  6. **Ensures ALL assemblies are included** (even those with no ACs)
+  7. Handles unassigned assemblies
 - **Returns**: Complete report data with Zone → Assembly → AC hierarchy
-- **Pre-seeding Approach**: NEW - Fetches ALL ACs for ALL assemblies in selected vertical before processing activities
-  - Uses `buildACRosterForVertical()` to get complete AC roster from zones and assemblies
-  - Pre-populates assemblyAcMap with ALL ACs under their assigned assemblies with zeroed metrics
-  - Ensures ACs with zero activity still appear in reports (shown in red)
-  - Preserves cross-assembly behavior when ACs work elsewhere
+- **Pre-seeding Enhancement**:
+  - Fetches all assemblies from zones for selected vertical
+  - Uses vertical-specific fetch functions for WTM:
+    - `fetchZonesForWTM()`: Filters zones by parentVertical='wtm' AND role='zonal-incharge'
+    - `fetchAssemblyCoordinatorsForWTM()`: Excludes shakti-abhiyaan collection source
+  - Pre-populates assemblyAcMap with all ACs and zeroed metrics
+  - Ensures zero-activity ACs appear under their assigned assemblies
+  - Adds placeholder entries for assemblies with no ACs
+  - Preserves cross-assembly behavior for ACs working elsewhere
 - **Assembly-Scoped Aggregation**:
   - Groups activities by assembly first, then by AC within each assembly
   - Each AC appears once per assembly where they worked
   - Metrics are counted per AC per assembly (no double counting)
   - Zero-fills metrics for AC-assembly combinations with no activities
   - Handles fallback for activities with missing assembly data
+  - **Role verification allows 'no-ac-assigned' placeholder entries**
 - **AC Name Resolution**:
   - Uses `resolveACNames` helper that fetches from users collection
   - Only uses 'name' property, never displayName or raw handler_id
   - Updates all assembly-AC combinations for each AC
   - Sets 'Unknown' for ACs without name property
 - **Helper Functions**:
-  - **buildACRosterForVertical**: NEW - Builds complete AC roster for all assemblies
-    - Fetches zones filtered by selected vertical (wtm/shakti-abhiyaan)
-    - Uses existing fetchAssemblyCoordinators() for each assembly
-    - Processes assemblies in chunks of 10 for performance
+  - **buildACRosterForVertical**: Builds complete AC roster for all assemblies
+    - Uses `fetchZonesForWTM()` and `fetchAssemblyCoordinatorsForWTM()` for WTM vertical
+    - Uses regular `fetchZones()` and `fetchAssemblyCoordinators()` for other verticals
+    - Batches fetchAssemblyCoordinators() calls for performance
+    - Returns Map<assembly, AC[]> for pre-seeding
   - **addActivityToAssemblyAc**: Associates activities with correct assembly-AC combination
     - Does NOT use coordinatorName from activities (prevents participant name contamination)
     - Fetches AC's profile assembly when activity assembly is missing/invalid
@@ -567,6 +574,21 @@ app/wtm-slp-new/page.tsx (Main Page)
     - Only uses 'name' property, no displayName fallback
     - Fetches assembly information from user profile
   - **getAssemblyAcKey**: Creates unique key for assembly-AC combinations
+  - **addMetric**: Helper for metric addition with proper number conversion
+
+##### **fetchZonesForWTM** (`app/utils/fetchHierarchicalData.ts`)
+- **Purpose**: Fetch zones specifically for WTM vertical
+- **Query**: Filters by `role='zonal-incharge'` AND `parentVertical='wtm'`
+- **Collection**: admin-users
+- **Returns**: Zone[] with filtered zones for WTM
+
+##### **fetchAssemblyCoordinatorsForWTM** (`app/utils/fetchHierarchicalData.ts`)
+- **Purpose**: Fetch ACs for WTM vertical without shakti-abhiyaan data
+- **Collections**: Only queries 'users' collection
+- **Excludes**: 
+  - shakti-abhiyaan collection source
+  - slp-activity meeting fallback
+- **Returns**: AC[] with only Assembly Coordinators and Zonal Incharges from users collection
 
 ##### **transformZoneData** (`reportDataAggregation.ts`)
 - **Purpose**: Converts raw zone data to report format
