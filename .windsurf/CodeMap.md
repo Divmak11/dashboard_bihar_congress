@@ -526,27 +526,64 @@ app/wtm-slp-new/page.tsx (Main Page)
   - No displayName or uid fallback - uses 'Unknown' if name not found
   - Chaupals (SLP activities) don't include coordinatorName field
 
-#### 5. **Report Generation Functions**
+#### 5. **Report Generation Module (WTM Vertical)**
 
-##### **aggregateReportData** (`app/utils/reportDataAggregation.ts`)
-- **Purpose**: Main report data aggregation with zone hierarchy
-- **Process**:
-  1.### Report Generation (`app/utils/reportDataAggregation.ts`)
-- **aggregateReportData**: Main function that:
-  - Pre-seeds assembly-AC map with complete AC roster using `buildACRosterForVertical`
-  - Fetches zones using `fetchZonesForWTM` for WTM vertical
-  - Fetches summary metrics and detailed activity data
-  - Groups data by assembly-AC combinations
-  - Applies role verification (allows 'no-ac-assigned' placeholder)
-  - Ensures all assemblies appear in final report with placeholder for no AC assemblies
-  - Calculates performance zones:
-    - Active ACs (green zone): meetings >= 7
-    - Moderate ACs (orange zone): meetings >= 5 and < 7
-    - Poor ACs (red zone): meetings < 5
-  - Generates executive summary with correct zone-based counts
-  - Returns complete report data structureh Zone → Assembly → AC hierarchy
-- **Pre-seeding Enhancement**:
-  - Fetches all assemblies from zones for selected vertical
+##### **Overview**
+The Generate Report module provides comprehensive PDF report generation for the WTM vertical with assembly-scoped data aggregation, role-based access control, and intelligent data organization.
+
+##### **Core Components**
+
+###### **ReportGenerator Component** (`components/ReportGenerator.tsx`)
+- **Purpose**: UI orchestration and workflow management for report generation
+- **Key Features**:
+  - Admin-only access restriction (`currentAdmin` check)
+  - Progress modal with real-time status updates
+  - Stepwise generation process with error handling
+  - Date filter preparation with "All Time" fallback
+- **Workflow**:
+  1. Validate admin role
+  2. Prepare date filters
+  3. Call `aggregateReportData()` with vertical and date parameters
+  4. Call `generateAndDownloadPDF()` with aggregated data
+  5. Display progress and handle completion/errors
+
+###### **Report Data Aggregation** (`app/utils/reportDataAggregation.ts`)
+- **Main Function**: `aggregateReportData(dateFilter, vertical, options?)`
+- **Critical Logic**:
+  - **Assembly-First Aggregation**: Groups by Assembly-AC combinations to avoid double counting
+  - **AC Roster Pre-Seeding**: Builds complete roster before aggregation, includes placeholder for assemblies with no ACs
+  - **AC Name Resolution**: Uses ONLY 'name' property from users collection (no displayName/uid fallback)
+  - **Orphan Assembly Handling**: Creates "Unassigned Areas" zone for unmapped assemblies
+  - **Date Filtering**: Adjusts "All Time" to 6 months to avoid Firestore limits
+  - **Query Optimization**: Conditional fetching, batch processing, chunking for >10 assemblies
+- **Data Flow**:
+  1. Fetch zone and assembly structure based on vertical
+  2. Build complete AC roster using `buildACRosterForVertical`
+  3. Pre-seed assembly-AC map with all combinations
+  4. Fetch detailed data only for metrics > 0
+  5. Process activities grouped by assembly-AC key (`${assembly}::${acId}`)
+  6. Resolve AC names from users collection
+  7. Aggregate metrics at assembly and zone levels
+  8. Handle orphan assemblies as "Unassigned Areas"
+  9. Return structured LocalReportData object
+- **Performance Zones**:
+  - Active ACs (green): meetings >= 7
+  - Moderate ACs (orange): meetings >= 5 and < 7
+  - Poor ACs (red): meetings < 5
+
+###### **PDF Generator** (`app/utils/pdfGenerator.tsx`)
+- **Main Function**: `generateAndDownloadPDF(reportData)`
+- **Features**:
+  - Hindi/Devanagari font support (NotoSansDevanagari)
+  - Performance-based color coding
+  - Hierarchical data visualization (Zone → Assembly → AC)
+  - Automatic page breaks and formatting
+- **PDF Structure**:
+  1. Report header with title and date range
+  2. Executive summary with overall metrics
+  3. Zone-wise breakdown
+  4. Assembly-wise metrics within each zone
+  5. AC performance cards with color coding
   - Uses vertical-specific fetch functions for WTM:
     - `fetchZonesForWTM()`: Filters zones by parentVertical='wtm' AND role='zonal-incharge'
     - `fetchAssemblyCoordinatorsForWTM()`: Excludes shakti-abhiyaan collection source
@@ -596,10 +633,226 @@ app/wtm-slp-new/page.tsx (Main Page)
   - slp-activity meeting fallback
 - **Returns**: AC[] with only Assembly Coordinators and Zonal Incharges from users collection
 
-##### **transformZoneData** (`reportDataAggregation.ts`)
-- **Purpose**: Converts raw zone data to report format
-- **Maps**: Zone metrics, assemblies, and performance levels
-- **Output**: ZoneData[] for PDF generation
+##### **Key Implementation Details**
+
+###### **Assembly-Scoped Aggregation**
+```typescript
+// Create unique assembly-AC combinations
+const key = `${assembly}::${acId}`;
+// Where:
+// - assembly: Assembly name string (e.g., "Rajgir (SC)", "Unknown Assembly")
+// - acId: AC's uid from users collection or 'no-ac-assigned' for placeholder
+// Example keys: "Rajgir (SC)::aPzlQPgVRLNjIBrgil5gRpXoPYa2"
+//              "Chainpur::no-ac-assigned" (for assemblies with no ACs)
+// Prevents double counting when AC works across multiple assemblies
+```
+
+###### **AC Name Resolution Strategy**
+```typescript
+// Fetch AC document using handler_id as document ID
+const userDocRef = doc(db, 'users', handlerId);
+const userDoc = await getDoc(userDocRef);
+if (userDoc.exists()) {
+  const userData = userDoc.data();
+  const acName = userData.name; // Use ONLY 'name' property
+  // No fallback to displayName or other fields
+  // Fallback hierarchy: userData.name → 'Unknown' → `Pending-${handlerId}`
+}
+```
+
+###### **Date Filter Handling**
+```typescript
+// Adjust "All Time" to 6 months to avoid Firestore limits
+if (dateFilter.label === 'All Time') {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setMonth(endDate.getMonth() - 6);
+  adjustedDateFilter = {
+    startDate: formatLocalDate(startDate),
+    endDate: formatLocalDate(endDate),
+    label: dateFilter.label
+  };
+}
+```
+
+###### **Assembly Chunking for Firestore Limits**
+```typescript
+// Chunk assemblies into groups of 10 for 'in' operator
+if (uniqueAssemblies.length > 10) {
+  const chunks = [];
+  for (let i = 0; i < uniqueAssemblies.length; i += 10) {
+    chunks.push(uniqueAssemblies.slice(i, i + 10));
+  }
+  // Execute parallel queries for each chunk
+}
+```
+
+##### **Supporting Functions**
+- **buildACRosterForVertical()**: Builds complete AC roster for all assemblies
+- **resolveACNames()**: Resolves AC names from users collection
+- **addActivityToAssemblyAc()**: Adds activity to assembly-AC combination
+- **transformZoneData()**: Converts raw zone data to report format
+- **getWtmSlpSummary()**: Fetches WTM SLP summary metrics
+- **fetchCumulativeMetrics()**: Fetches aggregated metrics
+- **fetchDetailedData()**: Fetches detailed activity data
+
+##### **Error Handling**
+1. **Missing AC Names**: Fallback to 'Unknown' or 'Pending-{id}'
+2. **Missing Assemblies**: Create "Unassigned Areas" zone
+3. **Firestore Limits**: Automatic chunking for > 10 assemblies
+4. **Date Range Issues**: 6-month limit for "All Time" filter
+5. **Role Validation**: Prevents non-admin report generation
+
+##### **Performance Optimizations**
+1. **Conditional Fetching**: Only fetch detailed data for non-zero metrics
+2. **Parallel Processing**: Use Promise.all for batch operations
+3. **Caching**: Cache AC names and info to avoid duplicate queries
+4. **Pre-seeding**: Build complete roster upfront for efficiency
+5. **Chunking**: Handle large assembly lists within Firestore limits
+
+##### **Data Structures & Field Reference**
+
+###### **Report Data Interfaces**
+```typescript
+interface LocalReportData {
+  reportTitle: string;
+  generatedAt: string;
+  dateFilter: DateFilter;
+  vertical: 'wtm-slp' | 'shakti-abhiyaan';
+  summary: {
+    totalZones: number;
+    totalAssemblies: number;
+    totalACs: number;
+    totalSLPs: number;
+    metrics: CumulativeMetrics;
+  };
+  zones: ZoneReportData[];
+}
+
+interface ZoneReportData {
+  id: string;                   // Zone document ID
+  name: string;                  // Zone display name
+  inchargeName: string;          // Zone incharge name
+  metrics: CumulativeMetrics;    // Aggregated zone metrics
+  assemblies: AssemblyReportData[];
+}
+
+interface AssemblyReportData {
+  id: string;                    // Assembly identifier
+  name: string;                  // Assembly display name
+  metrics: CumulativeMetrics;    // Aggregated assembly metrics
+  coordinators: ACReportData[];
+}
+
+interface ACReportData {
+  id: string;                    // AC uid (document ID)
+  name: string;                  // AC name from users.name field
+  assembly: string;              // Assembly name
+  metrics: CumulativeMetrics;    // AC-level metrics
+  slps: any[];                   // Associated SLPs (if any)
+}
+
+interface CumulativeMetrics {
+  meetings: number | string;
+  volunteers: number | string;
+  slps: number | string;         // Samvidhan Leaders
+  saathi: number | string;        // Samvidhan Saathi
+  shaktiLeaders: number | string;
+  shaktiSaathi: number | string;
+  clubs: number | string;         // Samvidhan Clubs
+  shaktiClubs: number | string;
+  forms: number | string;         // Mai-Bahin Forms
+  shaktiForms: number | string;
+  videos: number | string;        // Local Issue Videos
+  shaktiVideos: number | string;
+  acVideos: number | string;      // AC Videos
+  chaupals: number | string;      // Samvidhan Chaupals
+  shaktiBaithaks: number | string;
+  centralWaGroups: number | string;
+  assemblyWaGroups: number | string;
+}
+```
+
+###### **Firebase Collection Schemas**
+
+**users collection**
+```typescript
+{
+  uid: string;                    // Document ID (used as acId)
+  name: string;                   // Primary name field (ONLY field used for AC names)
+  displayName?: string;           // NOT used for AC names (explicitly avoided)
+  role: string;                   // 'Assembly Coordinator' | 'Zonal Incharge' | 'SLP'
+  assembly?: string;              // AC's assigned assembly
+  assemblies?: string[];          // Optional multi-assembly array
+  parentVertical?: string;        // 'wtm' | 'shakti-abhiyaan'
+  village?: string;
+  block?: string;
+  district?: string;
+  state?: string;
+  phoneNumber?: string;
+  email?: string;
+}
+```
+
+**admin-users collection**
+```typescript
+{
+  id: string;                     // Firebase Auth UID (zone document ID)
+  email: string;
+  role: 'zonal-incharge' | 'dept-head' | 'admin';
+  assemblies: string[];           // Assigned assemblies
+  parentVertical?: 'wtm' | 'shakti-abhiyaan';
+  createdAt: Timestamp;
+}
+```
+
+**wtm-slp collection**
+```typescript
+{
+  dateOfVisit: string;            // "YYYY-MM-DD" format
+  form_type?: 'meetings' | 'activity' | 'assembly-wa';
+  type?: string;                  // Legacy field (same values as form_type)
+  handler_id?: string;            // AC's uid who handled this entry
+  recommendedPosition?: string;   // 'SLP' for Samvidhan Leaders
+  name?: string;                  // Meeting leader/participant name
+  assembly?: string;              // Assembly name
+  // Additional meeting/activity fields...
+}
+```
+
+**slp-activity collection**
+```typescript
+{
+  handler_id: string;             // SLP uid or ASLP uid
+  date_submitted: string;         // "YYYY-MM-DD" format (primary date field)
+  form_type: string;              // Activity type identifier
+  type?: string;                  // Legacy field
+  assembly?: string;              // Assembly where activity occurred
+  coordinatorName?: string;       // NOT used (can be participant name)
+  // Activity-specific fields...
+}
+```
+
+###### **Performance Color Coding**
+```typescript
+// AC Performance Thresholds (based on meetings count)
+const getPerformanceColor = (meetings: number) => {
+  if (meetings >= 7) return 'green';    // Active AC
+  if (meetings >= 5) return 'orange';   // Moderate AC
+  return 'red';                         // Poor AC
+};
+```
+
+###### **Field Name Mappings**
+| Data Source | Field | Maps To | Notes |
+|------------|-------|---------|-------|
+| users.uid | Document ID | acId in keys | Primary AC identifier |
+| users.name | name | AC display name | ONLY field for AC names |
+| users.assembly | assembly | Assembly assignment | Primary assembly |
+| admin-users.id | Document ID | Zone ID | Zone identifier |
+| wtm-slp.handler_id | handler_id | AC uid | Links to users.uid |
+| slp-activity.handler_id | handler_id | SLP/ASLP uid | Activity owner |
+| slp-activity.date_submitted | date_submitted | Activity date | Primary date field |
 
 ### Data Flow Example
 
@@ -625,18 +878,24 @@ User clicks "Meetings" card
 #### Report Generation Flow
 ```
 User clicks Generate Report
-  → aggregateReportData() called
-    → fetchZones() with parentVertical='wtm' filter
-    → Creates assemblyToZoneMap from zone.assemblies[]
-    → fetchAllActivities() for all assemblies
-    → Groups assemblies under zones
-    → Aggregates zone metrics (sum of assembly metrics)
-    → Creates "Unassigned Areas" zone for orphan assemblies
-    → transformZoneData() converts to report format
-  → generateAndDownloadPDF(reportData)
-    → Renders PDF with Zone → Assembly → AC hierarchy
-    → ZoneSection component for each zone
-    → AssemblySection nested under zones
+  → ReportGenerator validates admin role
+    → Prepares date filters (adjusts "All Time" to 6 months)
+    → aggregateReportData() called with vertical and dates
+      → Fetches zones and assemblies for vertical
+      → Builds complete AC roster using buildACRosterForVertical()
+      → Pre-seeds all assembly-AC combinations
+      → Fetches cumulative metrics (conditional on non-zero values)
+      → Fetches detailed activities in parallel
+      → Groups by assembly-AC key (${assembly}::${acId})
+      → Resolves AC names from users collection
+      → Aggregates at assembly and zone levels
+      → Handles orphan assemblies as "Unassigned Areas"
+      → Returns structured LocalReportData
+    → generateAndDownloadPDF(reportData)
+      → Registers Hindi fonts
+      → Renders PDF with Zone → Assembly → AC hierarchy
+      → Applies performance-based color coding
+      → Generates downloadable PDF file
     → ACSection nested under assemblies
   → PDF downloaded to user
 ```
