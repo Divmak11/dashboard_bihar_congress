@@ -51,14 +51,14 @@ my-dashboard/
 │   ├── services/                 # Service layer
 │   │   └── reportProgressService.ts # Report progress state management
 │   ├── config/                   # Configuration files
-│   │   └── pdfConfig.ts          # PDF styling and configuration
+│   │   └── pdfConfig.ts          # PDF styling with enhanced table styles
 │   └── utils/                    # Core utility functions
 │       ├── fetchFirebaseData.ts  # Firebase data fetching
 │       ├── fetchHierarchicalData.ts # Hierarchical data logic
 │       ├── firebase.ts           # Firebase config
 │       ├── errorUtils.ts         # Error handling
 │       ├── reportDataAggregation.ts # Zone-wise report aggregation
-│       └── pdfGenerator.tsx      # PDF report generation
+│       └── pdfGenerator.tsx      # PDF with UI refinements
 ├── components/                   # Reusable components
 │   ├── hierarchical/             # Hierarchical dashboard components
 │   │   ├── DetailedView.tsx     # Detailed data view
@@ -600,15 +600,17 @@ The Generate Report module provides comprehensive PDF report generation for the 
 - **Main Function**: `generateAndDownloadPDF(reportData)`
 - **Features**:
   - Hindi/Devanagari font support (NotoSansDevanagari)
-  - Performance-based color coding
+  - Performance-based color coding with row highlighting
   - Hierarchical data visualization (Zone → Assembly → AC)
   - Automatic page breaks and formatting
+  - Enhanced font sizes for better readability
+  - Metric value highlighting (bold for >0, dimmed for 0)
 - **PDF Structure**:
   1. Report header with title and date range
   2. Executive summary with overall metrics
-  3. Zone-wise breakdown
-  4. Assembly-wise metrics within each zone
-  5. AC performance cards with color coding
+  3. Zone-wise Overview table with deduplicated AC counts
+  4. AC Performance table with phantom assembly handling
+  5. Zone-wise detailed breakdown sections
   - Uses vertical-specific fetch functions for WTM:
     - `fetchZonesForWTM()`: Filters zones by parentVertical='wtm' AND role='zonal-incharge'
     - `fetchAssemblyCoordinatorsForWTM()`: Excludes shakti-abhiyaan collection source
@@ -862,10 +864,24 @@ interface CumulativeMetrics {
 ```typescript
 // AC Performance Thresholds (based on meetings count)
 const getPerformanceColor = (meetings: number) => {
-  if (meetings >= 7) return 'green';    // Active AC
-  if (meetings >= 5) return 'orange';   // Moderate AC
-  return 'red';                         // Poor AC
+  if (meetings >= 7) return 'green';    // Active AC (tableRowHigh style)
+  if (meetings >= 5) return 'orange';   // Moderate AC (tableRowModerate style)
+  return 'red';                         // Poor AC (tableRowPoor style)
 };
+
+// Row styles in pdfConfig.ts:
+tableRowHigh: {
+  backgroundColor: '#dcfce7',  // Light green
+  borderLeft: '3px solid #22c55e'
+}
+tableRowModerate: {
+  backgroundColor: '#fed7aa',  // Light orange
+  borderLeft: '3px solid #fb923c'
+}
+tableRowPoor: {
+  backgroundColor: '#fee2e2',  // Light red
+  borderLeft: '3px solid #ef4444'
+}
 ```
 
 ###### **Field Name Mappings**
@@ -985,6 +1001,14 @@ User clicks Generate Report
 **Problem**: AC names were inconsistently resolved using displayName, uid, or raw handler_id
 **Solution**: Enforce profile-based resolution using only 'name' property from users collection with 'Unknown' fallback
 
+### 15. Phantom Assembly Handling in PDF Reports
+**Problem**: Assemblies with no assigned ACs (phantom assemblies) were not properly handled in reports
+**Solution**: Include phantom assemblies with 'no-ac-assigned' placeholder in AC Performance table but exclude from AC counts
+
+### 16. AC Count Deduplication in Reports
+**Problem**: ACs working across multiple assemblies were counted multiple times in total AC counts
+**Solution**: Deduplicate AC counts using Set of unique AC IDs, exclude phantom ACs from counts
+
 ---
 
 ## Debugging Helpers
@@ -1070,5 +1094,5 @@ When modifying the codebase:
 ---
 
 *Last Updated: January 2025*
-*Version: 1.2.0*
-*Changes: Added profile-based AC name resolution documentation*
+*Version: 1.3.0*
+*Changes: Added PDF report UI refinements documentation*
