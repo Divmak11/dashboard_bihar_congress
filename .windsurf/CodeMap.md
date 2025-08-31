@@ -43,7 +43,15 @@ my-dashboard/
 │   ├── wtm-slp/                  # Legacy WTM-SLP dashboard
 │   ├── wtm-slp-new/              # New hierarchical dashboard
 │   ├── map/                      # Map visualization
-│   ├── report/                   # Reporting module
+│   ├── report/                   # Report generation components
+│   │   ├── ReportButton.tsx      # Report trigger button
+│   │   └── ReportProgress.tsx    # Progress modal component
+│   ├── hooks/                    # Custom React hooks
+│   │   └── useReportGeneration.ts # Report generation hook
+│   ├── services/                 # Service layer
+│   │   └── reportProgressService.ts # Report progress state management
+│   ├── config/                   # Configuration files
+│   │   └── pdfConfig.ts          # PDF styling and configuration
 │   └── utils/                    # Core utility functions
 │       ├── fetchFirebaseData.ts  # Firebase data fetching
 │       ├── fetchHierarchicalData.ts # Hierarchical data logic
@@ -60,7 +68,7 @@ my-dashboard/
 │   │   ├── MembersList.tsx      # Members table
 │   │   ├── VideosList.tsx       # Videos table
 │   │   └── [other lists]        # Other activity tables
-│   ├── ReportGenerator.tsx       # Report generation component
+│   ├── ReportGenerator.tsx       # Main report generation component (refactored)
 │   ├── DashboardHome.tsx         # Dashboard home component
 │   ├── DateRangeFilter.tsx      # Date filtering component
 │   └── NavBar.tsx                # Navigation bar
@@ -73,6 +81,23 @@ my-dashboard/
     ├── Plan.md                   # Implementation plan
     ├── Tasks.md                  # Task tracking
     └── CodeMap.md                # This file
+
+### Report Generation Architecture (Refactored)
+
+**Key Components:**
+- **useReportGeneration Hook**: Centralizes report generation logic, handles data fetching and PDF creation
+- **reportProgressService**: Manages progress state with observable pattern
+- **pdfConfig**: Centralized PDF styling configuration (fonts, colors, styles)
+- **ReportGenerator Component**: Presentational component with modal UI
+- **pdfGenerator**: Core PDF generation logic using @react-pdf/renderer
+
+**Data Flow:**
+1. User triggers report via ReportGenerator component
+2. useReportGeneration hook orchestrates the process
+3. Data fetched via reportDataAggregation functions
+4. Progress updates via reportProgressService
+5. PDF generated with pdfGenerator using pdfConfig styles
+6. Download triggered automatically on completion
 ```
 
 ---
