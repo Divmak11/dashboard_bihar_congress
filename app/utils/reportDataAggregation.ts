@@ -91,7 +91,15 @@ export async function aggregateReportData(
   vertical: 'wtm-slp' | 'shakti-abhiyaan',
   options?: ReportGenerationOptions
 ): Promise<LocalReportData> {
-  console.log('[aggregateReportData] Starting data aggregation for:', { dateFilter, vertical });
+  console.log('=== REPORT DATA AGGREGATION START ===');
+  console.log('[aggregateReportData] Starting data aggregation for:', { dateFilter, vertical, options });
+  console.log('[aggregateReportData] Input validation:', {
+    dateFilterType: typeof dateFilter,
+    dateFilterKeys: dateFilter ? Object.keys(dateFilter) : 'NULL',
+    verticalType: typeof vertical,
+    optionsType: typeof options,
+    optionsKeys: options ? Object.keys(options) : 'NULL'
+  });
   const startTime = Date.now();
   
   /**
@@ -224,7 +232,25 @@ export async function aggregateReportData(
   };
 
   try {
-    // Step 1: Get overall metrics from dashboard (already fetched)
+    // Step 1: Get vertical zones and assemblies data
+    console.log('[aggregateReportData] Fetching vertical zones and assemblies...');
+    const { fetchZones, fetchZonesForWTM } = await import('./fetchHierarchicalData');
+    const verticalZones = vertical === 'wtm-slp' ? await fetchZonesForWTM() : await fetchZones();
+    console.log('[aggregateReportData] Fetched zones:', {
+      zonesCount: verticalZones.length,
+      zonesType: typeof verticalZones,
+      isArray: Array.isArray(verticalZones)
+    });
+    
+    // Extract all assemblies from all zones
+    const allAssemblies = verticalZones.flatMap(zone => zone.assemblies);
+    console.log('[aggregateReportData] Extracted assemblies:', {
+      assembliesCount: allAssemblies.length,
+      assembliesType: typeof allAssemblies,
+      isArray: Array.isArray(allAssemblies)
+    });
+    
+    // Get overall metrics from dashboard (already fetched)
     const handler_id = vertical === 'shakti-abhiyaan' ? 'shakti-abhiyaan' : undefined;
     
     // Handle "All Time" filter by using a reasonable date range
@@ -244,21 +270,10 @@ export async function aggregateReportData(
     
     const summaryMetrics = await fetchCumulativeMetrics({
       level: 'zone', // Use 'zone' with no specific assemblies to get all data
-      dateRange: adjustedDateFilter,
-      handler_id 
+      dateRange: adjustedDateFilter
     });
     console.log('[aggregateReportData] Overall metrics:', summaryMetrics);
 
-    // Step 1.5: Fetch all zones and assemblies for the selected vertical
-    // Import the WTM-specific zone fetching function
-    const { fetchZonesForWTM } = await import('./fetchHierarchicalData');
-    
-    // Use appropriate zone fetch function based on vertical
-    const zones = vertical === 'wtm-slp' ? await fetchZonesForWTM() : await fetchZones();
-    const verticalZones = vertical === 'wtm-slp' ? zones : zones.filter(z => z.parentVertical === 'shakti-abhiyaan');
-    const allAssemblies = verticalZones.flatMap(zone => zone.assemblies);
-    
-    console.log(`[aggregateReportData] Found ${allAssemblies.length} assemblies in ${verticalZones.length} zones for vertical: ${vertical}`);
     
     // Create assembly-to-zone mapping early for reference
     const assemblyToZoneMap = new Map<string, { zoneId: string; zoneName: string; inchargeName: string }>();
@@ -413,6 +428,7 @@ export async function aggregateReportData(
     console.log(`[aggregateReportData] Pre-seeded ${totalPreseededACs} assembly-AC combinations and ${assembliesWithNoACs} assemblies with no ACs`);
 
     // Step 4: Fetch detailed view data for each metric > 0
+    console.log('[aggregateReportData] Initializing detailed data structure...');
     const detailedData: {
       meetings: any[];
       members: any[];
@@ -432,6 +448,17 @@ export async function aggregateReportData(
       clubs: [],
       waGroups: []
     };
+    
+    console.log('[aggregateReportData] Detailed data structure initialized:', {
+      meetingsIsArray: Array.isArray(detailedData.meetings),
+      membersIsArray: Array.isArray(detailedData.members),
+      volunteersIsArray: Array.isArray(detailedData.volunteers),
+      leadersIsArray: Array.isArray(detailedData.leaders),
+      videosIsArray: Array.isArray(detailedData.videos),
+      formsIsArray: Array.isArray(detailedData.forms),
+      clubsIsArray: Array.isArray(detailedData.clubs),
+      waGroupsIsArray: Array.isArray(detailedData.waGroups)
+    });
 
     // Step 1: Get overall summary metrics to determine which cards have data
     const fetchOptions = {
@@ -449,44 +476,44 @@ export async function aggregateReportData(
       const fetchTypes: string[] = [];
 
       // Conditionally fetch meetings only if count > 0
-      if (Number(overallMetrics.meetings) > 0) {
+      if (Number(summaryMetrics.meetings) > 0) {
         fetchPromises.push(fetchDetailedMeetings(fetchOptions));
         fetchTypes.push('meetings');
       }
 
       // Conditionally fetch members only if count > 0
-      if (Number(overallMetrics.saathi) > 0) {
+      if (Number(summaryMetrics.saathi) > 0) {
         fetchPromises.push(fetchDetailedMembers(fetchOptions));
         fetchTypes.push('members');
       }
 
       // Conditionally fetch other data types based on summary counts
-      if (Number(overallMetrics.videos) > 0) {
+      if (Number(summaryMetrics.videos) > 0) {
         fetchPromises.push(fetchDetailedData('videos', fetchOptions));
         fetchTypes.push('videos');
       }
 
-      if (Number(overallMetrics.acVideos) > 0) {
+      if (Number(summaryMetrics.acVideos) > 0) {
         fetchPromises.push(fetchDetailedData('acVideos', fetchOptions));
         fetchTypes.push('acVideos');
       }
 
-      if (Number(overallMetrics.forms) > 0) {
+      if (Number(summaryMetrics.forms) > 0) {
         fetchPromises.push(fetchDetailedData('forms', fetchOptions));
         fetchTypes.push('forms');
       }
 
-      if (Number(overallMetrics.clubs) > 0) {
+      if (Number(summaryMetrics.clubs) > 0) {
         fetchPromises.push(fetchDetailedData('clubs', fetchOptions));
         fetchTypes.push('clubs');
       }
 
-      if (Number(overallMetrics.assemblyWaGroups) > 0) {
+      if (Number(summaryMetrics.assemblyWaGroups) > 0) {
         fetchPromises.push(fetchDetailedData('assemblyWaGroups', fetchOptions));
         fetchTypes.push('assemblyWaGroups');
       }
 
-      if (Number(overallMetrics.centralWaGroups) > 0) {
+      if (Number(summaryMetrics.centralWaGroups) > 0) {
         fetchPromises.push(fetchDetailedData('centralWaGroups', fetchOptions));
         fetchTypes.push('centralWaGroups');
       }
@@ -494,7 +521,21 @@ export async function aggregateReportData(
       console.log(`[aggregateReportData] Fetching detailed data for: ${fetchTypes.join(', ')}`);
       
       // Step 3: Execute only necessary fetches
+      console.log('[aggregateReportData] Executing fetch promises...');
       const results = await Promise.all(fetchPromises);
+      console.log('[aggregateReportData] Fetch results received:', {
+        resultsType: typeof results,
+        resultsIsArray: Array.isArray(results),
+        resultsLength: Array.isArray(results) ? results.length : 'NOT_ARRAY',
+        fetchTypesLength: fetchTypes.length
+      });
+      
+      // Validate basic results
+      if (Array.isArray(results)) {
+        results.forEach((result, idx) => {
+          console.log(`[aggregateReportData] Result[${idx}] (${fetchTypes[idx] || 'unknown'}): ${Array.isArray(result) ? result.length : 'NOT_ARRAY'} items`);
+        });
+      }
       
       // Step 4: Map results back to data structure with defaults
       let resultIndex = 0;
@@ -510,35 +551,35 @@ export async function aggregateReportData(
       let centralWaGroups: any[] = [];
       
       // Map conditional results based on what was fetched
-      if (Number(overallMetrics.meetings) > 0) {
+      if (Number(summaryMetrics.volunteers) > 0 || Number(summaryMetrics.slps) > 0) {
         meetings = results[resultIndex++];
       }
       
-      if (Number(overallMetrics.saathi) > 0) {
+      if (Number(summaryMetrics.saathi) > 0) {
         members = results[resultIndex++];
       }
       
-      if (Number(overallMetrics.videos) > 0) {
+      if (Number(summaryMetrics.videos) > 0) {
         videos = results[resultIndex++];
       }
       
-      if (Number(overallMetrics.acVideos) > 0) {
+      if (Number(summaryMetrics.acVideos) > 0) {
         acVideos = results[resultIndex++];
       }
       
-      if (Number(overallMetrics.forms) > 0) {
+      if (Number(summaryMetrics.forms) > 0) {
         forms = results[resultIndex++];
       }
       
-      if (Number(overallMetrics.clubs) > 0) {
+      if (Number(summaryMetrics.clubs) > 0) {
         clubs = results[resultIndex++];
       }
       
-      if (Number(overallMetrics.assemblyWaGroups) > 0) {
+      if (Number(summaryMetrics.assemblyWaGroups) > 0) {
         assemblyWaGroups = results[resultIndex++];
       }
       
-      if (Number(overallMetrics.centralWaGroups) > 0) {
+      if (Number(summaryMetrics.centralWaGroups) > 0) {
         centralWaGroups = results[resultIndex++];
       }
       
@@ -572,8 +613,41 @@ export async function aggregateReportData(
         assemblyWaGroups: assemblyWaGroups.length,
         centralWaGroups: centralWaGroups.length
       });
+      
+      // VALIDATE DATA INTEGRITY BEFORE ASSIGNMENT
+      console.log('[aggregateReportData] Validating data integrity before assignment...');
+      [
+        { name: 'meetings', data: meetings },
+        { name: 'members', data: members },
+        { name: 'volunteers', data: volunteers },
+        { name: 'leaders', data: leaders },
+        { name: 'videos', data: videos },
+        { name: 'acVideos', data: acVideos },
+        { name: 'forms', data: forms },
+        { name: 'clubs', data: clubs },
+        { name: 'assemblyWaGroups', data: assemblyWaGroups },
+        { name: 'centralWaGroups', data: centralWaGroups }
+      ].forEach(({ name, data }) => {
+        console.log(`[aggregateReportData] ${name} validation:`, {
+          type: typeof data,
+          isArray: Array.isArray(data),
+          length: Array.isArray(data) ? data.length : 'NOT_ARRAY',
+          constructor: data?.constructor?.name,
+          isCorrupted: data === null || data === undefined || (Array.isArray(data) && data.length > 1000000)
+        });
+        
+        if (!Array.isArray(data)) {
+          console.error(`[aggregateReportData] ❌ ${name} is not an array! Type: ${typeof data}`);
+        } else if (data.length > 1000000) {
+          console.error(`[aggregateReportData] ❌ ${name} has suspicious length: ${data.length}`);
+        }
+      });
     } catch (error) {
-      console.error('[aggregateReportData] Error fetching detailed data:', error);
+      console.error('=== DETAILED DATA FETCH ERROR ===');
+      console.error('[aggregateReportData] ❌ Error fetching detailed data:', error);
+      console.error('[aggregateReportData] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      console.error('[aggregateReportData] Fetch options that caused error:', fetchOptions);
+      console.error('[aggregateReportData] Overall metrics that triggered fetches:', overallMetrics);
       // Continue with empty arrays if fetch fails
     }
 

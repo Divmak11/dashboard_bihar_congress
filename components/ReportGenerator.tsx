@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FaFileAlt } from 'react-icons/fa';
 import { useReportGeneration } from '../app/hooks/useReportGeneration';
 import { auth } from '../app/utils/firebase';
-import { User } from 'firebase/auth';
+import { User, onAuthStateChanged } from 'firebase/auth';
 import { ClipLoader } from 'react-spinners';
 import { getCurrentAdminUser } from '../app/utils/fetchFirebaseData';
 import { AdminUser } from '../models/types';
@@ -38,13 +38,12 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
     }
   }, [progress.phase]);
 
-  // Fetch user role from Firestore
+  // Fetch user role from Firestore with auth state listener
   useEffect(() => {
-    const fetchUserRole = async () => {
-      const currentUser = auth.currentUser;
-      if (currentUser) {
+    const fetchUserRole = async (user: User | null) => {
+      if (user) {
         try {
-          const adminUser = await getCurrentAdminUser(currentUser.uid);
+          const adminUser = await getCurrentAdminUser(user.uid);
           setUserRole(adminUser?.role || null);
         } catch (error) {
           console.error('Error fetching user role:', error);
@@ -56,7 +55,12 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
       setLoading(false);
     };
 
-    fetchUserRole();
+    // Listen for auth state changes to handle page refresh scenarios
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      fetchUserRole(user);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Only show for admin users (not zonal-incharge or dept-head)

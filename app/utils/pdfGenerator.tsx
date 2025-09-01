@@ -169,32 +169,101 @@ const TableRow = ({ data, index }: { data: FlattenedACData; index: number }) => 
   );
 };
 
-// Main AC Performance Table
+// Chunked AC Performance Table to prevent memory issues
 const ACTable = ({ zones }: { zones: ZoneData[] }) => {
-  const tableData = flattenDataForTable(zones);
-  
-  // Calculate unique real ACs (exclude phantom entries and deduplicate)
-  const uniqueRealACs = new Set(
-    tableData
-      .filter(row => row.acId !== 'no-ac-assigned')
-      .map(row => row.acId)
-  ).size;
-  
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>AC Performance Report</Text>
-      <View style={styles.table}>
-        <TableHeader />
-        {tableData.map((row, index) => (
-          <TableRow key={index} data={row} index={index} />
-        ))}
+  try {
+    console.log('[ACTable] Processing zones for table generation:', {
+      zonesLength: zones.length,
+      zonesType: typeof zones,
+      isArray: Array.isArray(zones)
+    });
+
+    const tableData = flattenDataForTable(zones);
+    console.log('[ACTable] Flattened table data:', {
+      length: tableData.length,
+      type: typeof tableData,
+      isArray: Array.isArray(tableData),
+      firstFewRows: tableData.slice(0, 3).map(row => ({
+        zone: row.zone,
+        assembly: row.assembly,
+        acName: row.acName,
+        meetings: row.meetings
+      })),
+      lastFewRows: tableData.slice(-3).map(row => ({
+        zone: row.zone,
+        assembly: row.assembly,
+        acName: row.acName,
+        meetings: row.meetings
+      }))
+    });
+    
+    // Calculate unique real ACs (exclude phantom entries and deduplicate)
+    const uniqueRealACs = new Set(
+      tableData
+        .filter(row => row.acId !== 'no-ac-assigned')
+        .map(row => row.acId)
+    ).size;
+    
+    const MAX_ROWS_PER_CHUNK = 15; // Smaller chunks for better rendering
+    const chunks = [];
+    
+    // Split data into chunks if too large
+    if (tableData.length > MAX_ROWS_PER_CHUNK) {
+      console.log(`[ACTable] Large dataset (${tableData.length} rows). Splitting into chunks of ${MAX_ROWS_PER_CHUNK}.`);
+      
+      for (let i = 0; i < tableData.length; i += MAX_ROWS_PER_CHUNK) {
+        const chunk = tableData.slice(i, i + MAX_ROWS_PER_CHUNK);
+        chunks.push(chunk);
+        console.log(`[ACTable] Chunk ${chunks.length}: ${chunk.length} rows, first AC: ${chunk[0]?.acName}`);
+      }
+    } else {
+      chunks.push(tableData);
+    }
+    
+    console.log('[ACTable] Rendering', chunks.length, 'table chunks with total', tableData.length, 'rows');
+    
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>AC Performance Report</Text>
+        
+        {/* Single continuous table with all chunks rendered seamlessly */}
+        <View style={styles.table}>
+          <TableHeader />
+          {chunks.map((chunk, chunkIndex) => 
+            chunk.map((row, index) => {
+              const globalIndex = chunkIndex * MAX_ROWS_PER_CHUNK + index;
+              try {
+                return (
+                  <TableRow 
+                    key={`row-${globalIndex}-${row.acId}`} 
+                    data={row} 
+                    index={globalIndex} 
+                  />
+                );
+              } catch (rowError) {
+                console.error(`[ACTable] ❌ Error rendering row ${globalIndex}:`, rowError);
+                console.error('[ACTable] Row data:', JSON.stringify(row, null, 2));
+                throw rowError;
+              }
+            })
+          )}
+        </View>
+        
+        <View style={styles.tableSummary}>
+          <Text style={styles.summaryText}>Total ACs: {uniqueRealACs}</Text>
+          <Text style={[styles.summaryText, { marginLeft: 20 }]}>Total Rows: {tableData.length}</Text>
+          {chunks.length > 1 && (
+            <Text style={[styles.summaryText, { marginLeft: 20 }]}>Sections: {chunks.length}</Text>
+          )}
+        </View>
       </View>
-      <View style={styles.tableSummary}>
-        <Text style={styles.summaryText}>Total ACs: {uniqueRealACs}</Text>
-        <Text style={[styles.summaryText, { marginLeft: 20 }]}>Total Rows: {tableData.length}</Text>
-      </View>
-    </View>
-  );
+    );
+  } catch (error) {
+    console.error('=== ACTABLE ERROR ===');
+    console.error('[ACTable] ❌ Error in ACTable component:', error);
+    console.error('[ACTable] Zones data causing error:', JSON.stringify(zones, null, 2));
+    throw error;
+  }
 };
 
 // Summary Statistics Component
@@ -367,41 +436,79 @@ const ExecutiveSummarySection: React.FC<{ summary: ExecutiveSummary }> = ({ summ
   </View>
 );
 
+// Error Boundary Wrapper Component
+const SafeComponent: React.FC<{ children: React.ReactNode; componentName: string; data?: any }> = ({ children, componentName, data }) => {
+  try {
+    console.log(`[SafeComponent] Rendering ${componentName}`);
+    return <>{children}</>;
+  } catch (error) {
+    console.error(`=== ERROR in ${componentName} ===`);
+    console.error(`[SafeComponent] ❌ Error in ${componentName}:`, error);
+    if (data) {
+      console.error(`[SafeComponent] Data causing error in ${componentName}:`, JSON.stringify(data, null, 2));
+    }
+    throw error; // Re-throw to trigger main error handler
+  }
+};
+
 // Main PDF Document Component - Table Based Layout
-const PDFReport: React.FC<PDFReportProps> = ({ data }) => (
-  <Document>
-    <Page size="A4" style={styles.page} orientation="landscape">
-      <ReportHeader data={data} />
-      
-      {/* Executive Summary */}
-      <ExecutiveSummarySection summary={data.summary} />
-      
-      {/* Zone-wise Summary if zones exist */}
-      {data.zones && data.zones.length > 0 && (
-        <ZoneWiseSummary zones={data.zones} />
-      )}
-      
-      {/* Summary Statistics */}
-      {data.zones && data.zones.length > 0 && (
-        <SummaryStatistics zones={data.zones} />
-      )}
-      
-      {/* Main AC Performance Table */}
-      {data.zones && data.zones.length > 0 ? (
-        <ACTable zones={data.zones} />
-      ) : (
-        <View style={{ padding: 20 }}>
-          <Text style={styles.text}>No zone data available for report generation.</Text>
-        </View>
-      )}
-      
-      {/* Footer */}
-      <Text style={[styles.footer, { fontSize: 7 }]}>
-        Bihar Congress Dashboard - {data.header.title} | Generated: {new Date(data.header.generatedAt).toLocaleDateString()}
-      </Text>
-    </Page>
-  </Document>
-);
+const PDFReport: React.FC<PDFReportProps> = ({ data }) => {
+  try {
+    console.log('[PDFReport] Starting PDF component render');
+    
+    return (
+      <Document>
+        <Page size="A4" style={styles.page} orientation="landscape">
+          <SafeComponent componentName="ReportHeader" data={data.header}>
+            <ReportHeader data={data} />
+          </SafeComponent>
+          
+          {/* Executive Summary */}
+          <SafeComponent componentName="ExecutiveSummarySection" data={data.summary}>
+            <ExecutiveSummarySection summary={data.summary} />
+          </SafeComponent>
+          
+          {/* Zone-wise Summary if zones exist */}
+          {data.zones && data.zones.length > 0 && (
+            <SafeComponent componentName="ZoneWiseSummary" data={data.zones}>
+              <ZoneWiseSummary zones={data.zones} />
+            </SafeComponent>
+          )}
+          
+          {/* Summary Statistics */}
+          {data.zones && data.zones.length > 0 && (
+            <SafeComponent componentName="SummaryStatistics" data={data.zones}>
+              <SummaryStatistics zones={data.zones} />
+            </SafeComponent>
+          )}
+          
+          {/* Main AC Performance Table */}
+          {data.zones && data.zones.length > 0 ? (
+            <SafeComponent componentName="ACTable" data={data.zones}>
+              <ACTable zones={data.zones} />
+            </SafeComponent>
+          ) : (
+            <View style={{ padding: 20 }}>
+              <Text style={styles.text}>No zone data available for report generation.</Text>
+            </View>
+          )}
+          
+          {/* Footer */}
+          <SafeComponent componentName="Footer" data={data.header}>
+            <Text style={[styles.footer, { fontSize: 7 }]}>
+              Bihar Congress Dashboard - {data.header.title} | Generated: {new Date(data.header.generatedAt).toLocaleDateString()}
+            </Text>
+          </SafeComponent>
+        </Page>
+      </Document>
+    );
+  } catch (renderError) {
+    console.error('=== PDF COMPONENT RENDER ERROR ===');
+    console.error('[PDFReport] ❌ Error during component render:', renderError);
+    console.error('[PDFReport] Complete data structure causing error:', JSON.stringify(data, null, 2));
+    throw renderError;
+  }
+};
 
 /**
  * Generate PDF blob from report data
@@ -410,11 +517,48 @@ export async function generatePDFBlob(data: ReportData): Promise<Blob> {
   console.log('[generatePDFBlob] Starting PDF generation for:', data.header.title);
   
   try {
+    // Calculate data sizes for analysis
+    const totalAssemblies = data.zones.reduce((sum, zone) => sum + zone.assemblies.length, 0);
+    const totalACs = data.zones.reduce((sum, zone) => 
+      sum + zone.assemblies.reduce((acSum, assembly) => acSum + assembly.acs.length, 0), 0);
+    
+    console.log('[generatePDFBlob] 📊 DATA SIZE ANALYSIS:', {
+      zones: data.zones.length,
+      totalAssemblies,
+      totalACs,
+      keyMetrics: data.summary?.keyMetrics?.length || 0,
+      estimatedTableRows: totalACs,
+      dataStringSize: JSON.stringify(data).length,
+      exceedsRecommendedSize: totalACs > 50 ? '⚠️  YES - May cause memory issues' : '✅ Within limits'
+    });
+    
+    // Warn if data size is large
+    if (totalACs > 100) {
+      console.warn('⚠️  [generatePDFBlob] LARGE DATASET WARNING: ' + totalACs + ' ACs may exceed PDF rendering limits');
+    }
+    
+    console.log('[generatePDFBlob] Attempting PDF generation...');
     const blob = await pdf(<PDFReport data={data} />).toBlob();
-    console.log('[generatePDFBlob] PDF generated successfully, size:', blob.size);
+    console.log('[generatePDFBlob] ✅ PDF generated successfully, size:', blob.size);
     return blob;
   } catch (error) {
-    console.error('[generatePDFBlob] Error generating PDF:', error);
+    console.error('=== PDF GENERATION ERROR CAUGHT ===');
+    console.error('[generatePDFBlob] ❌ Error Type:', error instanceof Error ? error.name : 'Unknown');
+    console.error('[generatePDFBlob] ❌ Error Message:', error instanceof Error ? error.message : String(error));
+    
+    // Check if it's an array length error
+    if (error instanceof Error && error.message.includes('Invalid array length')) {
+      const totalACs = data.zones.reduce((sum, zone) => 
+        sum + zone.assemblies.reduce((acSum, assembly) => acSum + assembly.acs.length, 0), 0);
+      
+      console.error('=== ARRAY LENGTH ERROR - SIZE ANALYSIS ===');
+      console.error('[generatePDFBlob] ❌ LIKELY CAUSE: Dataset too large for PDF rendering');
+      console.error('[generatePDFBlob] Total ACs attempting to render:', totalACs);
+      console.error('[generatePDFBlob] Total data size (bytes):', JSON.stringify(data).length);
+      console.error('[generatePDFBlob] Recommendation: Implement data chunking or filtering');
+      console.error('=== SOLUTION: Reduce data size or implement pagination ===');
+    }
+    
     throw error;
   }
 }
