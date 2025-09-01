@@ -190,6 +190,18 @@ my-dashboard/
 }
 ```
 
+#### **Form_Type Mappings for Shakti-Abhiyaan Metrics:**
+| Metric | Collection | Form_Type | ParentVertical Filter | Date Field |
+|--------|------------|-----------|----------------------|------------|
+| shaktiLeaders | shakti-abhiyaan | 'add-data' | N/A | createdAt (epoch ms) |
+| shaktiSaathi | slp-activity | 'members' | 'shakti-abhiyaan' | createdAt (epoch ms) |
+| shaktiClubs | slp-activity | 'panchayat-wa' | 'shakti-abhiyaan' | createdAt (ISO string) |
+| shaktiForms | slp-activity | 'mai-bahin-yojna' | 'shakti-abhiyaan' | date (YYYY-MM-DD) |
+| shaktiBaithaks | slp-activity | 'weekly_meeting' | 'shakti-abhiyaan' | dateFormatted (YYYY-MM-DD) |
+| shaktiVideos | slp-activity | 'local-issue-video' | 'shakti-abhiyaan' | date_submitted (YYYY-MM-DD) |
+
+**Critical Note:** All slp-activity queries for shakti metrics must include both `form_type` filter AND `parentVertical='shakti-abhiyaan'` filter.
+
 ### 5. **shakti-abhiyaan** Collection
 ```typescript
 {
@@ -757,7 +769,7 @@ interface LocalReportData {
 }
 
 interface ZoneReportData {
-  id: string;                   // Zone document ID
+  id: string;                   // Zone ID (Document ID)
   name: string;                  // Zone display name
   inchargeName: string;          // Zone incharge name
   metrics: CumulativeMetrics;    // Aggregated zone metrics
