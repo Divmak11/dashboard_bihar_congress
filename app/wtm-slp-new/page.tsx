@@ -337,7 +337,6 @@ const HierarchicalDashboardPage: React.FC = () => {
               onDateChange={handleDateChange}
             />
             <ReportGenerator
-              adminUser={adminUser}
               currentDateFilter={{
                 startDate,
                 endDate,
@@ -382,6 +381,9 @@ const HierarchicalDashboardPage: React.FC = () => {
                 onCardSelect={handleCardSelect}
                 isLoading={isLoadingMetrics}
                 selectedVertical={selectedVertical}
+                selectedAssembly={selectedAssembly}
+                acs={acs}
+                selectedAcId={selectedAcId}
               />
             </HierarchicalErrorBoundary>
           </div>

@@ -8,9 +8,20 @@ interface Props {
   onCardSelect?: (cardId: string) => void;
   isLoading?: boolean;
   selectedVertical?: string;
+  selectedAssembly?: string | null;
+  acs?: any[];
+  selectedAcId?: string | null;
 }
 
-const CumulativeDataCards: React.FC<Props> = ({ metrics, onCardSelect, isLoading, selectedVertical = 'wtm' }) => {
+const CumulativeDataCards: React.FC<Props> = ({ 
+  metrics, 
+  onCardSelect, 
+  isLoading, 
+  selectedVertical = 'wtm',
+  selectedAssembly,
+  acs,
+  selectedAcId 
+}) => {
   const handleCardClick = (cardId: string) => {
     if (onCardSelect) {
       onCardSelect(cardId);
@@ -46,6 +57,9 @@ const CumulativeDataCards: React.FC<Props> = ({ metrics, onCardSelect, isLoading
       return !['shaktiLeaders', 'shaktiSaathi', 'shaktiClubs', 'shaktiForms', 'shaktiBaithaks', 'shaktiVideos'].includes(card.id);
     }
   });
+
+  // Check if assembly is selected but has no ACs assigned
+  const shouldShowNoAcMessage = selectedAssembly && !selectedAcId && acs && acs.length === 0 && !isLoading;
 
   const getColorClasses = (color: string) => {
     const colorMap: Record<string, string> = {
@@ -83,22 +97,37 @@ const CumulativeDataCards: React.FC<Props> = ({ metrics, onCardSelect, isLoading
           </div>
         </div>
       )}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {cardData.map((card) => (
-          <div
-            key={card.id}
-            className={`p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${
-              getColorClasses(card.color)
-            }`}
-            onClick={() => handleCardClick(card.id)}
-          >
-            <div className="text-center">
-              <div className="text-2xl font-bold mb-1">{card.value}</div>
-              <div className="text-sm font-medium">{card.label}</div>
+      
+      {shouldShowNoAcMessage ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center p-8 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+            <div className="text-yellow-600 mb-2">
+              <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
             </div>
+            <h3 className="text-lg font-semibold text-yellow-800 mb-2">No AC Assigned</h3>
+            <p className="text-yellow-700">No Assembly Coordinator is assigned to this Assembly.</p>
           </div>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {cardData.map((card) => (
+            <div
+              key={card.id}
+              className={`p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${
+                getColorClasses(card.color)
+              }`}
+              onClick={() => handleCardClick(card.id)}
+            >
+              <div className="text-center">
+                <div className="text-2xl font-bold mb-1">{card.value}</div>
+                <div className="text-sm font-medium">{card.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 };

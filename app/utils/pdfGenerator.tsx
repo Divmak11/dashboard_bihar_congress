@@ -1,257 +1,35 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Font, pdf } from '@react-pdf/renderer';
-import { ReportData, ZoneData, AssemblyData, ACPerformance, ExecutiveSummary, DetailedActivity } from '../../models/reportTypes';
+import { Document, Page, Text, View, Font, PDFDownloadLink, pdf } from '@react-pdf/renderer';
+import { 
+  ReportData, 
+  ACPerformance, 
+  AssemblyData, 
+  ZoneData, 
+  DetailedActivity, 
+  ExecutiveSummary,
+  ReportMetric 
+} from '../../models/reportTypes';
+import { 
+  PDF_STYLES, 
+  FONT_CONFIG, 
+  FILE_NAME_CONFIG,
+  getPerformanceLevel,
+  getPerformanceColor 
+} from '../config/pdfConfig';
 
-// Register fonts that support Hindi/Devanagari script
-// NOTE: react-pdf requires TTF/OTF sources (WOFF/WOFF2 are not supported)
-// Place the following files under public/fonts/:
-// - public/fonts/NotoSansDevanagari-Regular.ttf
-// - public/fonts/NotoSansDevanagari-Bold.ttf
+// Register custom fonts for Devanagari support
 Font.register({
-  family: 'NotoSansDevanagari',
+  family: FONT_CONFIG.family,
   fonts: [
-    { src: '/fonts/NotoSansDevanagari-Regular.ttf', fontWeight: 'normal' },
-    { src: '/fonts/NotoSansDevanagari-Bold.ttf', fontWeight: 'bold' },
+    { src: FONT_CONFIG.sources.regular, fontWeight: 'normal' },
+    { src: FONT_CONFIG.sources.bold, fontWeight: 'bold' },
   ],
 });
 
-// AC Performance Color Scheme
-const performanceColors = {
-  high: '#A8E6CF',      // Pastel Green
-  moderate: '#FFD3B6',   // Pastel Orange
-  poor: '#FFAAA5'       // Pastel Red
-};
-
-const getPerformanceColor = (level: 'high' | 'moderate' | 'poor'): string => {
-  switch (level) {
-    case 'high': return '#90D5B3';  // Slightly darker pastel Green
-    case 'moderate': return '#FFB894';  // Slightly darker pastel Orange
-    case 'poor': return '#FF8A80';  // Slightly darker pastel Red
-    default: return '#BDBDBD';  // Slightly darker Light Gray
-  }
-};
+// Performance color scheme is now imported from config
 
 // PDF Styles
-const styles = StyleSheet.create({
-  page: {
-    flexDirection: 'column',
-    backgroundColor: '#FFFFFF',
-    padding: 20,
-    fontSize: 8,
-    fontFamily: 'NotoSansDevanagari',
-  },
-  title: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 10,
-    fontWeight: 'bold',
-    color: '#1f2937',
-  },
-  subtitle: {
-    fontSize: 12,
-    marginBottom: 8,
-    fontWeight: 'bold',
-    color: '#374151',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    paddingBottom: 3,
-  },
-  sectionTitle: {
-    fontSize: 10,
-    marginTop: 8,
-    marginBottom: 5,
-    fontWeight: 'bold',
-    color: '#4b5563',
-    backgroundColor: '#f3f4f6',
-    padding: 3,
-  },
-  subsectionTitle: {
-    fontSize: 12,
-    marginTop: 15,
-    marginBottom: 8,
-    fontWeight: 'bold',
-    color: '#6b7280',
-  },
-  acCompactCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-    padding: 6,
-    borderRadius: 3,
-    fontSize: 7,
-  },
-  acNameText: {
-    fontSize: 7,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    flex: 1,
-  },
-  acMetricsText: {
-    fontSize: 6,
-    color: '#ffffff',
-    opacity: 0.9,
-  },
-  performanceIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 5,
-  },
-  performanceDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  performanceText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  text: {
-    marginBottom: 5,
-    lineHeight: 1.4,
-  },
-  boldText: {
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  row: {
-    flexDirection: 'row',
-    marginBottom: 3,
-  },
-  column: {
-    flex: 1,
-    paddingRight: 10,
-  },
-  metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 8,
-    backgroundColor: '#f9fafb',
-    padding: 6,
-    borderRadius: 3,
-  },
-  metricBox: {
-    width: '20%',
-    marginBottom: 4,
-    paddingRight: 6,
-  },
-  metricLabel: {
-    fontSize: 6,
-    color: '#6b7280',
-    marginBottom: 1,
-  },
-  metricValue: {
-    fontSize: 8,
-    fontWeight: 'bold',
-    color: '#1f2937',
-  },
-  indentLevel1: {
-    marginLeft: 15,
-  },
-  indentLevel2: {
-    marginLeft: 30,
-  },
-  indentLevel3: {
-    marginLeft: 45,
-  },
-  activityItem: {
-    marginBottom: 8,
-    padding: 8,
-    backgroundColor: '#f8fafc',
-    borderLeftWidth: 2,
-    borderLeftColor: '#3b82f6',
-  },
-  pageBreak: {
-    marginTop: 20,
-    pageBreakBefore: 'always',
-  },
-  headerInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-    padding: 8,
-    backgroundColor: '#f8fafc',
-    borderRadius: 4,
-    fontSize: 7,
-  },
-  headerItem: {
-    fontSize: 7,
-    color: '#374151',
-    marginBottom: 2,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 20,
-    left: 30,
-    right: 30,
-    textAlign: 'center',
-    fontSize: 8,
-    color: '#6b7280',
-  },
-  // Assembly and AC styles
-  assemblySection: {
-    marginBottom: 20,  // Increased spacing between assemblies
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-    paddingBottom: 4,
-  },
-  assemblyHeader: {
-    backgroundColor: '#f5f5f5',
-    padding: 8,
-    borderRadius: 4,
-    marginBottom: 6,
-  },
-  assemblyTitle: {
-    fontSize: 11,
-    marginBottom: 3,
-    color: '#333',
-  },
-  assemblyLabel: {
-    fontWeight: '400' as '400',
-  },
-  assemblyName: {
-    fontWeight: '600' as '600',
-  },
-  assemblyMetrics: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  assemblyMetric: {
-    fontSize: 8,
-    color: '#666',
-    marginRight: 8,
-  },
-  acRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 4,
-    marginBottom: 1,
-    borderRadius: 2,
-  },
-  acName: {
-    flex: 2,
-    fontSize: 9,
-    color: '#000',  // Black text
-    fontWeight: '500' as '500',
-  },
-  acMetric: {
-    flex: 1,
-    fontSize: 9,
-    color: '#000',  // Black text
-    textAlign: 'center' as 'center',
-  },
-  noAcMessage: {
-    padding: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  noAcText: {
-    fontSize: 10,
-    color: '#6b7280',
-    textAlign: 'center' as 'center',
-  },
-});
+const styles = PDF_STYLES;
 
 interface PDFReportProps {
   data: ReportData;
@@ -274,58 +52,286 @@ const ReportHeader: React.FC<{ data: ReportData }> = ({ data }) => (
   </View>
 );
 
-// Metrics Grid Component for AC
-const ACMetricsGrid: React.FC<{ metrics: ACPerformance['metrics'] }> = ({ metrics }) => (
-  <View style={styles.metricsGrid}>
-    <View style={styles.metricBox}>
-      <Text style={styles.metricLabel}>Meetings</Text>
-      <Text style={styles.metricValue}>{metrics.meetings}</Text>
-    </View>
-    <View style={styles.metricBox}>
-      <Text style={styles.metricLabel}>Members</Text>
-      <Text style={styles.metricValue}>{metrics.members}</Text>
-    </View>
-    <View style={styles.metricBox}>
-      <Text style={styles.metricLabel}>Volunteers</Text>
-      <Text style={styles.metricValue}>{metrics.volunteers}</Text>
-    </View>
-    <View style={styles.metricBox}>
-      <Text style={styles.metricLabel}>Leaders</Text>
-      <Text style={styles.metricValue}>{metrics.leaders}</Text>
-    </View>
-    <View style={styles.metricBox}>
-      <Text style={styles.metricLabel}>Videos</Text>
-      <Text style={styles.metricValue}>{metrics.videos}</Text>
-    </View>
-    <View style={styles.metricBox}>
-      <Text style={styles.metricLabel}>Clubs</Text>
-      <Text style={styles.metricValue}>{metrics.clubs}</Text>
-    </View>
-    <View style={styles.metricBox}>
-      <Text style={styles.metricLabel}>Forms</Text>
-      <Text style={styles.metricValue}>{metrics.forms}</Text>
-    </View>
-    <View style={styles.metricBox}>
-      <Text style={styles.metricLabel}>Chaupals</Text>
-      <Text style={styles.metricValue}>{metrics.chaupals}</Text>
-    </View>
+// Interface for flattened AC data
+interface FlattenedACData {
+  zoneIndex: number;
+  zone: string;
+  zonalIncharge: string;
+  assembly: string;
+  acName: string;
+  acId: string;
+  meetings: number;
+  onboarded: number;
+  slps: number;
+  forms: number;
+  videos: number;
+  waGroups: number;
+  performanceLevel: string;
+}
+
+// Function to flatten hierarchical data into table format
+const flattenDataForTable = (zones: ZoneData[]): FlattenedACData[] => {
+  const tableData: FlattenedACData[] = [];
+  
+  // Sort zones by extracting zone number
+  const sortedZones = [...zones].sort((a, b) => {
+    const getZoneNumber = (name: string) => {
+      const match = name.match(/Zone\s+(\d+)/i);
+      return match ? parseInt(match[1]) : 999;
+    };
+    return getZoneNumber(a.name) - getZoneNumber(b.name);
+  });
+  
+  sortedZones.forEach((zone, zoneIndex) => {
+    zone.assemblies.forEach(assembly => {
+      assembly.acs.forEach(ac => {
+        // Include phantom assemblies (no-ac-assigned) in the table
+        tableData.push({
+          zoneIndex: zoneIndex + 1, // Store zone index for display
+          zone: zone.name,
+          zonalIncharge: zone.inchargeName || 'N/A',
+          assembly: assembly.name,
+          acName: ac.id === 'no-ac-assigned' ? 'No AC Assigned' : ac.name,
+          acId: ac.id, // Store AC ID for deduplication
+          meetings: ac.metrics.meetings || 0,
+          onboarded: ac.metrics.volunteers || 0,
+          slps: ac.metrics.leaders || 0,
+          forms: ac.metrics.forms || 0,
+          videos: ac.metrics.videos || 0,
+          waGroups: (ac.metrics.assemblyWaGroups || 0) + (ac.metrics.centralWaGroups || 0),
+          performanceLevel: ac.id === 'no-ac-assigned' ? 'poor' : ac.performanceLevel
+        });
+      });
+    });
+  });
+  
+  return tableData;
+};
+
+// Table Header Component
+const TableHeader = () => (
+  <View style={styles.tableHeaderRow}>
+    <Text style={[styles.tableHeaderCell, { flex: 0.8 }]}>Zone</Text>
+    <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Zonal Incharge</Text>
+    <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Assembly</Text>
+    <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>AC Name</Text>
+    <Text style={styles.tableHeaderCell}>Meetings</Text>
+    <Text style={styles.tableHeaderCell}>Onboarded</Text>
+    <Text style={styles.tableHeaderCell}>SLPs</Text>
+    <Text style={styles.tableHeaderCell}>Forms</Text>
+    <Text style={styles.tableHeaderCell}>Videos</Text>
+    <Text style={styles.tableHeaderCell}>WA Groups</Text>
   </View>
 );
 
-// Zone Metrics Component
-const ZoneMetrics: React.FC<{ metrics: ZoneData['metrics'] }> = ({ metrics }) => (
-  <View style={styles.metricsGrid}>
-    {metrics.map((metric, idx) => (
-      <View key={idx} style={styles.metricBox}>
-        <Text style={styles.metricLabel}>{metric.name}</Text>
-        <Text style={styles.metricValue}>{metric.value}</Text>
+// Table Row Component with performance-based color coding
+const TableRow = ({ data, index }: { data: FlattenedACData; index: number }) => {
+  // Determine row style based on performance level
+  const getRowStyle = () => {
+    if (data.acId === 'no-ac-assigned') {
+      // Phantom assemblies get neutral styling
+      return [styles.tableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f9fafb' }];
+    }
+    
+    // Apply performance-based color coding
+    const meetings = Number(data.meetings) || 0;
+    if (meetings >= 7) {
+      return [styles.tableRowHigh];
+    } else if (meetings >= 5) {
+      return [styles.tableRowModerate];
+    } else {
+      return [styles.tableRowPoor];
+    }
+  };
+  
+  // Determine cell style for metrics (highlight if > 0)
+  const getMetricCellStyle = (value: any) => {
+    const numValue = Number(value) || 0;
+    if (data.acId === 'no-ac-assigned') {
+      return styles.tableCellDim;
+    }
+    return numValue > 0 ? styles.tableCellHighlight : styles.tableCell;
+  };
+  
+  return (
+    <View style={getRowStyle()}>
+      <Text style={[styles.tableCell, { flex: 0.8 }]}>Zone - {data.zoneIndex}</Text>
+      <Text style={[styles.tableCell, { flex: 1.5 }]}>{data.zonalIncharge}</Text>
+      <Text style={[styles.tableCell, { flex: 1.5 }]}>{data.assembly}</Text>
+      <Text style={[styles.tableCell, { flex: 1.5 }]}>{data.acName}</Text>
+      <Text style={getMetricCellStyle(data.meetings)}>{data.meetings}</Text>
+      <Text style={getMetricCellStyle(data.onboarded)}>{data.onboarded}</Text>
+      <Text style={getMetricCellStyle(data.slps)}>{data.slps}</Text>
+      <Text style={getMetricCellStyle(data.forms)}>{data.forms}</Text>
+      <Text style={getMetricCellStyle(data.videos)}>{data.videos}</Text>
+      <Text style={getMetricCellStyle(data.waGroups)}>{data.waGroups}</Text>
+    </View>
+  );
+};
+
+// Chunked AC Performance Table to prevent memory issues
+const ACTable = ({ zones }: { zones: ZoneData[] }) => {
+  try {
+    console.log('[ACTable] Processing zones for table generation:', {
+      zonesLength: zones.length,
+      zonesType: typeof zones,
+      isArray: Array.isArray(zones)
+    });
+
+    const tableData = flattenDataForTable(zones);
+    console.log('[ACTable] Flattened table data:', {
+      length: tableData.length,
+      type: typeof tableData,
+      isArray: Array.isArray(tableData),
+      firstFewRows: tableData.slice(0, 3).map(row => ({
+        zone: row.zone,
+        assembly: row.assembly,
+        acName: row.acName,
+        meetings: row.meetings
+      })),
+      lastFewRows: tableData.slice(-3).map(row => ({
+        zone: row.zone,
+        assembly: row.assembly,
+        acName: row.acName,
+        meetings: row.meetings
+      }))
+    });
+    
+    // Calculate unique real ACs (exclude phantom entries and deduplicate)
+    const uniqueRealACs = new Set(
+      tableData
+        .filter(row => row.acId !== 'no-ac-assigned')
+        .map(row => row.acId)
+    ).size;
+    
+    const MAX_ROWS_PER_CHUNK = 15; // Smaller chunks for better rendering
+    const chunks = [];
+    
+    // Split data into chunks if too large
+    if (tableData.length > MAX_ROWS_PER_CHUNK) {
+      console.log(`[ACTable] Large dataset (${tableData.length} rows). Splitting into chunks of ${MAX_ROWS_PER_CHUNK}.`);
+      
+      for (let i = 0; i < tableData.length; i += MAX_ROWS_PER_CHUNK) {
+        const chunk = tableData.slice(i, i + MAX_ROWS_PER_CHUNK);
+        chunks.push(chunk);
+        console.log(`[ACTable] Chunk ${chunks.length}: ${chunk.length} rows, first AC: ${chunk[0]?.acName}`);
+      }
+    } else {
+      chunks.push(tableData);
+    }
+    
+    console.log('[ACTable] Rendering', chunks.length, 'table chunks with total', tableData.length, 'rows');
+    
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>AC Performance Report</Text>
+        
+        {/* Single continuous table with all chunks rendered seamlessly */}
+        <View style={styles.table}>
+          <TableHeader />
+          {chunks.map((chunk, chunkIndex) => 
+            chunk.map((row, index) => {
+              const globalIndex = chunkIndex * MAX_ROWS_PER_CHUNK + index;
+              try {
+                return (
+                  <TableRow 
+                    key={`row-${globalIndex}-${row.acId}`} 
+                    data={row} 
+                    index={globalIndex} 
+                  />
+                );
+              } catch (rowError) {
+                console.error(`[ACTable] ❌ Error rendering row ${globalIndex}:`, rowError);
+                console.error('[ACTable] Row data:', JSON.stringify(row, null, 2));
+                throw rowError;
+              }
+            })
+          )}
+        </View>
+        
+        <View style={styles.tableSummary}>
+          <Text style={styles.summaryText}>Total ACs: {uniqueRealACs}</Text>
+          <Text style={[styles.summaryText, { marginLeft: 20 }]}>Total Rows: {tableData.length}</Text>
+          {chunks.length > 1 && (
+            <Text style={[styles.summaryText, { marginLeft: 20 }]}>Sections: {chunks.length}</Text>
+          )}
+        </View>
       </View>
-    ))}
-  </View>
-);
+    );
+  } catch (error) {
+    console.error('=== ACTABLE ERROR ===');
+    console.error('[ACTable] ❌ Error in ACTable component:', error);
+    console.error('[ACTable] Zones data causing error:', JSON.stringify(zones, null, 2));
+    throw error;
+  }
+};
+
+// Summary Statistics Component
+const SummaryStatistics: React.FC<{ zones: ZoneData[] }> = ({ zones }) => {
+  // Calculate totals from zones
+  let totalMeetings = 0;
+  let totalOnboarded = 0;
+  let totalSLPs = 0;
+  let totalForms = 0;
+  let totalVideos = 0;
+  let totalWAGroups = 0;
+  let totalACs = 0;
+  
+  zones.forEach(zone => {
+    zone.assemblies.forEach(assembly => {
+      assembly.acs.forEach(ac => {
+        if (ac.id !== 'no-ac-assigned') {
+          totalACs++;
+          totalMeetings += ac.metrics.meetings || 0;
+          totalOnboarded += ac.metrics.volunteers || 0;
+          totalSLPs += ac.metrics.slps || 0;
+          totalForms += ac.metrics.forms || 0;
+          totalVideos += ac.metrics.videos || 0;
+          totalWAGroups += (ac.metrics.assemblyWaGroups || 0) + (ac.metrics.centralWaGroups || 0);
+        }
+      });
+    });
+  });
+  
+  return (
+    <View style={styles.summaryBox}>
+      <Text style={styles.summaryTitle}>Summary Statistics</Text>
+      <View style={styles.metricsGrid}>
+        <View style={styles.metricBox}>
+          <Text style={styles.metricLabel}>Total ACs</Text>
+          <Text style={styles.metricValue}>{totalACs}</Text>
+        </View>
+        <View style={styles.metricBox}>
+          <Text style={styles.metricLabel}>Total Meetings</Text>
+          <Text style={styles.metricValue}>{totalMeetings}</Text>
+        </View>
+        <View style={styles.metricBox}>
+          <Text style={styles.metricLabel}>Total Onboarded</Text>
+          <Text style={styles.metricValue}>{totalOnboarded}</Text>
+        </View>
+        <View style={styles.metricBox}>
+          <Text style={styles.metricLabel}>Total SLPs</Text>
+          <Text style={styles.metricValue}>{totalSLPs}</Text>
+        </View>
+        <View style={styles.metricBox}>
+          <Text style={styles.metricLabel}>Total Forms</Text>
+          <Text style={styles.metricValue}>{totalForms}</Text>
+        </View>
+        <View style={styles.metricBox}>
+          <Text style={styles.metricLabel}>Total Videos</Text>
+          <Text style={styles.metricValue}>{totalVideos}</Text>
+        </View>
+        <View style={styles.metricBox}>
+          <Text style={styles.metricLabel}>Total WA Groups</Text>
+          <Text style={styles.metricValue}>{totalWAGroups}</Text>
+        </View>
+      </View>
+    </View>
+  );
+};
 
 // Detailed Activities Component (if included)
-const DetailedActivities: React.FC<{ activities?: DetailedActivity[] }> = ({ activities }) => {
+const DetailedActivitiesSection: React.FC<{ activities: DetailedActivity[] }> = ({ activities }) => {
   if (!activities || activities.length === 0) return null;
   
   return (
@@ -343,89 +349,56 @@ const DetailedActivities: React.FC<{ activities?: DetailedActivity[] }> = ({ act
   );
 };
 
-
-// Compact AC Section Component
-const ACSection: React.FC<{ ac: ACPerformance }> = ({ ac }) => {
-  const performanceColor = getPerformanceColor(ac.performanceLevel);
+// Zone-wise Summary Component with corrected AC counting
+const ZoneWiseSummary = ({ zones }: { zones: ZoneData[] }) => {
+  // Calculate corrected metrics for each zone
+  const zoneMetrics = zones.map(zone => {
+    // Get unique real AC IDs (exclude phantom entries)
+    const uniqueACs = new Set<string>();
+    let activeCount = 0;
+    
+    zone.assemblies.forEach(assembly => {
+      assembly.acs.forEach(ac => {
+        if (ac.id !== 'no-ac-assigned') {
+          uniqueACs.add(ac.id);
+          // Count as active if meetings >= 7
+          if (Number(ac.metrics.meetings) >= 7) {
+            activeCount++;
+          }
+        }
+      });
+    });
+    
+    return {
+      name: zone.name,
+      totalAssemblies: zone.totalAssemblies,
+      totalACs: uniqueACs.size, // Deduplicated count
+      activeACs: activeCount
+    };
+  });
   
   return (
-    <View style={[styles.acRow, { backgroundColor: performanceColor }]}>
-      <Text style={styles.acName}>{ac.name}</Text>
-      <Text style={styles.acMetric}>M: {ac.metrics.meetings}</Text>
-      <Text style={styles.acMetric}>O: {ac.metrics.volunteers}</Text>
-      <Text style={styles.acMetric}>SLP: {ac.metrics.slps}</Text>
-      <Text style={styles.acMetric}>Vid: {ac.metrics.videos}</Text>
-      <Text style={styles.acMetric}>C-WA: {ac.metrics.centralWaGroups}</Text>
-      <Text style={styles.acMetric}>Forms: {ac.metrics.forms}</Text>
-      <Text style={styles.acMetric}>WA: {ac.metrics.assemblyWaGroups}</Text>
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Zone-wise Overview</Text>
+      <View style={styles.summaryTable}>
+        <View style={styles.summaryHeader}>
+          <Text style={styles.summaryHeaderText}>Zone</Text>
+          <Text style={styles.summaryHeaderText}>Assemblies</Text>
+          <Text style={styles.summaryHeaderText}>Total ACs</Text>
+          <Text style={styles.summaryHeaderText}>Active ACs</Text>
+        </View>
+        {zoneMetrics.map((zone, index) => (
+          <View key={index} style={styles.summaryRow}>
+            <Text style={styles.summaryCell}>{zone.name}</Text>
+            <Text style={styles.summaryCell}>{zone.totalAssemblies}</Text>
+            <Text style={styles.summaryCell}>{zone.totalACs}</Text>
+            <Text style={styles.summaryCell}>{zone.activeACs}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 };
-
-// Compact Assembly Section Component
-const AssemblySection: React.FC<{ assembly: AssemblyData }> = ({ assembly }) => {
-  // Remove bracketed text from assembly name  
-  const cleanAssemblyName = assembly.name.split('(')[0].trim();
-  
-  return (
-  <View style={styles.assemblySection}>
-    <View style={styles.assemblyHeader}>
-      <Text style={styles.assemblyTitle}>
-        <Text style={styles.assemblyLabel}>Assembly: </Text>
-        <Text style={styles.assemblyName}>{cleanAssemblyName}</Text>
-      </Text>
-      <View style={styles.assemblyMetrics}>
-        <Text style={styles.assemblyMetric}>Meetings: {assembly.metrics.meetings}</Text>
-        <Text style={styles.assemblyMetric}>Volunteers: {assembly.metrics.volunteers}</Text>
-        <Text style={styles.assemblyMetric}>Leaders: {assembly.metrics.leaders}</Text>
-        <Text style={styles.assemblyMetric}>Videos: {assembly.metrics.videos}</Text>
-        <Text style={styles.assemblyMetric}>WA Groups: {assembly.metrics.assemblyWaGroups}</Text>
-      </View>
-    </View>
-    
-    {assembly.acs.length === 0 || (assembly.acs.length === 1 && assembly.acs[0].id === 'no-ac-assigned') ? (
-      <View style={styles.noAcMessage}>
-        <Text style={styles.noAcText}>No AC assigned for this assembly</Text>
-      </View>
-    ) : (
-      assembly.acs
-        .filter(ac => ac.id !== 'no-ac-assigned') // Filter out placeholder entries
-        .sort((a, b) => {
-          // Sort by performance: high (green) -> moderate (orange) -> poor (red)
-          const performanceOrder = { high: 0, moderate: 1, poor: 2 };
-          return performanceOrder[a.performanceLevel] - performanceOrder[b.performanceLevel];
-        })
-        .map((ac, idx) => (
-          <ACSection key={`ac-${idx}`} ac={ac} />
-        ))
-    )}
-  </View>
-  );
-};
-
-// Zone Section Component (only show if zone is selected)
-const ZoneSection: React.FC<{ zone: ZoneData; isNewPage?: boolean }> = ({ zone, isNewPage }) => (
-  <View style={isNewPage ? styles.pageBreak : {}}>
-    <Text style={styles.subtitle}>Zone: {zone.name}</Text>
-    <Text style={styles.boldText}>Incharge: {zone.inchargeName || 'Not Assigned'} | Assemblies: {zone.totalAssemblies} | ACs: {zone.totalACs} | Active ACs: {zone.activeACs}</Text>
-    <ZoneMetrics metrics={zone.metrics} />
-    
-    {zone.assemblies
-      .sort((a, b) => {
-        // Sort assemblies by their best AC performance
-        const getBestPerformance = (assembly: AssemblyData) => {
-          const performances = assembly.acs.map(ac => ac.performanceLevel);
-          if (performances.includes('high')) return 0;
-          if (performances.includes('moderate')) return 1;
-          return 2;
-        };
-        return getBestPerformance(a) - getBestPerformance(b);
-      })
-      .map((assembly, assemblyIdx) => (
-        <AssemblySection key={`assembly-${assemblyIdx}`} assembly={assembly} />
-      ))}
-  </View>
-);
 
 // Executive Summary Component
 const ExecutiveSummarySection: React.FC<{ summary: ExecutiveSummary }> = ({ summary }) => (
@@ -453,7 +426,7 @@ const ExecutiveSummarySection: React.FC<{ summary: ExecutiveSummary }> = ({ summ
       </View>
     </View>
     <View style={styles.metricsGrid}>
-      {summary.keyMetrics.map((metric, idx) => (
+      {summary.keyMetrics.map((metric: ReportMetric, idx: number) => (
         <View key={idx} style={styles.metricBox}>
           <Text style={styles.metricLabel}>{metric.name}</Text>
           <Text style={styles.metricValue}>{metric.value}</Text>
@@ -463,42 +436,79 @@ const ExecutiveSummarySection: React.FC<{ summary: ExecutiveSummary }> = ({ summ
   </View>
 );
 
-// Main PDF Document Component
-const PDFReport: React.FC<PDFReportProps> = ({ data }) => (
-  <Document>
-    <Page size="A4" style={styles.page}>
-      <ReportHeader data={data} />
-      <ExecutiveSummarySection summary={data.summary} />
-      
-      {/* Zones Detail - only show if zones exist */}
-      {data.zones && data.zones.length > 0 ? (
-        data.zones.map((zone, idx) => (
-          <ZoneSection key={`zone-${idx}`} zone={zone} isNewPage={idx > 0} />
-        ))
-      ) : (
-        // Show assemblies directly if no zones
-        data.summary && (
-          <View>
-            <Text style={styles.subtitle}>Assembly Details</Text>
-            {/* This would need assembly data from summary */}
-          </View>
-        )
-      )}
-      
-      {/* Detailed Activities if included */}
-      {data.detailedActivities && data.detailedActivities.meetings && data.detailedActivities.meetings.length > 0 && (
-        <View style={styles.pageBreak}>
-          <Text style={styles.subtitle}>Sample Activities</Text>
-          <DetailedActivities activities={data.detailedActivities.meetings} />
-        </View>
-      )}
-      
-      <Text style={styles.footer}>
-        Bihar Congress Dashboard - {data.header.title} | Generated: {new Date(data.header.generatedAt).toLocaleDateString()}
-      </Text>
-    </Page>
-  </Document>
-);
+// Error Boundary Wrapper Component
+const SafeComponent: React.FC<{ children: React.ReactNode; componentName: string; data?: any }> = ({ children, componentName, data }) => {
+  try {
+    console.log(`[SafeComponent] Rendering ${componentName}`);
+    return <>{children}</>;
+  } catch (error) {
+    console.error(`=== ERROR in ${componentName} ===`);
+    console.error(`[SafeComponent] ❌ Error in ${componentName}:`, error);
+    if (data) {
+      console.error(`[SafeComponent] Data causing error in ${componentName}:`, JSON.stringify(data, null, 2));
+    }
+    throw error; // Re-throw to trigger main error handler
+  }
+};
+
+// Main PDF Document Component - Table Based Layout
+const PDFReport: React.FC<PDFReportProps> = ({ data }) => {
+  try {
+    console.log('[PDFReport] Starting PDF component render');
+    
+    return (
+      <Document>
+        <Page size="A4" style={styles.page} orientation="landscape">
+          <SafeComponent componentName="ReportHeader" data={data.header}>
+            <ReportHeader data={data} />
+          </SafeComponent>
+          
+          {/* Executive Summary */}
+          <SafeComponent componentName="ExecutiveSummarySection" data={data.summary}>
+            <ExecutiveSummarySection summary={data.summary} />
+          </SafeComponent>
+          
+          {/* Zone-wise Summary if zones exist */}
+          {data.zones && data.zones.length > 0 && (
+            <SafeComponent componentName="ZoneWiseSummary" data={data.zones}>
+              <ZoneWiseSummary zones={data.zones} />
+            </SafeComponent>
+          )}
+          
+          {/* Summary Statistics */}
+          {data.zones && data.zones.length > 0 && (
+            <SafeComponent componentName="SummaryStatistics" data={data.zones}>
+              <SummaryStatistics zones={data.zones} />
+            </SafeComponent>
+          )}
+          
+          {/* Main AC Performance Table */}
+          {data.zones && data.zones.length > 0 ? (
+            <SafeComponent componentName="ACTable" data={data.zones}>
+              <ACTable zones={data.zones} />
+            </SafeComponent>
+          ) : (
+            <View style={{ padding: 20 }}>
+              <Text style={styles.text}>No zone data available for report generation.</Text>
+            </View>
+          )}
+          
+          {/* Footer */}
+          <SafeComponent componentName="Footer" data={data.header}>
+            <Text style={[styles.footer, { fontSize: 7 }]}>
+              Bihar Congress Dashboard - {data.header.title} | Generated: {new Date(data.header.generatedAt).toLocaleDateString()}
+            </Text>
+          </SafeComponent>
+        </Page>
+      </Document>
+    );
+  } catch (renderError) {
+    console.error('=== PDF COMPONENT RENDER ERROR ===');
+    console.error('[PDFReport] ❌ Error during component render:', renderError);
+    console.error('[PDFReport] Complete data structure causing error:', JSON.stringify(data, null, 2));
+    throw renderError;
+  }
+};
 
 /**
  * Generate PDF blob from report data
@@ -507,11 +517,48 @@ export async function generatePDFBlob(data: ReportData): Promise<Blob> {
   console.log('[generatePDFBlob] Starting PDF generation for:', data.header.title);
   
   try {
+    // Calculate data sizes for analysis
+    const totalAssemblies = data.zones.reduce((sum, zone) => sum + zone.assemblies.length, 0);
+    const totalACs = data.zones.reduce((sum, zone) => 
+      sum + zone.assemblies.reduce((acSum, assembly) => acSum + assembly.acs.length, 0), 0);
+    
+    console.log('[generatePDFBlob] 📊 DATA SIZE ANALYSIS:', {
+      zones: data.zones.length,
+      totalAssemblies,
+      totalACs,
+      keyMetrics: data.summary?.keyMetrics?.length || 0,
+      estimatedTableRows: totalACs,
+      dataStringSize: JSON.stringify(data).length,
+      exceedsRecommendedSize: totalACs > 50 ? '⚠️  YES - May cause memory issues' : '✅ Within limits'
+    });
+    
+    // Warn if data size is large
+    if (totalACs > 100) {
+      console.warn('⚠️  [generatePDFBlob] LARGE DATASET WARNING: ' + totalACs + ' ACs may exceed PDF rendering limits');
+    }
+    
+    console.log('[generatePDFBlob] Attempting PDF generation...');
     const blob = await pdf(<PDFReport data={data} />).toBlob();
-    console.log('[generatePDFBlob] PDF generated successfully, size:', blob.size);
+    console.log('[generatePDFBlob] ✅ PDF generated successfully, size:', blob.size);
     return blob;
   } catch (error) {
-    console.error('[generatePDFBlob] Error generating PDF:', error);
+    console.error('=== PDF GENERATION ERROR CAUGHT ===');
+    console.error('[generatePDFBlob] ❌ Error Type:', error instanceof Error ? error.name : 'Unknown');
+    console.error('[generatePDFBlob] ❌ Error Message:', error instanceof Error ? error.message : String(error));
+    
+    // Check if it's an array length error
+    if (error instanceof Error && error.message.includes('Invalid array length')) {
+      const totalACs = data.zones.reduce((sum, zone) => 
+        sum + zone.assemblies.reduce((acSum, assembly) => acSum + assembly.acs.length, 0), 0);
+      
+      console.error('=== ARRAY LENGTH ERROR - SIZE ANALYSIS ===');
+      console.error('[generatePDFBlob] ❌ LIKELY CAUSE: Dataset too large for PDF rendering');
+      console.error('[generatePDFBlob] Total ACs attempting to render:', totalACs);
+      console.error('[generatePDFBlob] Total data size (bytes):', JSON.stringify(data).length);
+      console.error('[generatePDFBlob] Recommendation: Implement data chunking or filtering');
+      console.error('=== SOLUTION: Reduce data size or implement pagination ===');
+    }
+    
     throw error;
   }
 }
