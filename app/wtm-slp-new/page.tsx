@@ -11,7 +11,7 @@ import HierarchicalErrorBoundary from '../../components/hierarchical/Hierarchica
 import { ToastContainer, useToast } from '../../components/Toast';
 import { Zone, AC, SLP } from '../../models/hierarchicalTypes';
 import ReportGenerator from '../../components/ReportGenerator';
-import { fetchZones, fetchAssemblies, fetchAssemblyCoordinators, fetchSlpsForAc, fetchCumulativeMetrics } from '../utils/fetchHierarchicalData';
+import { fetchZones, fetchAssemblies, fetchAssemblyCoordinatorsForWTM, fetchAssemblyCoordinatorsForShakti, fetchSlpsForAc, fetchCumulativeMetrics } from '../utils/fetchHierarchicalData';
 import { CumulativeMetrics } from '../../models/hierarchicalTypes';
 import { AppError } from '../utils/errorUtils';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -240,8 +240,14 @@ const HierarchicalDashboardPage: React.FC = () => {
     // Reset child selections when assembly changes
     setSelectedAcId(null);
     setSelectedSlpId(null);
-    fetchAssemblyCoordinators(selectedAssembly).then(setAcs).catch(console.error);
-  }, [selectedAssembly]);
+    
+    // Use vertical-specific AC fetching
+    if (selectedVertical === 'wtm') {
+      fetchAssemblyCoordinatorsForWTM(selectedAssembly).then(setAcs).catch(console.error);
+    } else if (selectedVertical === 'shakti-abhiyaan') {
+      fetchAssemblyCoordinatorsForShakti(selectedAssembly).then(setAcs).catch(console.error);
+    }
+  }, [selectedAssembly, selectedVertical]);
 
   // Load SLPs when AC changes
   React.useEffect(() => {

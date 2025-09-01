@@ -1557,6 +1557,53 @@ export const fetchAssemblyCoordinators = async (assembly: string): Promise<AC[]>
     return [];
   }
 };
+
+/**
+ * Fetch Assembly Coordinators for Shakti-Abhiyaan vertical (excludes users collection).
+ * Only queries shakti-abhiyaan collection for Assembly Coordinators.
+ */
+export const fetchAssemblyCoordinatorsForShakti = async (assembly: string): Promise<AC[]> => {
+  if (!assembly) return [];
+  
+  try {
+    console.log('[fetchAssemblyCoordinatorsForShakti] Fetching Shakti ACs for assembly:', assembly);
+    
+    const list: AC[] = [];
+    const addedUids = new Set<string>();
+    
+    // Only query shakti-abhiyaan collection (coveredAssemblyCoordinators)
+    const shaktiQuery = query(
+      collection(db, 'shakti-abhiyaan'),
+      where('form_type', '==', 'add-data')
+    );
+    const shaktiSnap = await getDocs(shaktiQuery);
+    
+    shaktiSnap.forEach((d) => {
+      const data = d.data() as any;
+      const coordinators = data.coveredAssemblyCoordinators || [];
+      coordinators.forEach((coord: any) => {
+        if (coord.assembly === assembly && coord.id && !addedUids.has(coord.id)) {
+          list.push({
+            uid: coord.id,
+            name: coord.name || 'AC',
+            assembly,
+            handler_id: coord.handler_id,
+            isShaktiAC: true // Mark as Shakti AC
+          });
+          addedUids.add(coord.id);
+          console.log('[fetchAssemblyCoordinatorsForShakti] Added Shakti AC:', { uid: coord.id, name: coord.name, assembly });
+        }
+      });
+    });
+    
+    console.log(`[fetchAssemblyCoordinatorsForShakti] Found ${list.length} Shakti ACs for assembly ${assembly}`);
+    return list.sort((a, b) => a.name.localeCompare(b.name));
+  } catch (err) {
+    console.error('[fetchAssemblyCoordinatorsForShakti] Error:', err);
+    return [];
+  }
+};
+
 /**
  * Fetch SLPs / ASLPs under a given Assembly Coordinator.
  */
