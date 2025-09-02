@@ -1407,6 +1407,12 @@ export const fetchAssemblyCoordinatorsForWTM = async (assembly: string): Promise
  * Fetch Assembly Coordinators for a given assembly.
  * Returns array of { uid, name, assembly }.
  * Uses optimized single OR query to support both single and multi-assembly ACs.
+ *
+ * @deprecated Deprecated in favor of vertical-specific functions to avoid cross-vertical data mixing and unnecessary reads.
+ * Use:
+ * - fetchAssemblyCoordinatorsForWTM(assembly) for WTM vertical
+ * - fetchAssemblyCoordinatorsForShakti(assembly) for Shakti Abhiyaan vertical
+ * This generic function remains for backward compatibility in non-dashboard scripts.
  */
 export const fetchAssemblyCoordinators = async (assembly: string): Promise<AC[]> => {
   if (!assembly) return [];

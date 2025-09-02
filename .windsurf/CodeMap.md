@@ -645,8 +645,8 @@ The Generate Report module provides comprehensive PDF report generation for the 
 - **Helper Functions**:
   - **buildACRosterForVertical**: Builds complete AC roster for all assemblies
     - Uses `fetchZonesForWTM()` and `fetchAssemblyCoordinatorsForWTM()` for WTM vertical
-    - Uses regular `fetchZones()` and `fetchAssemblyCoordinators()` for other verticals
-    - Batches fetchAssemblyCoordinators() calls for performance
+    - Uses `fetchZones()` and `fetchAssemblyCoordinatorsForShakti()` for Shakti vertical
+    - [Deprecated] `fetchAssemblyCoordinators()` kept only for legacy/non-dashboard scripts; avoid in new UI paths
     - Returns Map<assembly, AC[]> for pre-seeding
   - **addActivityToAssemblyAc**: Associates activities with correct assembly-AC combination
     - Does NOT use coordinatorName from activities (prevents participant name contamination)
@@ -1073,7 +1073,9 @@ console.log(`[functionName] Chunking ${items.length} items into ${chunks.length}
 | Get meeting details | `fetchDetailedMeetings` | fetchHierarchicalData.ts |
 | Get SLP activities | `getSlp[Activity]Activity` | fetchFirebaseData.ts |
 | Get zones | `fetchZones` | fetchHierarchicalData.ts |
-| Get ACs for assembly | `fetchAssemblyCoordinators` | fetchHierarchicalData.ts |
+| Get ACs for assembly (WTM) | `fetchAssemblyCoordinatorsForWTM` | fetchHierarchicalData.ts |
+| Get ACs for assembly (Shakti) | `fetchAssemblyCoordinatorsForShakti` | fetchHierarchicalData.ts |
+| [Deprecated] Generic AC fetch | `fetchAssemblyCoordinators` | fetchHierarchicalData.ts |
 | Get SLPs for AC | `fetchSlpsForAc` | fetchHierarchicalData.ts |
 | Generate zone report | `aggregateReportData` | reportDataAggregation.ts |
 | Transform zone data | `transformZoneData` | reportDataAggregation.ts |
@@ -1105,6 +1107,6 @@ When modifying the codebase:
 
 ---
 
-*Last Updated: January 2025*
-*Version: 1.3.0*
-*Changes: Added PDF report UI refinements documentation*
+*Last Updated: September 2025*
+*Version: 1.3.1*
+*Changes: Deprecated `fetchAssemblyCoordinators`; documented vertical-specific AC fetch functions*
