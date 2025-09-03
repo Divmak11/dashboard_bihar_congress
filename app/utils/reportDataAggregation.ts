@@ -1479,11 +1479,15 @@ export async function aggregateReportData(
 
     // Transform zone data to new format - always include assembly data
     const transformedZones = transformZoneData(zoneReportData);
+    
+    // Generate AC-wise performance sections
+    const acPerformanceSections = generateACPerformanceSections(assemblyAcMap);
 
     const reportData: any = {
       header: reportHeader,
       summary: executiveSummary,
       zones: transformedZones,
+      acPerformanceSections,
       metadata: {
         totalRecords: assemblyAcMap.size, // Total assembly-AC combinations
         processingTime: Date.now() - startTime,
@@ -1620,6 +1624,169 @@ function countActiveSLPs(zones: ZoneReportData[]): number {
     });
   });
   return count;
+}
+
+/**
+ * Generate AC-wise performance sections for new report format
+ */
+function generateACPerformanceSections(assemblyAcMap: Map<string, any>): import('../../models/reportTypes').ACPerformanceSections {
+  const acDataMap = new Map<string, {
+    acId: string;
+    acName: string;
+    zoneNumber: number;
+    zoneName: string;
+    zoneIncharge: string;
+    assemblies: import('../../models/reportTypes').ACAssemblyRow[];
+    primaryPerformance: 'high' | 'moderate' | 'poor' | 'unavailable';
+  }>();
+
+  // Group assembly data by AC
+  assemblyAcMap.forEach((acData, key) => {
+    const [assembly, acId] = key.split('::');
+    
+    // Skip placeholder entries
+    if (acId === 'no-ac-assigned' || acId === 'unknown') {
+      return;
+    }
+
+    // Extract zone information
+    const zoneMatch = acData.zone?.match(/(\d+)/);
+    const zoneNumber = zoneMatch ? parseInt(zoneMatch[1]) : 0;
+    
+    // Determine row color based on attendance logic flags
+    let rowColor: 'high' | 'moderate' | 'poor' | 'white' = 'white';
+    
+    if ((acData as any).isUnavailable) {
+      rowColor = 'white'; // Unavailable ACs show white
+    } else if ((acData as any).includeInColorGrading === false) {
+      rowColor = 'white'; // Not worked in this assembly
+    } else {
+      // AC worked in this assembly - apply performance-based coloring
+      const meetings = Number(acData.metrics.meetings) || 0;
+      
+      if ((acData as any).shouldBeRed || meetings === 0) {
+        rowColor = 'poor'; // Force red for poor performance or no meetings
+      } else if (meetings >= 7) {
+        rowColor = 'high';
+      } else if (meetings >= 5) {
+        rowColor = 'moderate';
+      } else {
+        rowColor = 'poor';
+      }
+    }
+
+    // Create assembly row
+    const assemblyRow: import('../../models/reportTypes').ACAssemblyRow = {
+      assembly,
+      meetings: Number(acData.metrics.meetings) || 0,
+      onboarded: Number(acData.metrics.volunteers) || 0,
+      slps: Number(acData.metrics.slps) || 0,
+      forms: Number(acData.metrics.forms) || 0,
+      videos: Number(acData.metrics.acVideos) || 0,
+      waGroups: (Number(acData.metrics.assemblyWaGroups) || 0) + (Number(acData.metrics.centralWaGroups) || 0),
+      includeInColorGrading: (acData as any).includeInColorGrading !== false,
+      shouldBeRed: (acData as any).shouldBeRed,
+      isUnavailable: (acData as any).isUnavailable,
+      workStatus: (acData as any).workStatus,
+      rowColor
+    };
+
+    // Get or create AC entry
+    if (!acDataMap.has(acId)) {
+      acDataMap.set(acId, {
+        acId,
+        acName: acData.acName,
+        zoneNumber,
+        zoneName: acData.zone || 'Unknown Zone',
+        zoneIncharge: 'N/A', // Will be updated if available
+        assemblies: [],
+        primaryPerformance: 'poor' // Will be determined after all assemblies are processed
+      });
+    }
+
+    // Add assembly to AC's list
+    acDataMap.get(acId)!.assemblies.push(assemblyRow);
+  });
+
+  // Convert to final structure and determine primary performance levels
+  const greenZone: import('../../models/reportTypes').ACWithAssemblies[] = [];
+  const orangeZone: import('../../models/reportTypes').ACWithAssemblies[] = [];
+  const redZone: import('../../models/reportTypes').ACWithAssemblies[] = [];
+  const unavailable: import('../../models/reportTypes').ACWithAssemblies[] = [];
+
+  acDataMap.forEach((acData) => {
+    // Determine AC's primary performance level based on ALL assemblies
+    let primaryPerformance: 'high' | 'moderate' | 'poor' | 'unavailable' = 'poor';
+    
+    // Check if AC is unavailable (any assembly marked as unavailable)
+    const isUnavailable = acData.assemblies.some(a => a.isUnavailable);
+    
+    if (isUnavailable) {
+      primaryPerformance = 'unavailable';
+    } else {
+      // Find the best performance among assemblies where AC actually worked
+      const workedAssemblies = acData.assemblies.filter(a => a.includeInColorGrading);
+      
+      if (workedAssemblies.length > 0) {
+        // Get the highest meeting count from worked assemblies
+        const maxMeetings = Math.max(...workedAssemblies.map(a => a.meetings));
+        
+        if (maxMeetings >= 7) {
+          primaryPerformance = 'high';
+        } else if (maxMeetings >= 5) {
+          primaryPerformance = 'moderate';
+        } else {
+          primaryPerformance = 'poor';
+        }
+      } else {
+        // AC has assemblies but didn't work in any (this is poor performance)
+        primaryPerformance = 'poor';
+      }
+    }
+
+    const acWithAssemblies: import('../../models/reportTypes').ACWithAssemblies = {
+      acId: acData.acId,
+      acName: acData.acName,
+      zoneNumber: acData.zoneNumber,
+      zoneName: acData.zoneName,
+      zoneIncharge: acData.zoneIncharge,
+      primaryPerformanceLevel: primaryPerformance,
+      totalAssemblies: acData.assemblies.length,
+      workedAssemblies: acData.assemblies.filter(a => a.includeInColorGrading).length,
+      assemblies: acData.assemblies
+    };
+
+    // Sort assemblies by meetings count (highest first)
+    acWithAssemblies.assemblies.sort((a: import('../../models/reportTypes').ACAssemblyRow, b: import('../../models/reportTypes').ACAssemblyRow) => b.meetings - a.meetings);
+
+    // Assign to appropriate section
+    switch (primaryPerformance) {
+      case 'high':
+        greenZone.push(acWithAssemblies);
+        break;
+      case 'moderate':
+        orangeZone.push(acWithAssemblies);
+        break;
+      case 'poor':
+        redZone.push(acWithAssemblies);
+        break;
+      case 'unavailable':
+        unavailable.push(acWithAssemblies);
+        break;
+    }
+  });
+
+  // Sort each section by AC name
+  [greenZone, orangeZone, redZone, unavailable].forEach(section => {
+    section.sort((a, b) => a.acName.localeCompare(b.acName));
+  });
+
+  return {
+    greenZone,
+    orangeZone,
+    redZone,
+    unavailable
+  };
 }
 
 /**

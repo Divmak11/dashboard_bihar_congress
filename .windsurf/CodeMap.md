@@ -51,15 +51,15 @@ my-dashboard/
 │   ├── services/                 # Service layer
 │   │   └── reportProgressService.ts # Report progress state management
 │   ├── config/                   # Configuration files
-│   │   └── pdfConfig.ts          # PDF styling with enhanced table styles
+│   │   └── pdfConfig.ts          # PDF styling with enhanced table styles + AC-wise section styles
 │   └── utils/                    # Core utility functions
 │       ├── fetchFirebaseData.ts  # Firebase data fetching
 │       ├── fetchHierarchicalData.ts # Hierarchical data logic
 │       ├── firebase.ts           # Firebase config
 │       ├── errorUtils.ts         # Error handling
-│       ├── reportDataAggregation.ts # Zone-wise report aggregation
+│       ├── reportDataAggregation.ts # Zone-wise report aggregation + AC-wise sections
 │       ├── reportAttendanceLogic.ts # Attendance & assembly work logic
-│       └── pdfGenerator.tsx      # PDF with UI refinements
+│       └── pdfGenerator.tsx      # PDF with UI refinements + AC-wise layout components
 ├── components/                   # Reusable components
 │   ├── hierarchical/             # Hierarchical dashboard components
 │   │   ├── DetailedView.tsx     # Detailed data view
@@ -76,7 +76,7 @@ my-dashboard/
 ├── models/                       # TypeScript type definitions
 │   ├── types.ts                  # Core data types
 │   ├── hierarchicalTypes.ts     # Hierarchy-specific types
-│   └── reportTypes.ts            # Report types (Zone-wise structure)
+│   └── reportTypes.ts            # Report types (Zone-wise structure + AC-wise sections)
 └── .windsurf/                    # Project documentation
     ├── PRD.md                    # Product requirements
     ├── Plan.md                   # Implementation plan
@@ -96,9 +96,10 @@ my-dashboard/
 1. User triggers report via ReportGenerator component
 2. useReportGeneration hook orchestrates the process
 3. Data fetched via reportDataAggregation functions
-4. Progress updates via reportProgressService
-5. PDF generated with pdfGenerator using pdfConfig styles
-6. Download triggered automatically on completion
+4. AC-wise performance sections generated via generateACPerformanceSections
+5. Progress updates via reportProgressService
+6. PDF generated with pdfGenerator using pdfConfig styles (supports both legacy and AC-wise layouts)
+7. Download triggered automatically on completion
 ```
 
 ---
@@ -645,10 +646,11 @@ The Generate Report module provides comprehensive PDF report generation for the 
 - **Critical Logic**:
   - **Assembly-First Aggregation**: Groups by Assembly-AC combinations to avoid double counting
   - **AC Roster Pre-Seeding**: Builds complete roster before aggregation, includes placeholder for assemblies with no ACs
-  - **AC Name Resolution**: Uses ONLY 'name' property from users collection (no displayName/uid fallback)
-  - **Orphan Assembly Handling**: Creates "Unassigned Areas" zone for unmapped assemblies
-  - **Date Filtering**: Adjusts "All Time" to 6 months to avoid Firestore limits
-  - **Query Optimization**: Conditional fetching, batch processing, chunking for >10 assemblies
+    - **AC Name Resolution**: Uses ONLY 'name' property from users collection (no displayName/uid fallback)
+    - **AC-wise Performance Sections**: Groups ACs by performance zones (Green/Orange/Red/Unavailable)
+    - **Orphan Assembly Handling**: Creates "Unassigned Areas" zone for unmapped assemblies
+    - **Date Filtering**: Adjusts "All Time" to 6 months to avoid Firestore limits
+    - **Query Optimization**: Conditional fetching, batch processing, chunking for >10 assemblies
 - **Data Flow**:
   1. Fetch zone and assembly structure based on vertical
   2. Build complete AC roster using `buildACRosterForVertical`
@@ -657,8 +659,9 @@ The Generate Report module provides comprehensive PDF report generation for the 
   5. Process activities grouped by assembly-AC key (`${assembly}::${acId}`)
   6. Resolve AC names from users collection
   7. Aggregate metrics at assembly and zone levels
-  8. Handle orphan assemblies as "Unassigned Areas"
-  9. Return structured LocalReportData object
+  8. Generate AC-wise performance sections using generateACPerformanceSections
+  9. Handle orphan assemblies as "Unassigned Areas"
+  10. Return structured LocalReportData object with acPerformanceSections
 - **Performance Zones**:
   - Active ACs (green): meetings >= 7
   - Moderate ACs (orange): meetings >= 5 and < 7
@@ -677,8 +680,14 @@ The Generate Report module provides comprehensive PDF report generation for the 
   1. Report header with title and date range
   2. Executive summary with overall metrics
   3. Zone-wise Overview table with deduplicated AC counts
-  4. AC Performance table with phantom assembly handling
-  5. Zone-wise detailed breakdown sections
+  4. **AC Performance Report Section** (New AC-wise Layout):
+     - High Performance Zone (Green): ACs with meetings ≥ 7
+     - Moderate Performance Zone (Orange): ACs with meetings ≥ 5 and < 7
+     - Poor Performance Zone (Red): ACs with meetings < 5
+     - Unavailable ACs: ACs marked as unavailable
+     - Each AC shows all assemblies in tabular format under single header
+     - Assembly-level color grading based on attendance logic flags
+  5. Legacy Zone-wise detailed breakdown sections (fallback)
   - Uses vertical-specific fetch functions for WTM:
     - `fetchZonesForWTM()`: Filters zones by parentVertical='wtm' AND role='zonal-incharge'
     - `fetchAssemblyCoordinatorsForWTM()`: Excludes shakti-abhiyaan collection source
