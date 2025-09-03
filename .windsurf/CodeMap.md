@@ -58,6 +58,7 @@ my-dashboard/
 │       ├── firebase.ts           # Firebase config
 │       ├── errorUtils.ts         # Error handling
 │       ├── reportDataAggregation.ts # Zone-wise report aggregation
+│       ├── reportAttendanceLogic.ts # Attendance & assembly work logic
 │       └── pdfGenerator.tsx      # PDF with UI refinements
 ├── components/                   # Reusable components
 │   ├── hierarchical/             # Hierarchical dashboard components
@@ -236,6 +237,61 @@ my-dashboard/
   updatedAt?: Timestamp
 }
 ```
+
+### 7. **attendence** Collection (for AC Availability)
+```typescript
+{
+  handler_id: string,             // AC document ID
+  created_at: number,             // Epoch timestamp in milliseconds
+  // Other attendance fields...
+}
+```
+**Query Pattern**: `where('handler_id', 'in', acIds), where('created_at', '>=', start), where('created_at', '<=', end)`
+**Composite Index Required**: `(handler_id, created_at)`
+**Note**: Collection name is 'attendence' (not 'attendance')
+
+---
+
+## Report Generation with Attendance Logic
+
+### Attendance and Assembly Work Determination
+
+**New Logic Flow (Step 3.5 in aggregateReportData):**
+1. **Check AC Attendance**: Query 'attendence' collection for AC availability
+   - If attendance record exists for AC on report date → Mark as unavailable
+   - No attendance record → AC is available
+
+2. **Determine Work Assembly**: For available ACs, check which assembly they worked in
+   - Query 'wtm-slp' meetings by handler_id and created_at
+   - AC can only work in ONE assembly per day
+   - Assembly with most meetings = worked assembly
+   - Other assigned assemblies marked as "no activity"
+
+3. **Apply Filtering**: Update assembly-AC map based on results
+   - Unavailable ACs: Zero metrics, marked with `isUnavailable: true`
+   - Available ACs: Only include worked assembly with actual metrics
+   - Non-worked assemblies: Zero metrics, marked with `noActivity: true`
+
+**Implementation Files:**
+- `reportAttendanceLogic.ts`: Core attendance and assembly logic
+  - `checkACAttendance()`: Checks attendance records from 'attendence' collection
+  - `determineACWorkAssembly()`: Determines single work assembly using pre-fetched meeting data
+  - `applyAttendanceAndAssemblyLogic()`: Main integration function, accepts optional meeting data
+
+- `reportDataAggregation.ts`: Integration point at Step 3.5
+  - Fetches meeting data once using `fetchDetailedMeetings()`
+  - Passes pre-fetched data to `applyAttendanceAndAssemblyLogic()`
+  - Replaces assembly-AC map with filtered version
+
+**Optimization Strategy:**
+- **Data Reuse**: Leverages existing `fetchDetailedMeetings()` data instead of new queries
+- **Zero Additional Queries**: No new database calls for assembly work determination
+- **Memory Filtering**: Filters meetings in JavaScript using `meeting.handler_id === acId`
+- **Composite Index Elimination**: Removes need for `(handler_id, created_at)` index on wtm-slp
+
+**Date Filtering:**
+- Attendance: Uses `created_at` field (epoch ms) with UTC day boundaries on 'attendence' collection
+- Assembly Work: Uses pre-filtered meeting data (already filtered by date in fetchDetailedMeetings)
 
 ---
 

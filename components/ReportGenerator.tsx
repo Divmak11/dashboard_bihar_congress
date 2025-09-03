@@ -22,6 +22,7 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
   const { generateReport, isGenerating, progress, error } = useReportGeneration();
 
@@ -43,10 +44,12 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
     const fetchUserRole = async (user: User | null) => {
       if (user) {
         try {
-          const adminUser = await getCurrentAdminUser(user.uid);
-          setUserRole(adminUser?.role || null);
+          const adminUserData = await getCurrentAdminUser(user.uid);
+          setAdminUser(adminUserData);
+          setUserRole(adminUserData?.role || null);
         } catch (error) {
           console.error('Error fetching user role:', error);
+          setAdminUser(null);
           setUserRole(null);
         }
       } else {
@@ -83,7 +86,9 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
         endDate: currentDateFilter.endDate,
         dateOption: currentDateFilter.dateOption
       },
-      vertical: selectedVertical === 'shakti-abhiyaan' ? 'shakti-abhiyaan' : 'wtm-slp'
+      vertical: selectedVertical === 'shakti-abhiyaan' ? 'shakti-abhiyaan' : 'wtm-slp',
+      adminUser: adminUser,
+      isLastDayFilter: currentDateFilter.dateOption === 'Last Day'
     });
   };
 

@@ -333,7 +333,13 @@ const HierarchicalDashboardPage: React.FC = () => {
           };
         }
         
-        const fetchedMetrics = await fetchCumulativeMetrics(options);
+        // Add admin user and Last Day filter flag to options
+        const isLastDayFilter = dateOption === 'Last Day';
+        const fetchedMetrics = await fetchCumulativeMetrics({
+          ...options,
+          adminUser: adminUser,
+          isLastDayFilter: isLastDayFilter
+        });
         setMetrics(fetchedMetrics);
       } catch (error) {
         console.error('Error fetching metrics:', error);

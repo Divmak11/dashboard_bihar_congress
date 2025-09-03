@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { aggregateReportData, createDateFilter, DateFilter } from '../utils/reportDataAggregation';
 import { generateAndDownloadPDF } from '../utils/pdfGenerator';
 import { ReportProgressService, ProgressState } from '../services/reportProgressService';
+import { AdminUser } from '../../models/types';
 
 export interface ReportGenerationOptions {
   dateFilter: {
@@ -10,6 +11,8 @@ export interface ReportGenerationOptions {
     dateOption: string;
   };
   vertical: 'wtm-slp' | 'shakti-abhiyaan';
+  adminUser?: AdminUser | null;
+  isLastDayFilter?: boolean;
 }
 
 export interface UseReportGenerationReturn {
@@ -65,7 +68,11 @@ export function useReportGeneration(): UseReportGenerationReturn {
       
       const reportData = await aggregateReportData(
         dateFilter,
-        options.vertical === 'shakti-abhiyaan' ? 'shakti-abhiyaan' : 'wtm-slp'
+        options.vertical === 'shakti-abhiyaan' ? 'shakti-abhiyaan' : 'wtm-slp',
+        {
+          adminUser: options.adminUser,
+          isLastDayFilter: options.isLastDayFilter
+        }
       );
 
       // Phase 4: Process collected data

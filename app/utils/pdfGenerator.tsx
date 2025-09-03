@@ -66,7 +66,12 @@ interface FlattenedACData {
   forms: number;
   videos: number;
   waGroups: number;
-  performanceLevel: string;
+  performanceLevel?: string;
+  // Attendance logic flags
+  includeInColorGrading?: boolean;
+  workStatus?: string;
+  shouldBeRed?: boolean;
+  isUnavailable?: boolean;
 }
 
 // Function to flatten hierarchical data into table format
@@ -99,8 +104,18 @@ const flattenDataForTable = (zones: ZoneData[]): FlattenedACData[] => {
           forms: ac.metrics.forms || 0,
           videos: ac.metrics.videos || 0,
           waGroups: (ac.metrics.assemblyWaGroups || 0) + (ac.metrics.centralWaGroups || 0),
-          performanceLevel: ac.id === 'no-ac-assigned' ? 'poor' : ac.performanceLevel
+          performanceLevel: ac.id === 'no-ac-assigned' ? 'poor' : ac.performanceLevel,
+          // Preserve attendance logic flags
+          includeInColorGrading: (ac as any).includeInColorGrading,
+          workStatus: (ac as any).workStatus,
+          shouldBeRed: (ac as any).shouldBeRed,
+          isUnavailable: (ac as any).isUnavailable
         });
+        
+        // Debug logging for flag preservation
+        if ((ac as any).includeInColorGrading === false) {
+          console.log(`[flattenDataForTable] *** FLAG PRESERVED *** AC ${ac.name} in ${assembly.name}: includeInColorGrading=false`);
+        }
       });
     });
   });
@@ -133,8 +148,25 @@ const TableRow = ({ data, index }: { data: FlattenedACData; index: number }) => 
       return [styles.tableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f9fafb' }];
     }
     
-    // Apply performance-based color coding
+    // Debug logging for includeInColorGrading flag
+    console.log(`[TableRow] AC: ${data.acName}, Assembly: ${(data as any).assembly}, includeInColorGrading: ${(data as any).includeInColorGrading}, workStatus: ${(data as any).workStatus}`);
+    
+    // Check if AC should be included in color grading first
+    if ((data as any).includeInColorGrading === false) {
+      console.log(`[TableRow] Excluding AC ${data.acName} from color grading - showing white background`);
+      // AC worked in different assembly - show data but no color grading (white background)
+      return [styles.tableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f9fafb' }];
+    }
+    
+    // Apply performance-based color coding for ACs included in grading
     const meetings = Number(data.meetings) || 0;
+    
+    // Check if AC should be forced RED regardless of meeting count
+    if ((data as any).shouldBeRed) {
+      return [styles.tableRowPoor];
+    }
+    
+    // Standard performance-based coloring
     if (meetings >= 7) {
       return [styles.tableRowHigh];
     } else if (meetings >= 5) {

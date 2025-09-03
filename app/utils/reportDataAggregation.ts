@@ -6,15 +6,24 @@ import type {
   DetailedActivity,
   ExecutiveSummary,
   ReportHeader,
-  ReportGenerationOptions,
   ReportMetric
 } from '../../models/reportTypes';
 import type { CumulativeMetrics, Zone, AC, SLP } from '../../models/hierarchicalTypes';
+import type { AdminUser } from '../../models/types';
 import { 
-  fetchCumulativeMetrics,
   fetchDetailedMeetings,
   fetchDetailedMembers,
-  fetchDetailedData,
+  fetchDetailedVideos,
+  fetchDetailedData
+} from './fetchHierarchicalData';
+
+interface ReportGenerationOptions {
+  adminUser?: AdminUser | null;
+  isLastDayFilter?: boolean;
+}
+import { applyAttendanceAndAssemblyLogic } from './reportAttendanceLogic';
+import { 
+  fetchCumulativeMetrics,
   fetchZones,
   fetchAssemblyCoordinators
 } from './fetchHierarchicalData';
@@ -270,7 +279,9 @@ export async function aggregateReportData(
     
     const summaryMetrics = await fetchCumulativeMetrics({
       level: 'zone', // Use 'zone' with no specific assemblies to get all data
-      dateRange: adjustedDateFilter
+      dateRange: adjustedDateFilter,
+      adminUser: options?.adminUser,
+      isLastDayFilter: options?.isLastDayFilter
     });
     console.log('[aggregateReportData] Overall metrics:', summaryMetrics);
 
@@ -464,7 +475,9 @@ export async function aggregateReportData(
     const fetchOptions = {
       level: 'zone' as const,
       dateRange: adjustedDateFilter,
-      handler_id 
+      handler_id,
+      adminUser: options?.adminUser,
+      isLastDayFilter: options?.isLastDayFilter
     };
 
     const overallMetrics = await fetchCumulativeMetrics(fetchOptions);
@@ -923,6 +936,55 @@ export async function aggregateReportData(
 
     console.log(`[aggregateReportData] Grouped data for ${assemblyAcMap.size} Assembly-AC combinations from ${uniqueAcIds.size} unique ACs`);
 
+    // Step 3.5: Apply attendance and assembly logic
+    console.log('[aggregateReportData] Step 3.5: Applying attendance and assembly logic...');
+    
+    // First fetch meeting data to reuse for attendance logic
+    const meetingOptions = {
+      level: 'zone' as const,
+      assemblies: allAssemblies,
+      dateRange: adjustedDateFilter
+    };
+    
+    console.log('[aggregateReportData] Fetching meeting data for attendance logic...');
+    const meetingsData = await fetchDetailedMeetings(meetingOptions);
+    console.log(`[aggregateReportData] Fetched ${meetingsData.length} meetings for attendance analysis`);
+    
+    console.log('[aggregateReportData] *** BEFORE ATTENDANCE LOGIC ***');
+    console.log('[aggregateReportData] Sample assemblyAcMap entries:');
+    let count = 0;
+    assemblyAcMap.forEach((acData, key) => {
+      if (count < 3) {
+        console.log(`  ${key}: includeInColorGrading=${(acData as any).includeInColorGrading}, workStatus=${(acData as any).workStatus}`);
+        count++;
+      }
+    });
+    
+    // Apply attendance and assembly logic with pre-fetched meeting data
+    const filteredAssemblyAcMap = await applyAttendanceAndAssemblyLogic(
+      assemblyAcMap, 
+      adjustedDateFilter,
+      meetingsData // Pass pre-fetched meeting data
+    );
+    
+    console.log('[aggregateReportData] *** AFTER ATTENDANCE LOGIC ***');
+    console.log('[aggregateReportData] Sample filteredAssemblyAcMap entries:');
+    count = 0;
+    filteredAssemblyAcMap.forEach((acData, key) => {
+      if (count < 3) {
+        console.log(`  ${key}: includeInColorGrading=${(acData as any).includeInColorGrading}, workStatus=${(acData as any).workStatus}`);
+        count++;
+      }
+    });
+    
+    // Replace the original map with the filtered one
+    assemblyAcMap.clear();
+    filteredAssemblyAcMap.forEach((value, key) => {
+      assemblyAcMap.set(key, value);
+    });
+    
+    console.log(`[aggregateReportData] Assembly-AC map after attendance logic: ${assemblyAcMap.size} combinations`);
+
     // Step 4: Group ACs by Assembly and Zone
     const assemblyMap = new Map<string, {
       assembly: string;
@@ -1039,13 +1101,19 @@ export async function aggregateReportData(
       
       // Add verified AC to assembly with zero-filled metrics
       // The metrics here are already assembly-scoped from the assemblyAcMap
+      // *** CRITICAL: Preserve attendance logic flags ***
       assemblyData.coordinators.push({
         id: acData.acId,
         name: acData.acName,
         assembly: acData.assembly,
         metrics: acData.metrics, // These are already assembly-scoped metrics
-        slps: [] // We don't fetch SLP details in this approach
-      });
+        slps: [], // We don't fetch SLP details in this approach
+        // Preserve attendance logic flags for color grading
+        includeInColorGrading: (acData as any).includeInColorGrading,
+        workStatus: (acData as any).workStatus,
+        shouldBeRed: (acData as any).shouldBeRed,
+        isUnavailable: (acData as any).isUnavailable
+      } as any);
       
       // Aggregate assembly metrics from verified ACs only
       // Since metrics are already assembly-scoped, we add them directly
@@ -1257,25 +1325,71 @@ export async function aggregateReportData(
       totalMeetings: z.metrics.meetings
     })));
 
-    // Step 7: Calculate summary metrics
-    const totalACs = uniqueAcIds.size;
+    // Step 7: Calculate summary metrics from filtered data
+    // Re-calculate cumulative metrics from filtered assemblyAcMap to ensure consistency
+    const filteredSummaryMetrics: CumulativeMetrics = {
+      meetings: 0,
+      volunteers: 0,
+      slps: 0,
+      saathi: 0,
+      shaktiLeaders: 0,
+      shaktiSaathi: 0,
+      clubs: 0,
+      shaktiClubs: 0,
+      forms: 0,
+      shaktiForms: 0,
+      videos: 0,
+      shaktiVideos: 0,
+      acVideos: 0,
+      chaupals: 0,
+      shaktiBaithaks: 0,
+      centralWaGroups: 0,
+      assemblyWaGroups: 0
+    };
+    
+    // Aggregate metrics from filtered data (excluding placeholder entries and unavailable ACs)
+    const filteredUniqueACs = new Set<string>();
+    assemblyAcMap.forEach((acData) => {
+      if (acData.acId !== 'no-ac-assigned' && acData.acId !== 'unknown' && !(acData as any).isUnavailable) {
+        filteredUniqueACs.add(acData.acId);
+        
+        // Aggregate all metrics - the new logic preserves data but controls color grading
+        Object.keys(acData.metrics).forEach(key => {
+          const numValue = Number(acData.metrics[key as keyof CumulativeMetrics]) || 0;
+          const currentValue = Number(filteredSummaryMetrics[key as keyof CumulativeMetrics]) || 0;
+          
+          // Include all metrics from all available ACs
+          // The new attendance logic preserves data display while controlling color grading
+          (filteredSummaryMetrics as any)[key] = currentValue + numValue;
+        });
+      }
+    });
+    
+    const totalACs = filteredUniqueACs.size;
     const totalSLPs = 0; // Simplified - not tracking SLPs in this approach
     
-    // Calculate performance zones based on meeting counts
+    // Calculate performance zones based on meeting counts from filtered data
     let activeACs = 0; // Green zone: meetings >= 7
     let moderateACs = 0; // Orange zone: meetings >= 5 and < 7
     let poorACs = 0; // Red zone: meetings < 5
     
-    // Count ACs by performance zone (excluding placeholder entries)
+    // Count ACs by performance zone based on color grading eligibility
     assemblyAcMap.forEach((acData) => {
-      if (acData.acId !== 'no-ac-assigned') {
-        const meetingCount = Number(acData.metrics.meetings) || 0;
-        if (meetingCount >= 7) {
-          activeACs++; // Green zone
-        } else if (meetingCount >= 5) {
-          moderateACs++; // Orange zone
-        } else {
-          poorACs++; // Red zone (including 0 meetings)
+      if (acData.acId !== 'no-ac-assigned' && acData.acId !== 'unknown' && !(acData as any).isUnavailable) {
+        // Only count ACs that are included in color grading
+        if ((acData as any).includeInColorGrading !== false) {
+          const meetingCount = Number(acData.metrics.meetings) || 0;
+          
+          // Check if AC should be marked red regardless of meeting count
+          if ((acData as any).shouldBeRed) {
+            poorACs++; // Force RED for no-work scenarios
+          } else if (meetingCount >= 7) {
+            activeACs++; // Green zone
+          } else if (meetingCount >= 5) {
+            moderateACs++; // Orange zone
+          } else {
+            poorACs++; // Red zone
+          }
         }
       }
     });
@@ -1293,7 +1407,7 @@ export async function aggregateReportData(
     console.log('[aggregateReportData] DEBUG: Overall metrics for Executive Summary:', JSON.stringify(summaryMetrics, null, 2));
     console.log('[aggregateReportData] DEBUG: Available metrics properties:', Object.keys(summaryMetrics));
     
-    // Add all metrics that have values > 0 - exactly as shown on dashboard
+    // Add all metrics that have values > 0 - using filtered summary metrics for consistency
     const checkAndAddMetric = (value: any, name: string) => {
       const numValue = Number(value || 0);
       console.log(`  Checking ${name}:`, numValue, 'from:', value);
@@ -1302,24 +1416,26 @@ export async function aggregateReportData(
       }
     };
     
-    // Add metrics in order they appear on dashboard
-    checkAndAddMetric(summaryMetrics.meetings, 'Total Meetings');
-    checkAndAddMetric(summaryMetrics.volunteers, 'Volunteers');
-    checkAndAddMetric(summaryMetrics.slps, 'Samvidhan Leaders');
+    console.log('[aggregateReportData] DEBUG: Using filtered metrics for Executive Summary:', JSON.stringify(filteredSummaryMetrics, null, 2));
+    
+    // Add metrics in order they appear on dashboard - using filtered data
+    checkAndAddMetric(filteredSummaryMetrics.meetings, 'Total Meetings');
+    checkAndAddMetric(filteredSummaryMetrics.volunteers, 'Volunteers');
+    checkAndAddMetric(filteredSummaryMetrics.slps, 'Samvidhan Leaders');
     
     // Show both video types separately
-    checkAndAddMetric(summaryMetrics.acVideos, 'AC Videos');
-    checkAndAddMetric(summaryMetrics.videos, 'SLP Videos');
+    checkAndAddMetric(filteredSummaryMetrics.acVideos, 'AC Videos');
+    checkAndAddMetric(filteredSummaryMetrics.videos, 'SLP Videos');
     
     // Add other dashboard metrics that should appear
-    checkAndAddMetric(summaryMetrics.saathi, 'Saathi Members');
-    checkAndAddMetric(summaryMetrics.clubs, 'Clubs');
-    checkAndAddMetric(summaryMetrics.forms, 'Mai-Bahin Forms');
-    checkAndAddMetric(summaryMetrics.shaktiBaithaks, 'Shakti Baithaks');
-    checkAndAddMetric(summaryMetrics.assemblyWaGroups, 'Assembly WA Groups');
-    checkAndAddMetric(summaryMetrics.centralWaGroups, 'Central WA Groups');
-    checkAndAddMetric(summaryMetrics.chaupals, 'Chaupals');
-    checkAndAddMetric(summaryMetrics.shaktiLeaders, 'Shakti Leaders');
+    checkAndAddMetric(filteredSummaryMetrics.saathi, 'Saathi Members');
+    checkAndAddMetric(filteredSummaryMetrics.clubs, 'Clubs');
+    checkAndAddMetric(filteredSummaryMetrics.forms, 'Mai-Bahin Forms');
+    checkAndAddMetric(filteredSummaryMetrics.shaktiBaithaks, 'Shakti Baithaks');
+    checkAndAddMetric(filteredSummaryMetrics.assemblyWaGroups, 'Assembly WA Groups');
+    checkAndAddMetric(filteredSummaryMetrics.centralWaGroups, 'Central WA Groups');
+    checkAndAddMetric(filteredSummaryMetrics.chaupals, 'Chaupals');
+    checkAndAddMetric(filteredSummaryMetrics.shaktiLeaders, 'Shakti Leaders');
     
     // For debugging - force add some metrics if they exist but aren't showing
     console.log('[aggregateReportData] FORCE CHECK: If metrics exist but not showing...');
@@ -1354,10 +1470,10 @@ export async function aggregateReportData(
       generatedAt: new Date().toISOString(),
       generatedBy: 'System Admin', // TODO: Get from auth context
       hierarchy: {
-        zone: options?.selectedZone,
-        assembly: options?.selectedAssembly,
-        ac: options?.selectedAC,
-        slp: options?.selectedSLP
+        zone: (options as any)?.selectedZone,
+        assembly: (options as any)?.selectedAssembly,
+        ac: (options as any)?.selectedAC,
+        slp: (options as any)?.selectedSLP
       }
     };
 
@@ -1376,7 +1492,7 @@ export async function aggregateReportData(
     };
 
     // Add detailed activities if requested
-    if (options?.includeDetails) {
+    if ((options as any)?.includeDetails || false) {
       // Limit detailed activities to first 100 assemblies to avoid excessive data
       const allAssemblyIds = Array.from(assemblyMap.keys());
       const limitedAssemblies = allAssemblyIds.slice(0, 100);
@@ -1424,8 +1540,8 @@ async function getRecentActivities(
     ]);
     
     // Filter meetings locally instead of making redundant API calls
-    const volunteers = meetings.filter(m => (m.onboardingStatus || '').toLowerCase() === 'onboarded');
-    const leaders = meetings.filter(m => (m.recommendedPosition || '').toLowerCase() === 'slp');
+    const volunteers = meetings.filter((m: any) => (m.onboardingStatus || '').toLowerCase() === 'onboarded');
+    const leaders = meetings.filter((m: any) => (m.recommendedPosition || '').toLowerCase() === 'slp');
 
     return {
       meetings: meetings.slice(0, 10), // Limit to 10 most recent
@@ -1541,8 +1657,13 @@ function transformZoneData(zones: ZoneReportData[]): ZoneData[] {
             chaupals: Number(ac.metrics.chaupals) || 0,
             assemblyWaGroups: Number(ac.metrics.assemblyWaGroups) || 0,
             centralWaGroups: Number(ac.metrics.centralWaGroups) || 0
-          }
-        };
+          },
+          // *** CRITICAL: Preserve attendance logic flags for PDF generation ***
+          includeInColorGrading: (ac as any).includeInColorGrading,
+          workStatus: (ac as any).workStatus,
+          shouldBeRed: (ac as any).shouldBeRed,
+          isUnavailable: (ac as any).isUnavailable
+        } as any;
       });
 
       return {
