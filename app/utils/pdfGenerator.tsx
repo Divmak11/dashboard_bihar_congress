@@ -300,7 +300,7 @@ interface ACWithAssembliesComponentProps {
 
 const ACWithAssembliesComponent: React.FC<ACWithAssembliesComponentProps> = ({ ac }) => {
   return (
-    <View>
+    <View wrap={false} style={{ marginBottom: 8 }}>
       {/* AC Header */}
       <View style={styles.acHeaderContainer}>
         <Text style={styles.acHeaderText}>
