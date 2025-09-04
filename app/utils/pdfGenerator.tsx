@@ -499,10 +499,6 @@ const SummaryStatistics: React.FC<{ zones: ZoneData[] }> = ({ zones }) => {
       <Text style={styles.summaryTitle}>Summary Statistics</Text>
       <View style={styles.metricsGrid}>
         <View style={styles.metricBox}>
-          <Text style={styles.metricLabel}>Total ACs</Text>
-          <Text style={styles.metricValue}>{totalACs}</Text>
-        </View>
-        <View style={styles.metricBox}>
           <Text style={styles.metricLabel}>Total Meetings</Text>
           <Text style={styles.metricValue}>{totalMeetings}</Text>
         </View>

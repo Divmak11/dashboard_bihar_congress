@@ -1653,27 +1653,8 @@ function generateACPerformanceSections(assemblyAcMap: Map<string, any>): import(
     const zoneMatch = acData.zone?.match(/(\d+)/);
     const zoneNumber = zoneMatch ? parseInt(zoneMatch[1]) : 0;
     
-    // Determine row color based on attendance logic flags
+    // Initialize row color - will be determined later based on AC's overall performance
     let rowColor: 'high' | 'moderate' | 'poor' | 'white' = 'white';
-    
-    if ((acData as any).isUnavailable) {
-      rowColor = 'white'; // Unavailable ACs show white
-    } else if ((acData as any).includeInColorGrading === false) {
-      rowColor = 'white'; // Not worked in this assembly
-    } else {
-      // AC worked in this assembly - apply performance-based coloring
-      const meetings = Number(acData.metrics.meetings) || 0;
-      
-      if ((acData as any).shouldBeRed || meetings === 0) {
-        rowColor = 'poor'; // Force red for poor performance or no meetings
-      } else if (meetings >= 7) {
-        rowColor = 'high';
-      } else if (meetings >= 5) {
-        rowColor = 'moderate';
-      } else {
-        rowColor = 'poor';
-      }
-    }
 
     // Create assembly row
     const assemblyRow: import('../../models/reportTypes').ACAssemblyRow = {
@@ -1742,6 +1723,40 @@ function generateACPerformanceSections(assemblyAcMap: Map<string, any>): import(
         // AC has assemblies but didn't work in any (this is poor performance)
         primaryPerformance = 'poor';
       }
+    }
+
+    // Update row colors based on correct logic
+    if (primaryPerformance === 'poor' || primaryPerformance === 'unavailable') {
+      // For Red Zone and Unavailable ACs, all rows are white
+      acData.assemblies.forEach(assembly => {
+        assembly.rowColor = 'white';
+      });
+    } else {
+      // For Green/Orange Zone ACs, only color the primary work assembly, others are white
+      
+      // Find the primary work assembly (highest meetings count among worked assemblies)
+      const workedAssemblies = acData.assemblies.filter(a => a.includeInColorGrading && a.meetings > 0);
+      const primaryWorkAssembly = workedAssemblies.length > 0 
+        ? workedAssemblies.reduce((max, current) => current.meetings > max.meetings ? current : max)
+        : null;
+      
+      acData.assemblies.forEach(assembly => {
+        if (assembly.isUnavailable) {
+          assembly.rowColor = 'white';
+        } else if (primaryWorkAssembly && assembly.assembly === primaryWorkAssembly.assembly) {
+          // Color only the primary work assembly based on its performance
+          if (assembly.meetings >= 7) {
+            assembly.rowColor = 'high';
+          } else if (assembly.meetings >= 5) {
+            assembly.rowColor = 'moderate';
+          } else {
+            assembly.rowColor = 'poor';
+          }
+        } else {
+          // All other assemblies are white (regardless of their individual meeting counts)
+          assembly.rowColor = 'white';
+        }
+      });
     }
 
     const acWithAssemblies: import('../../models/reportTypes').ACWithAssemblies = {
