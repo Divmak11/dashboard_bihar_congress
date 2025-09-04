@@ -105,17 +105,49 @@ export interface ExecutiveSummary {
   };
 }
 
+// New types for AC-wise performance report
+export interface ACPerformanceSections {
+  greenZone: ACWithAssemblies[];
+  orangeZone: ACWithAssemblies[];
+  redZone: ACWithAssemblies[];
+  unavailable: ACWithAssemblies[];
+}
+
+export interface ACWithAssemblies {
+  acId: string;
+  acName: string;
+  zoneNumber: number;
+  zoneName: string;
+  zoneIncharge: string;
+  primaryPerformanceLevel: 'high' | 'moderate' | 'poor' | 'unavailable';
+  totalAssemblies: number;
+  workedAssemblies: number;
+  assemblies: ACAssemblyRow[];
+}
+
+export interface ACAssemblyRow {
+  assembly: string;
+  meetings: number;
+  onboarded: number;
+  slps: number;
+  forms: number;
+  videos: number;
+  waGroups: number;
+  // Color grading flags
+  includeInColorGrading: boolean;
+  shouldBeRed?: boolean;
+  isUnavailable?: boolean;
+  workStatus?: string;
+  // Color based on meetings count and flags
+  rowColor: 'high' | 'moderate' | 'poor' | 'white';
+}
+
 export interface ReportData {
   header: ReportHeader;
   summary: ExecutiveSummary;
   zones: ZoneData[];
-  detailedActivities?: {
-    meetings?: DetailedActivity[];
-    members?: DetailedActivity[];
-    volunteers?: DetailedActivity[];
-    videos?: DetailedActivity[];
-    [key: string]: DetailedActivity[] | undefined;
-  };
+  acPerformanceSections?: ACPerformanceSections;
+  detailedActivities?: any[];
   metadata: {
     totalRecords: number;
     processingTime: number;

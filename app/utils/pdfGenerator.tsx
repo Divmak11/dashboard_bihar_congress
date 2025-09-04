@@ -7,7 +7,10 @@ import {
   ZoneData, 
   DetailedActivity, 
   ExecutiveSummary,
-  ReportMetric 
+  ReportMetric,
+  ACPerformanceSections,
+  ACWithAssemblies,
+  ACAssemblyRow
 } from '../../models/reportTypes';
 import { 
   PDF_STYLES, 
@@ -66,7 +69,12 @@ interface FlattenedACData {
   forms: number;
   videos: number;
   waGroups: number;
-  performanceLevel: string;
+  performanceLevel?: string;
+  // Attendance logic flags
+  includeInColorGrading?: boolean;
+  workStatus?: string;
+  shouldBeRed?: boolean;
+  isUnavailable?: boolean;
 }
 
 // Function to flatten hierarchical data into table format
@@ -99,8 +107,18 @@ const flattenDataForTable = (zones: ZoneData[]): FlattenedACData[] => {
           forms: ac.metrics.forms || 0,
           videos: ac.metrics.videos || 0,
           waGroups: (ac.metrics.assemblyWaGroups || 0) + (ac.metrics.centralWaGroups || 0),
-          performanceLevel: ac.id === 'no-ac-assigned' ? 'poor' : ac.performanceLevel
+          performanceLevel: ac.id === 'no-ac-assigned' ? 'poor' : ac.performanceLevel,
+          // Preserve attendance logic flags
+          includeInColorGrading: (ac as any).includeInColorGrading,
+          workStatus: (ac as any).workStatus,
+          shouldBeRed: (ac as any).shouldBeRed,
+          isUnavailable: (ac as any).isUnavailable
         });
+        
+        // Debug logging for flag preservation
+        if ((ac as any).includeInColorGrading === false) {
+          console.log(`[flattenDataForTable] *** FLAG PRESERVED *** AC ${ac.name} in ${assembly.name}: includeInColorGrading=false`);
+        }
       });
     });
   });
@@ -133,8 +151,25 @@ const TableRow = ({ data, index }: { data: FlattenedACData; index: number }) => 
       return [styles.tableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f9fafb' }];
     }
     
-    // Apply performance-based color coding
+    // Debug logging for includeInColorGrading flag
+    console.log(`[TableRow] AC: ${data.acName}, Assembly: ${(data as any).assembly}, includeInColorGrading: ${(data as any).includeInColorGrading}, workStatus: ${(data as any).workStatus}`);
+    
+    // Check if AC should be included in color grading first
+    if ((data as any).includeInColorGrading === false) {
+      console.log(`[TableRow] Excluding AC ${data.acName} from color grading - showing white background`);
+      // AC worked in different assembly - show data but no color grading (white background)
+      return [styles.tableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f9fafb' }];
+    }
+    
+    // Apply performance-based color coding for ACs included in grading
     const meetings = Number(data.meetings) || 0;
+    
+    // Check if AC should be forced RED regardless of meeting count
+    if ((data as any).shouldBeRed) {
+      return [styles.tableRowPoor];
+    }
+    
+    // Standard performance-based coloring
     if (meetings >= 7) {
       return [styles.tableRowHigh];
     } else if (meetings >= 5) {
@@ -165,6 +200,172 @@ const TableRow = ({ data, index }: { data: FlattenedACData; index: number }) => 
       <Text style={getMetricCellStyle(data.forms)}>{data.forms}</Text>
       <Text style={getMetricCellStyle(data.videos)}>{data.videos}</Text>
       <Text style={getMetricCellStyle(data.waGroups)}>{data.waGroups}</Text>
+    </View>
+  );
+};
+
+/**
+ * AC Performance Section Component - New AC-wise Layout
+ */
+interface ACPerformanceSectionProps {
+  sections: ACPerformanceSections;
+}
+
+const ACPerformanceSection: React.FC<ACPerformanceSectionProps> = ({ sections }) => {
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>AC Performance Report</Text>
+      
+      {/* Green Zone - Always show */}
+      <ACPerformanceZone 
+        title="High Performance Zone (Green)" 
+        acs={sections.greenZone} 
+        zoneColor="green" 
+      />
+      
+      {/* Orange Zone - Always show */}
+      <ACPerformanceZone 
+        title="Moderate Performance Zone (Orange)" 
+        acs={sections.orangeZone} 
+        zoneColor="orange" 
+      />
+      
+      {/* Red Zone - Always show */}
+      <ACPerformanceZone 
+        title="Poor Performance Zone (Red)" 
+        acs={sections.redZone} 
+        zoneColor="red" 
+      />
+      
+      {/* Unavailable Zone - Always show */}
+      <ACPerformanceZone 
+        title="Unavailable ACs" 
+        acs={sections.unavailable} 
+        zoneColor="unavailable" 
+      />
+    </View>
+  );
+};
+
+/**
+ * AC Performance Zone Component
+ */
+interface ACPerformanceZoneProps {
+  title: string;
+  acs: ACWithAssemblies[];
+  zoneColor: 'green' | 'orange' | 'red' | 'unavailable';
+}
+
+const ACPerformanceZone: React.FC<ACPerformanceZoneProps> = ({ title, acs, zoneColor }) => {
+  const getTitleStyle = () => {
+    const baseStyle = { ...styles.performanceSectionTitle };
+    switch (zoneColor) {
+      case 'green':
+        return { ...baseStyle, ...styles.greenSectionTitle };
+      case 'orange':
+        return { ...baseStyle, ...styles.orangeSectionTitle };
+      case 'red':
+        return { ...baseStyle, ...styles.redSectionTitle };
+      case 'unavailable':
+        return { ...baseStyle, ...styles.unavailableSectionTitle };
+      default:
+        return baseStyle;
+    }
+  };
+
+  return (
+    <View style={styles.performanceSectionContainer}>
+      <Text style={getTitleStyle()}>{title}</Text>
+      {acs.length > 0 ? (
+        acs.map((ac, index) => (
+          <ACWithAssembliesComponent key={ac.acId} ac={ac} />
+        ))
+      ) : (
+        <View style={{ padding: 15, alignItems: 'center' }}>
+          <Text style={{ fontSize: 10, color: '#6b7280' }}>
+            No ACs in this performance zone
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
+/**
+ * AC With Assemblies Component
+ */
+interface ACWithAssembliesComponentProps {
+  ac: ACWithAssemblies;
+}
+
+const ACWithAssembliesComponent: React.FC<ACWithAssembliesComponentProps> = ({ ac }) => {
+  return (
+    <View wrap={false} style={{ marginBottom: 8 }}>
+      {/* AC Header */}
+      <View style={styles.acHeaderContainer}>
+        <Text style={styles.acHeaderText}>
+          {ac.acName} - Zone {ac.zoneNumber} ({ac.zoneName})
+        </Text>
+        <Text style={styles.acSubHeaderText}>
+          Total Assemblies: {ac.totalAssemblies} | Worked in: {ac.workedAssemblies}
+        </Text>
+      </View>
+      
+      {/* Assembly Table */}
+      <View style={styles.acAssemblyTableContainer}>
+        {/* Table Header */}
+        <View style={{ ...styles.acAssemblyRow, backgroundColor: '#f3f4f6', fontWeight: 'bold' }}>
+          <Text style={{ ...styles.tableCell, width: '24%' }}>Assembly</Text>
+          <Text style={{ ...styles.tableCell, width: '13%' }}>Meetings</Text>
+          <Text style={{ ...styles.tableCell, width: '13%' }}>Onboarded</Text>
+          <Text style={{ ...styles.tableCell, width: '12%' }}>SLPs</Text>
+          <Text style={{ ...styles.tableCell, width: '12%' }}>Forms</Text>
+          <Text style={{ ...styles.tableCell, width: '12%' }}>Videos</Text>
+          <Text style={{ ...styles.tableCell, width: '14%' }}>WA Groups</Text>
+        </View>
+        
+        {/* Assembly Rows */}
+        {ac.assemblies.map((assembly, index) => (
+          <ACAssemblyRowComponent key={`${ac.acId}-${assembly.assembly}`} assembly={assembly} />
+        ))}
+      </View>
+    </View>
+  );
+};
+
+/**
+ * AC Assembly Row Component
+ */
+interface ACAssemblyRowComponentProps {
+  assembly: ACAssemblyRow;
+}
+
+const ACAssemblyRowComponent: React.FC<ACAssemblyRowComponentProps> = ({ assembly }) => {
+  // Determine row background color
+  const getRowStyle = () => {
+    const baseStyle = styles.acAssemblyRow;
+    switch (assembly.rowColor) {
+      case 'high':
+        return { ...baseStyle, ...styles.acAssemblyRowHigh };
+      case 'moderate':
+        return { ...baseStyle, ...styles.acAssemblyRowModerate };
+      case 'poor':
+        return { ...baseStyle, ...styles.acAssemblyRowPoor };
+      case 'white':
+      default:
+        return { ...baseStyle, ...styles.acAssemblyRowWhite };
+    }
+  };
+
+  return (
+    <View style={getRowStyle()}>
+      <Text style={{ ...styles.tableCell, width: '24%' }}>{assembly.assembly}</Text>
+      <Text style={{ ...styles.tableCell, width: '13%' }}>{assembly.meetings}</Text>
+      <Text style={{ ...styles.tableCell, width: '13%' }}>{assembly.onboarded}</Text>
+      <Text style={{ ...styles.tableCell, width: '12%' }}>{assembly.slps}</Text>
+      <Text style={{ ...styles.tableCell, width: '12%' }}>{assembly.forms}</Text>
+      <Text style={{ ...styles.tableCell, width: '12%' }}>{assembly.videos}</Text>
+      <Text style={{ ...styles.tableCell, width: '14%' }}>{assembly.waGroups}</Text>
     </View>
   );
 };
@@ -297,10 +498,6 @@ const SummaryStatistics: React.FC<{ zones: ZoneData[] }> = ({ zones }) => {
     <View style={styles.summaryBox}>
       <Text style={styles.summaryTitle}>Summary Statistics</Text>
       <View style={styles.metricsGrid}>
-        <View style={styles.metricBox}>
-          <Text style={styles.metricLabel}>Total ACs</Text>
-          <Text style={styles.metricValue}>{totalACs}</Text>
-        </View>
         <View style={styles.metricBox}>
           <Text style={styles.metricLabel}>Total Meetings</Text>
           <Text style={styles.metricValue}>{totalMeetings}</Text>
@@ -482,8 +679,12 @@ const PDFReport: React.FC<PDFReportProps> = ({ data }) => {
             </SafeComponent>
           )}
           
-          {/* Main AC Performance Table */}
-          {data.zones && data.zones.length > 0 ? (
+          {/* New AC Performance Report Section - AC-wise Layout */}
+          {data.acPerformanceSections ? (
+            <SafeComponent componentName="ACPerformanceSection" data={data.acPerformanceSections}>
+              <ACPerformanceSection sections={data.acPerformanceSections} />
+            </SafeComponent>
+          ) : data.zones && data.zones.length > 0 ? (
             <SafeComponent componentName="ACTable" data={data.zones}>
               <ACTable zones={data.zones} />
             </SafeComponent>

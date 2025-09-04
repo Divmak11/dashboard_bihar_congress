@@ -60,10 +60,11 @@ export function getPerformanceColor(level: 'high' | 'moderate' | 'poor', variant
 export const PDF_STYLES = StyleSheet.create({
   page: {
     flexDirection: 'column',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#ffffff',
     padding: 20,
     fontSize: 8,
     fontFamily: 'NotoSansDevanagari',
+    color: '#1f2937'
   },
   title: {
     fontSize: 16,
@@ -324,22 +325,104 @@ export const PDF_STYLES = StyleSheet.create({
     flexDirection: 'row' as const,
     borderBottom: '1px solid #e2e8f0',
     minHeight: 22,
-    backgroundColor: '#dcfce7',
+    backgroundColor: PERFORMANCE_COLORS.high,
     borderLeft: '3px solid #22c55e',
   },
   tableRowModerate: {
     flexDirection: 'row' as const,
     borderBottom: '1px solid #e2e8f0',
     minHeight: 22,
-    backgroundColor: '#fed7aa',
+    backgroundColor: PERFORMANCE_COLORS.moderate,
     borderLeft: '3px solid #fb923c',
   },
   tableRowPoor: {
     flexDirection: 'row' as const,
     borderBottom: '1px solid #e2e8f0',
     minHeight: 22,
-    backgroundColor: '#fee2e2',
+    backgroundColor: PERFORMANCE_COLORS.poor,
     borderLeft: '3px solid #ef4444',
+  },
+  
+  // New AC-wise performance section styles
+  performanceSectionContainer: {
+    marginTop: 20,
+    marginBottom: 10
+  },
+  
+  performanceSectionTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    padding: 8,
+    color: '#ffffff',
+    textAlign: 'center' as const
+  },
+  
+  greenSectionTitle: {
+    backgroundColor: '#059669'
+  },
+  
+  orangeSectionTitle: {
+    backgroundColor: '#d97706'
+  },
+  
+  redSectionTitle: {
+    backgroundColor: '#dc2626'
+  },
+  
+  unavailableSectionTitle: {
+    backgroundColor: '#6b7280'
+  },
+  
+  acHeaderContainer: {
+    backgroundColor: '#f3f4f6',
+    padding: 8,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#d1d5db'
+  },
+  
+  acHeaderText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#374151'
+  },
+  
+  acSubHeaderText: {
+    fontSize: 8,
+    color: '#6b7280',
+    marginTop: 2
+  },
+  
+  acAssemblyTableContainer: {
+    marginTop: 5,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#e5e7eb'
+  },
+  
+  acAssemblyRow: {
+    flexDirection: 'row' as const,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#e5e7eb',
+    minHeight: 20,
+    fontSize: 7
+  },
+  
+  acAssemblyRowHigh: {
+    backgroundColor: PERFORMANCE_COLORS.high
+  },
+  
+  acAssemblyRowModerate: {
+    backgroundColor: PERFORMANCE_COLORS.moderate
+  },
+  
+  acAssemblyRowPoor: {
+    backgroundColor: PERFORMANCE_COLORS.poor
+  },
+  
+  acAssemblyRowWhite: {
+    backgroundColor: '#ffffff'
   },
   tableSummary: {
     flexDirection: 'row' as const,

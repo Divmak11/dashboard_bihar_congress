@@ -15,6 +15,7 @@ export interface AC {
   name: string;
   assembly: string;
   handler_id?: string;
+  isShaktiAC?: boolean;
 }
 
 export interface SLP {

@@ -11,7 +11,7 @@ import HierarchicalErrorBoundary from '../../components/hierarchical/Hierarchica
 import { ToastContainer, useToast } from '../../components/Toast';
 import { Zone, AC, SLP } from '../../models/hierarchicalTypes';
 import ReportGenerator from '../../components/ReportGenerator';
-import { fetchZones, fetchAssemblies, fetchAssemblyCoordinators, fetchSlpsForAc, fetchCumulativeMetrics } from '../utils/fetchHierarchicalData';
+import { fetchZones, fetchAssemblies, fetchAssemblyCoordinatorsForWTM, fetchAssemblyCoordinatorsForShakti, fetchSlpsForAc, fetchCumulativeMetrics } from '../utils/fetchHierarchicalData';
 import { CumulativeMetrics } from '../../models/hierarchicalTypes';
 import { AppError } from '../utils/errorUtils';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -87,31 +87,110 @@ const HierarchicalDashboardPage: React.FC = () => {
     }
   }, [user]);
 
-  // Load zones on mount and filter based on user role
+  // Load zones when vertical changes
   React.useEffect(() => {
-    const loadZones = async () => {
-      const allZones = await fetchZones();
+    if (selectedVertical && adminUser) {
+      const loadZonesWithVirtual = async () => {
+        try {
+          // Fetch regular zones and filter by vertical
+          const allZones = await fetchZones();
+          const filteredZones = allZones.filter(zone => zone.parentVertical === selectedVertical);
+          
+          console.log(`[Virtual Zone Debug] Loading zones for user:`, {
+            role: adminUser.role,
+            selectedVertical,
+            parentVertical: adminUser.parentVertical,
+            hasAssemblies: !!adminUser.assemblies,
+            assembliesCount: adminUser.assemblies?.length || 0
+          });
 
-      // Filter zones based on selected vertical using the zone's parentVertical property
-      const filteredZones = selectedVertical === 'shakti-abhiyaan'
-        ? allZones.filter(z => z.parentVertical === 'shakti-abhiyaan')
-        : allZones.filter(z => z.parentVertical !== 'shakti-abhiyaan');
+          let virtualZones: Zone[] = [];
 
-      if (adminUser?.role === 'zonal-incharge') {
-        const userZone = filteredZones.find(zone => zone.id === adminUser.id);
-        if (userZone) {
-          setZones([userZone]);
-          setSelectedZoneId(userZone.id);
-        } else {
+          if (adminUser.role === 'admin') {
+            // Admin sees virtual zones for ALL dept-head users
+            console.log(`[Virtual Zone] Admin user - fetching all dept-head users`);
+            
+            // Import Firebase functions we need
+            const { collection, query: firestoreQuery, where, getDocs } = await import('firebase/firestore');
+            const { db } = await import('../utils/firebase');
+            
+            // Fetch all dept-head users for this vertical
+            const adminUsersRef = collection(db, 'admin-users');
+            const deptHeadQuery = firestoreQuery(
+              adminUsersRef, 
+              where('role', '==', 'dept-head'),
+              where('parentVertical', '==', selectedVertical)
+            );
+            
+            const deptHeadSnapshot = await getDocs(deptHeadQuery);
+            
+            deptHeadSnapshot.forEach((doc) => {
+              const deptHeadUser = { id: doc.id, ...doc.data() } as AdminUser;
+              
+              if (deptHeadUser.assemblies && deptHeadUser.assemblies.length > 0) {
+                const userName = deptHeadUser.name || 'Unknown';
+                const userRole = deptHeadUser.role || 'dept-head';
+                
+                const virtualZone: Zone = {
+                  id: `dept-${deptHeadUser.id}`,
+                  name: `Zone - ${userName}_${userRole}`,
+                  assemblies: Array.from(new Set(deptHeadUser.assemblies.map(a => (a || '').trim()).filter(Boolean))),
+                  parentVertical: selectedVertical,
+                };
+                
+                virtualZones.push(virtualZone);
+                
+                console.log(`[Virtual Zone] Created virtual zone for dept-head ${userName}:`, {
+                  id: virtualZone.id,
+                  assembliesCount: virtualZone.assemblies.length
+                });
+              }
+            });
+            
+          } else if (adminUser.role === 'dept-head' && 
+                     !adminUser.role.includes('zonal-incharge') && 
+                     adminUser.assemblies && 
+                     adminUser.assemblies.length > 0) {
+            // Dept-head sees only their own virtual zone
+            console.log(`[Virtual Zone] Dept-head user - creating own virtual zone`);
+            
+            const userName = adminUser.name || 'Unknown';
+            const userRole = adminUser.role || 'dept-head';
+            
+            const virtualZone: Zone = {
+              id: `dept-${adminUser.id}`,
+              name: `Zone - ${userName}_${userRole}`,
+              assemblies: Array.from(new Set(adminUser.assemblies.map(a => (a || '').trim()).filter(Boolean))),
+              parentVertical: adminUser.parentVertical || selectedVertical,
+            };
+            
+            virtualZones.push(virtualZone);
+            
+            console.log(`[Virtual Zone] Created virtual zone for current dept-head:`, {
+              id: virtualZone.id,
+              assembliesCount: virtualZone.assemblies.length
+            });
+          }
+
+          // Combine virtual zones with regular zones (virtual zones first)
+          const allZonesWithVirtual = [...virtualZones, ...filteredZones];
+          setZones(allZonesWithVirtual);
+          
+          console.log(`[Virtual Zone] Final zones count:`, {
+            virtualZones: virtualZones.length,
+            regularZones: filteredZones.length,
+            total: allZonesWithVirtual.length
+          });
+          
+        } catch (error) {
+          console.error('[Virtual Zone] Error loading zones:', error);
           setZones([]);
         }
-      } else {
-        setZones(filteredZones);
-      }
-    };
+      };
 
-    loadZones().catch(console.error);
-  }, [adminUser, selectedVertical]);
+      loadZonesWithVirtual();
+    }
+  }, [selectedVertical, adminUser]);
 
   // Lock vertical based on role (zonal-incharge and dept-head)
   React.useEffect(() => {
@@ -138,8 +217,17 @@ const HierarchicalDashboardPage: React.FC = () => {
     setSelectedAssembly(null);
     setSelectedAcId(null);
     setSelectedSlpId(null);
+
+    // Handle virtual dept-head/admin zone selection by using assemblies from the selected zone object
+    if (selectedZoneId.startsWith('dept-')) {
+      const selectedZone = zones.find(z => z.id === selectedZoneId);
+      const assembliesFromZone = Array.from(new Set((selectedZone?.assemblies || []).map(a => (a || '').trim()).filter(Boolean)));
+      setAssemblies(assembliesFromZone);
+      return;
+    }
+
     fetchAssemblies(selectedZoneId).then(setAssemblies).catch(console.error);
-  }, [selectedZoneId]);
+  }, [selectedZoneId, zones]);
 
   // Load ACs when assembly changes
   React.useEffect(() => {
@@ -152,8 +240,14 @@ const HierarchicalDashboardPage: React.FC = () => {
     // Reset child selections when assembly changes
     setSelectedAcId(null);
     setSelectedSlpId(null);
-    fetchAssemblyCoordinators(selectedAssembly).then(setAcs).catch(console.error);
-  }, [selectedAssembly]);
+    
+    // Use vertical-specific AC fetching
+    if (selectedVertical === 'wtm') {
+      fetchAssemblyCoordinatorsForWTM(selectedAssembly).then(setAcs).catch(console.error);
+    } else if (selectedVertical === 'shakti-abhiyaan') {
+      fetchAssemblyCoordinatorsForShakti(selectedAssembly).then(setAcs).catch(console.error);
+    }
+  }, [selectedAssembly, selectedVertical]);
 
   // Load SLPs when AC changes
   React.useEffect(() => {
@@ -239,7 +333,13 @@ const HierarchicalDashboardPage: React.FC = () => {
           };
         }
         
-        const fetchedMetrics = await fetchCumulativeMetrics(options);
+        // Add admin user and Last Day filter flag to options
+        const isLastDayFilter = dateOption === 'Last Day';
+        const fetchedMetrics = await fetchCumulativeMetrics({
+          ...options,
+          adminUser: adminUser,
+          isLastDayFilter: isLastDayFilter
+        });
         setMetrics(fetchedMetrics);
       } catch (error) {
         console.error('Error fetching metrics:', error);

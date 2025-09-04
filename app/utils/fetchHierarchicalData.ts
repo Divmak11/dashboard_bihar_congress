@@ -11,6 +11,7 @@ import { CumulativeMetrics } from '../../models/hierarchicalTypes';
 import { db } from './firebase';
 import { collection, query, where, getDocs, orderBy, limit, documentId, doc, getDoc, QueryDocumentSnapshot, or } from 'firebase/firestore';
 import { createAppError, logError, getFirebaseErrorCode, validateDateRange, validateAssemblyData, ERROR_CODES } from './errorUtils';
+import { AdminUser } from '../../models/types';
 
 /**
  * Fetches cumulative metric data for the given scope (zone / assembly / AC / SLP).
@@ -22,7 +23,56 @@ export interface FetchMetricsOptions {
   handler_id?: string;
   level: 'zone' | 'assembly' | 'ac' | 'slp';
   slp?: { uid: string; handler_id?: string; isShaktiSLP?: boolean; shaktiId?: string };
+  adminUser?: AdminUser | null;
+  isLastDayFilter?: boolean;
 }
+
+/**
+ * Helper function to adjust date range for admin users.
+ * For admins selecting "Last Day" filter, extends the end time by 8 hours into the current day.
+ * This accommodates late data entry for report generation.
+ * 
+ * @param dateRange - Original date range from user selection
+ * @param adminUser - Admin user object to check role
+ * @param isLastDayFilter - Boolean indicating if "Last Day" filter is selected
+ * @returns Adjusted date range (modified for admins on "Last Day", unchanged otherwise)
+ */
+export const getAdjustedDateRange = (
+  dateRange: { startDate: string; endDate: string } | undefined,
+  adminUser: AdminUser | null,
+  isLastDayFilter: boolean = false
+): { startDate: string; endDate: string } | undefined => {
+  // If no date range provided, return undefined
+  if (!dateRange) {
+    return undefined;
+  }
+
+  // If not admin or not "Last Day" filter, return original date range
+  if (!adminUser || adminUser.role !== 'admin' || !isLastDayFilter) {
+    return dateRange;
+  }
+
+  // For admin with "Last Day" filter, extend end date by 8 hours
+  const adjustedDateRange = { ...dateRange };
+  
+  // Parse the end date and add 8 hours
+  const endDate = new Date(adjustedDateRange.endDate);
+  endDate.setHours(endDate.getHours() + 8);
+  
+  // Format back to YYYY-MM-DD format
+  const year = endDate.getFullYear();
+  const month = String(endDate.getMonth() + 1).padStart(2, '0');
+  const day = String(endDate.getDate()).padStart(2, '0');
+  adjustedDateRange.endDate = `${year}-${month}-${day}`;
+  
+  console.log('[getAdjustedDateRange] Admin "Last Day" filter adjusted:', {
+    original: dateRange,
+    adjusted: adjustedDateRange,
+    adminRole: adminUser.role
+  });
+  
+  return adjustedDateRange;
+};
 
 // Helper function to check if AC is from Shakti Abhiyaan
 const isShaktiAC = async (acId: string): Promise<boolean> => {
@@ -1130,13 +1180,20 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
     console.log('[fetchCumulativeMetrics] Assemblies:', options.assemblies);
     console.log('[fetchCumulativeMetrics] Handler ID:', options.handler_id);
     
+    // Adjust date range for admin users if needed
+    const adjustedDateRange = getAdjustedDateRange(
+      options.dateRange,
+      options.adminUser || null,
+      options.isLastDayFilter || false
+    );
+    
     // Validate input parameters
     if (options.assemblies && options.assemblies.length > 0) {
       validateAssemblyData(options.assemblies);
     }
     
-    if (options.dateRange) {
-      validateDateRange(options.dateRange.startDate, options.dateRange.endDate);
+    if (adjustedDateRange) {
+      validateDateRange(adjustedDateRange.startDate, adjustedDateRange.endDate);
     }
     
     // Fetch all metrics for any AC type - data will naturally be 0 if no activities exist
@@ -1159,21 +1216,21 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
       centralWaGroups, 
       assemblyWaGroups
     ] = await Promise.allSettled([
-      getWtmSlpSummary(options.dateRange?.startDate, options.dateRange?.endDate, options.assemblies, options.handler_id, options.slp),
-      getHierarchicalMemberActivity(options.assemblies, options.dateRange, options.handler_id),
-      getHierarchicalShaktiLeaders(options.assemblies, options.dateRange, options.handler_id),
-      getHierarchicalShaktiSaathi(options.assemblies, options.dateRange, options.handler_id),
-      getHierarchicalPanchayatWaActivity(options.assemblies, options.dateRange, options.handler_id),
-      getHierarchicalShaktiClubs(options.assemblies, options.dateRange, options.handler_id),
-      getHierarchicalMaiBahinYojnaActivity(options.assemblies, options.dateRange, options.handler_id),
-      getHierarchicalShaktiForms(options.assemblies, options.dateRange, options.handler_id),
-      getHierarchicalShaktiLocalIssueVideoActivity(options.assemblies, options.dateRange, options.handler_id),
-      getHierarchicalLocalIssueVideoActivity(options.assemblies, options.dateRange, options.handler_id),
-      getHierarchicalAcVideos(options.assemblies, options.dateRange, options.handler_id),
-      getHierarchicalChaupals(options.assemblies, options.dateRange, options.handler_id),
-      getHierarchicalShaktiBaithaks(options.assemblies, options.dateRange, options.handler_id),
-      getHierarchicalCentralWaGroups(options.assemblies, options.dateRange, options.handler_id),
-      getHierarchicalAssemblyWaGroups(options.assemblies, options.dateRange, options.handler_id),
+      getWtmSlpSummary(adjustedDateRange?.startDate, adjustedDateRange?.endDate, options.assemblies, options.handler_id, options.slp),
+      getHierarchicalMemberActivity(options.assemblies, adjustedDateRange, options.handler_id),
+      getHierarchicalShaktiLeaders(options.assemblies, adjustedDateRange, options.handler_id),
+      getHierarchicalShaktiSaathi(options.assemblies, adjustedDateRange, options.handler_id),
+      getHierarchicalPanchayatWaActivity(options.assemblies, adjustedDateRange, options.handler_id),
+      getHierarchicalShaktiClubs(options.assemblies, adjustedDateRange, options.handler_id),
+      getHierarchicalMaiBahinYojnaActivity(options.assemblies, adjustedDateRange, options.handler_id),
+      getHierarchicalShaktiForms(options.assemblies, adjustedDateRange, options.handler_id),
+      getHierarchicalShaktiLocalIssueVideoActivity(options.assemblies, adjustedDateRange, options.handler_id),
+      getHierarchicalLocalIssueVideoActivity(options.assemblies, adjustedDateRange, options.handler_id),
+      getHierarchicalAcVideos(options.assemblies, adjustedDateRange, options.handler_id),
+      getHierarchicalChaupals(options.assemblies, adjustedDateRange, options.handler_id),
+      getHierarchicalShaktiBaithaks(options.assemblies, adjustedDateRange, options.handler_id),
+      getHierarchicalCentralWaGroups(options.assemblies, adjustedDateRange, options.handler_id),
+      getHierarchicalAssemblyWaGroups(options.assemblies, adjustedDateRange, options.handler_id),
     ]);
 
     const getResultValue = (result: PromiseSettledResult<any>) => {
@@ -1407,6 +1464,12 @@ export const fetchAssemblyCoordinatorsForWTM = async (assembly: string): Promise
  * Fetch Assembly Coordinators for a given assembly.
  * Returns array of { uid, name, assembly }.
  * Uses optimized single OR query to support both single and multi-assembly ACs.
+ *
+ * @deprecated Deprecated in favor of vertical-specific functions to avoid cross-vertical data mixing and unnecessary reads.
+ * Use:
+ * - fetchAssemblyCoordinatorsForWTM(assembly) for WTM vertical
+ * - fetchAssemblyCoordinatorsForShakti(assembly) for Shakti Abhiyaan vertical
+ * This generic function remains for backward compatibility in non-dashboard scripts.
  */
 export const fetchAssemblyCoordinators = async (assembly: string): Promise<AC[]> => {
   if (!assembly) return [];
@@ -1557,6 +1620,53 @@ export const fetchAssemblyCoordinators = async (assembly: string): Promise<AC[]>
     return [];
   }
 };
+
+/**
+ * Fetch Assembly Coordinators for Shakti-Abhiyaan vertical (excludes users collection).
+ * Only queries shakti-abhiyaan collection for Assembly Coordinators.
+ */
+export const fetchAssemblyCoordinatorsForShakti = async (assembly: string): Promise<AC[]> => {
+  if (!assembly) return [];
+  
+  try {
+    console.log('[fetchAssemblyCoordinatorsForShakti] Fetching Shakti ACs for assembly:', assembly);
+    
+    const list: AC[] = [];
+    const addedUids = new Set<string>();
+    
+    // Only query shakti-abhiyaan collection (coveredAssemblyCoordinators)
+    const shaktiQuery = query(
+      collection(db, 'shakti-abhiyaan'),
+      where('form_type', '==', 'add-data')
+    );
+    const shaktiSnap = await getDocs(shaktiQuery);
+    
+    shaktiSnap.forEach((d) => {
+      const data = d.data() as any;
+      const coordinators = data.coveredAssemblyCoordinators || [];
+      coordinators.forEach((coord: any) => {
+        if (coord.assembly === assembly && coord.id && !addedUids.has(coord.id)) {
+          list.push({
+            uid: coord.id,
+            name: coord.name || 'AC',
+            assembly,
+            handler_id: coord.handler_id,
+            isShaktiAC: true // Mark as Shakti AC
+          });
+          addedUids.add(coord.id);
+          console.log('[fetchAssemblyCoordinatorsForShakti] Added Shakti AC:', { uid: coord.id, name: coord.name, assembly });
+        }
+      });
+    });
+    
+    console.log(`[fetchAssemblyCoordinatorsForShakti] Found ${list.length} Shakti ACs for assembly ${assembly}`);
+    return list.sort((a, b) => a.name.localeCompare(b.name));
+  } catch (err) {
+    console.error('[fetchAssemblyCoordinatorsForShakti] Error:', err);
+    return [];
+  }
+};
+
 /**
  * Fetch SLPs / ASLPs under a given Assembly Coordinator.
  */

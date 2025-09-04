@@ -51,14 +51,15 @@ my-dashboard/
 │   ├── services/                 # Service layer
 │   │   └── reportProgressService.ts # Report progress state management
 │   ├── config/                   # Configuration files
-│   │   └── pdfConfig.ts          # PDF styling with enhanced table styles
+│   │   └── pdfConfig.ts          # PDF styling with enhanced table styles + AC-wise section styles
 │   └── utils/                    # Core utility functions
 │       ├── fetchFirebaseData.ts  # Firebase data fetching
 │       ├── fetchHierarchicalData.ts # Hierarchical data logic
 │       ├── firebase.ts           # Firebase config
 │       ├── errorUtils.ts         # Error handling
-│       ├── reportDataAggregation.ts # Zone-wise report aggregation
-│       └── pdfGenerator.tsx      # PDF with UI refinements
+│       ├── reportDataAggregation.ts # Zone-wise report aggregation + AC-wise sections
+│       ├── reportAttendanceLogic.ts # Attendance & assembly work logic
+│       └── pdfGenerator.tsx      # PDF with UI refinements + AC-wise layout components
 ├── components/                   # Reusable components
 │   ├── hierarchical/             # Hierarchical dashboard components
 │   │   ├── DetailedView.tsx     # Detailed data view
@@ -75,7 +76,7 @@ my-dashboard/
 ├── models/                       # TypeScript type definitions
 │   ├── types.ts                  # Core data types
 │   ├── hierarchicalTypes.ts     # Hierarchy-specific types
-│   └── reportTypes.ts            # Report types (Zone-wise structure)
+│   └── reportTypes.ts            # Report types (Zone-wise structure + AC-wise sections)
 └── .windsurf/                    # Project documentation
     ├── PRD.md                    # Product requirements
     ├── Plan.md                   # Implementation plan
@@ -95,9 +96,10 @@ my-dashboard/
 1. User triggers report via ReportGenerator component
 2. useReportGeneration hook orchestrates the process
 3. Data fetched via reportDataAggregation functions
-4. Progress updates via reportProgressService
-5. PDF generated with pdfGenerator using pdfConfig styles
-6. Download triggered automatically on completion
+4. AC-wise performance sections generated via generateACPerformanceSections
+5. Progress updates via reportProgressService
+6. PDF generated with pdfGenerator using pdfConfig styles (supports both legacy and AC-wise layouts)
+7. Download triggered automatically on completion
 ```
 
 ---
@@ -190,6 +192,18 @@ my-dashboard/
 }
 ```
 
+#### **Form_Type Mappings for Shakti-Abhiyaan Metrics:**
+| Metric | Collection | Form_Type | ParentVertical Filter | Date Field |
+|--------|------------|-----------|----------------------|------------|
+| shaktiLeaders | shakti-abhiyaan | 'add-data' | N/A | createdAt (epoch ms) |
+| shaktiSaathi | slp-activity | 'members' | 'shakti-abhiyaan' | createdAt (epoch ms) |
+| shaktiClubs | slp-activity | 'panchayat-wa' | 'shakti-abhiyaan' | createdAt (ISO string) |
+| shaktiForms | slp-activity | 'mai-bahin-yojna' | 'shakti-abhiyaan' | date (YYYY-MM-DD) |
+| shaktiBaithaks | slp-activity | 'weekly_meeting' | 'shakti-abhiyaan' | dateFormatted (YYYY-MM-DD) |
+| shaktiVideos | slp-activity | 'local-issue-video' | 'shakti-abhiyaan' | date_submitted (YYYY-MM-DD) |
+
+**Critical Note:** All slp-activity queries for shakti metrics must include both `form_type` filter AND `parentVertical='shakti-abhiyaan'` filter.
+
 ### 5. **shakti-abhiyaan** Collection
 ```typescript
 {
@@ -224,6 +238,61 @@ my-dashboard/
   updatedAt?: Timestamp
 }
 ```
+
+### 7. **attendence** Collection (for AC Availability)
+```typescript
+{
+  handler_id: string,             // AC document ID
+  created_at: number,             // Epoch timestamp in milliseconds
+  // Other attendance fields...
+}
+```
+**Query Pattern**: `where('handler_id', 'in', acIds), where('created_at', '>=', start), where('created_at', '<=', end)`
+**Composite Index Required**: `(handler_id, created_at)`
+**Note**: Collection name is 'attendence' (not 'attendance')
+
+---
+
+## Report Generation with Attendance Logic
+
+### Attendance and Assembly Work Determination
+
+**New Logic Flow (Step 3.5 in aggregateReportData):**
+1. **Check AC Attendance**: Query 'attendence' collection for AC availability
+   - If attendance record exists for AC on report date → Mark as unavailable
+   - No attendance record → AC is available
+
+2. **Determine Work Assembly**: For available ACs, check which assembly they worked in
+   - Query 'wtm-slp' meetings by handler_id and created_at
+   - AC can only work in ONE assembly per day
+   - Assembly with most meetings = worked assembly
+   - Other assigned assemblies marked as "no activity"
+
+3. **Apply Filtering**: Update assembly-AC map based on results
+   - Unavailable ACs: Zero metrics, marked with `isUnavailable: true`
+   - Available ACs: Only include worked assembly with actual metrics
+   - Non-worked assemblies: Zero metrics, marked with `noActivity: true`
+
+**Implementation Files:**
+- `reportAttendanceLogic.ts`: Core attendance and assembly logic
+  - `checkACAttendance()`: Checks attendance records from 'attendence' collection
+  - `determineACWorkAssembly()`: Determines single work assembly using pre-fetched meeting data
+  - `applyAttendanceAndAssemblyLogic()`: Main integration function, accepts optional meeting data
+
+- `reportDataAggregation.ts`: Integration point at Step 3.5
+  - Fetches meeting data once using `fetchDetailedMeetings()`
+  - Passes pre-fetched data to `applyAttendanceAndAssemblyLogic()`
+  - Replaces assembly-AC map with filtered version
+
+**Optimization Strategy:**
+- **Data Reuse**: Leverages existing `fetchDetailedMeetings()` data instead of new queries
+- **Zero Additional Queries**: No new database calls for assembly work determination
+- **Memory Filtering**: Filters meetings in JavaScript using `meeting.handler_id === acId`
+- **Composite Index Elimination**: Removes need for `(handler_id, created_at)` index on wtm-slp
+
+**Date Filtering:**
+- Attendance: Uses `created_at` field (epoch ms) with UTC day boundaries on 'attendence' collection
+- Assembly Work: Uses pre-filtered meeting data (already filtered by date in fetchDetailedMeetings)
 
 ---
 
@@ -577,10 +646,11 @@ The Generate Report module provides comprehensive PDF report generation for the 
 - **Critical Logic**:
   - **Assembly-First Aggregation**: Groups by Assembly-AC combinations to avoid double counting
   - **AC Roster Pre-Seeding**: Builds complete roster before aggregation, includes placeholder for assemblies with no ACs
-  - **AC Name Resolution**: Uses ONLY 'name' property from users collection (no displayName/uid fallback)
-  - **Orphan Assembly Handling**: Creates "Unassigned Areas" zone for unmapped assemblies
-  - **Date Filtering**: Adjusts "All Time" to 6 months to avoid Firestore limits
-  - **Query Optimization**: Conditional fetching, batch processing, chunking for >10 assemblies
+    - **AC Name Resolution**: Uses ONLY 'name' property from users collection (no displayName/uid fallback)
+    - **AC-wise Performance Sections**: Groups ACs by performance zones (Green/Orange/Red/Unavailable)
+    - **Orphan Assembly Handling**: Creates "Unassigned Areas" zone for unmapped assemblies
+    - **Date Filtering**: Adjusts "All Time" to 6 months to avoid Firestore limits
+    - **Query Optimization**: Conditional fetching, batch processing, chunking for >10 assemblies
 - **Data Flow**:
   1. Fetch zone and assembly structure based on vertical
   2. Build complete AC roster using `buildACRosterForVertical`
@@ -589,8 +659,9 @@ The Generate Report module provides comprehensive PDF report generation for the 
   5. Process activities grouped by assembly-AC key (`${assembly}::${acId}`)
   6. Resolve AC names from users collection
   7. Aggregate metrics at assembly and zone levels
-  8. Handle orphan assemblies as "Unassigned Areas"
-  9. Return structured LocalReportData object
+  8. Generate AC-wise performance sections using generateACPerformanceSections
+  9. Handle orphan assemblies as "Unassigned Areas"
+  10. Return structured LocalReportData object with acPerformanceSections
 - **Performance Zones**:
   - Active ACs (green): meetings >= 7
   - Moderate ACs (orange): meetings >= 5 and < 7
@@ -609,8 +680,14 @@ The Generate Report module provides comprehensive PDF report generation for the 
   1. Report header with title and date range
   2. Executive summary with overall metrics
   3. Zone-wise Overview table with deduplicated AC counts
-  4. AC Performance table with phantom assembly handling
-  5. Zone-wise detailed breakdown sections
+  4. **AC Performance Report Section** (New AC-wise Layout):
+     - High Performance Zone (Green): ACs with meetings ≥ 7
+     - Moderate Performance Zone (Orange): ACs with meetings ≥ 5 and < 7
+     - Poor Performance Zone (Red): ACs with meetings < 5
+     - Unavailable ACs: ACs marked as unavailable
+     - Each AC shows all assemblies in tabular format under single header
+     - Assembly-level color grading based on attendance logic flags
+  5. Legacy Zone-wise detailed breakdown sections (fallback)
   - Uses vertical-specific fetch functions for WTM:
     - `fetchZonesForWTM()`: Filters zones by parentVertical='wtm' AND role='zonal-incharge'
     - `fetchAssemblyCoordinatorsForWTM()`: Excludes shakti-abhiyaan collection source
@@ -633,8 +710,8 @@ The Generate Report module provides comprehensive PDF report generation for the 
 - **Helper Functions**:
   - **buildACRosterForVertical**: Builds complete AC roster for all assemblies
     - Uses `fetchZonesForWTM()` and `fetchAssemblyCoordinatorsForWTM()` for WTM vertical
-    - Uses regular `fetchZones()` and `fetchAssemblyCoordinators()` for other verticals
-    - Batches fetchAssemblyCoordinators() calls for performance
+    - Uses `fetchZones()` and `fetchAssemblyCoordinatorsForShakti()` for Shakti vertical
+    - [Deprecated] `fetchAssemblyCoordinators()` kept only for legacy/non-dashboard scripts; avoid in new UI paths
     - Returns Map<assembly, AC[]> for pre-seeding
   - **addActivityToAssemblyAc**: Associates activities with correct assembly-AC combination
     - Does NOT use coordinatorName from activities (prevents participant name contamination)
@@ -757,7 +834,7 @@ interface LocalReportData {
 }
 
 interface ZoneReportData {
-  id: string;                   // Zone document ID
+  id: string;                   // Zone ID (Document ID)
   name: string;                  // Zone display name
   inchargeName: string;          // Zone incharge name
   metrics: CumulativeMetrics;    // Aggregated zone metrics
@@ -1061,7 +1138,9 @@ console.log(`[functionName] Chunking ${items.length} items into ${chunks.length}
 | Get meeting details | `fetchDetailedMeetings` | fetchHierarchicalData.ts |
 | Get SLP activities | `getSlp[Activity]Activity` | fetchFirebaseData.ts |
 | Get zones | `fetchZones` | fetchHierarchicalData.ts |
-| Get ACs for assembly | `fetchAssemblyCoordinators` | fetchHierarchicalData.ts |
+| Get ACs for assembly (WTM) | `fetchAssemblyCoordinatorsForWTM` | fetchHierarchicalData.ts |
+| Get ACs for assembly (Shakti) | `fetchAssemblyCoordinatorsForShakti` | fetchHierarchicalData.ts |
+| [Deprecated] Generic AC fetch | `fetchAssemblyCoordinators` | fetchHierarchicalData.ts |
 | Get SLPs for AC | `fetchSlpsForAc` | fetchHierarchicalData.ts |
 | Generate zone report | `aggregateReportData` | reportDataAggregation.ts |
 | Transform zone data | `transformZoneData` | reportDataAggregation.ts |
@@ -1093,6 +1172,6 @@ When modifying the codebase:
 
 ---
 
-*Last Updated: January 2025*
-*Version: 1.3.0*
-*Changes: Added PDF report UI refinements documentation*
+*Last Updated: September 2025*
+*Version: 1.3.1*
+*Changes: Deprecated `fetchAssemblyCoordinators`; documented vertical-specific AC fetch functions*
