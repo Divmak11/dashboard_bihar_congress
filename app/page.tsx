@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "./utils/firebase";
+import { auth, db } from "./utils/firebase";
 import { getWtmSlpSummary, getCurrentAdminUser } from "./utils/fetchFirebaseData";
 import { WtmSlpSummary } from "../models/types";
 import LogoutButton from "../components/LogoutButton";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc, serverTimestamp, collection, getDocs } from "firebase/firestore";
 
 // Interface for homepage card metrics
 interface DashboardCardMetrics {
@@ -21,6 +23,33 @@ export default function HomePage() {
     isLoading: true
   });
   const [role, setRole] = useState<string | null>(null);
+  const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
+  const [createAccountData, setCreateAccountData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    name: '',
+    role: 'dept-head' as 'dept-head' | 'zonal-incharge'
+  });
+  const [selectedAssemblies, setSelectedAssemblies] = useState<string[]>([]);
+  const [assemblies, setAssemblies] = useState<string[]>([]);
+  const [assemblySearch, setAssemblySearch] = useState('');
+  const [createAccountLoading, setCreateAccountLoading] = useState(false);
+  const [createAccountError, setCreateAccountError] = useState('');
+
+  // Fetch assemblies for Create Account modal
+  useEffect(() => {
+    async function fetchAssemblies() {
+      try {
+        const response = await fetch('/data/bihar_assemblies.json');
+        const data = await response.json();
+        setAssemblies(data);
+      } catch (error) {
+        console.error('Error fetching assemblies:', error);
+      }
+    }
+    fetchAssemblies();
+  }, []);
 
   // Fetch data based on user role when user auth state changes
   useEffect(() => {
@@ -158,8 +187,19 @@ export default function HomePage() {
   return (
     <div className="max-w-5xl mx-auto p-8 grid gap-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-center flex-grow">WTM Dashboard</h1>
-        <div className="flex-shrink-0">
+        <h1 className="text-3xl font-bold">WTM Dashboard</h1>
+        <div className="flex items-center gap-4">
+          {role === 'admin' && (
+            <button
+              onClick={() => setShowCreateAccountModal(true)}
+              className="px-6 py-2 bg-green-600 text-white rounded-lg shadow-lg hover:bg-green-700 transition-all duration-200 font-semibold text-sm flex items-center gap-2 border border-green-500 hover:shadow-xl"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Create Account
+            </button>
+          )}
           <LogoutButton />
         </div>
       </div>
@@ -245,6 +285,214 @@ export default function HomePage() {
           </div>
         ))}
       </div>
+
+      {/* Create Account Modal */}
+      {showCreateAccountModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Create New Account</h2>
+                <button
+                  onClick={() => {
+                    setShowCreateAccountModal(false);
+                    setCreateAccountData({ email: '', password: '', confirmPassword: '', name: '', role: 'dept-head' });
+                    setSelectedAssemblies([]);
+                    setAssemblySearch('');
+                    setCreateAccountError('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {createAccountError && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                  {createAccountError}
+                </div>
+              )}
+
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                setCreateAccountError('');
+
+                // Validation
+                if (!createAccountData.email || !createAccountData.password || !createAccountData.confirmPassword || !createAccountData.name.trim()) {
+                  setCreateAccountError('Please fill in all fields');
+                  return;
+                }
+                if (createAccountData.password !== createAccountData.confirmPassword) {
+                  setCreateAccountError('Passwords do not match');
+                  return;
+                }
+                if (selectedAssemblies.length === 0) {
+                  setCreateAccountError('Please select at least one assembly');
+                  return;
+                }
+
+                setCreateAccountLoading(true);
+                try {
+                  // Create user in Firebase Auth
+                  const userCredential = await createUserWithEmailAndPassword(auth, createAccountData.email, createAccountData.password);
+                  const newUser = userCredential.user;
+
+                  // Add user to admin-users collection
+                  await setDoc(doc(db, 'admin-users', newUser.uid), {
+                    id: newUser.uid,
+                    email: newUser.email,
+                    name: createAccountData.name.trim(),
+                    assemblies: selectedAssemblies,
+                    role: createAccountData.role,
+                    parentVertical: 'wtm',
+                    createdAt: serverTimestamp()
+                  });
+
+                  // Reset form and close modal
+                  setCreateAccountData({ email: '', password: '', confirmPassword: '', name: '', role: 'dept-head' });
+                  setSelectedAssemblies([]);
+                  setAssemblySearch('');
+                  setShowCreateAccountModal(false);
+                  alert('Account created successfully!');
+                } catch (error: any) {
+                  setCreateAccountError(error.message || 'Failed to create account. Please try again.');
+                } finally {
+                  setCreateAccountLoading(false);
+                }
+              }} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={createAccountData.email}
+                    onChange={(e) => setCreateAccountData(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    value={createAccountData.name}
+                    onChange={(e) => setCreateAccountData(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                  <select
+                    value={createAccountData.role}
+                    onChange={(e) => setCreateAccountData(prev => ({ ...prev, role: e.target.value as 'dept-head' | 'zonal-incharge' }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="dept-head">Department Head</option>
+                    <option value="zonal-incharge">Zonal Incharge</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                  <input
+                    type="password"
+                    value={createAccountData.password}
+                    onChange={(e) => setCreateAccountData(prev => ({ ...prev, password: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                  <input
+                    type="password"
+                    value={createAccountData.confirmPassword}
+                    onChange={(e) => setCreateAccountData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Assemblies</label>
+                  <input
+                    type="text"
+                    placeholder="Search assemblies..."
+                    value={assemblySearch}
+                    onChange={(e) => setAssemblySearch(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent mb-2"
+                  />
+                  <div className="max-h-32 overflow-y-auto border border-gray-300 rounded-md p-2">
+                    {assemblies.length === 0 ? (
+                      <p className="text-gray-500 text-sm">Loading assemblies...</p>
+                    ) : (
+                      (() => {
+                        const filteredAssemblies = assemblies.filter(assembly =>
+                          assembly.toLowerCase().includes(assemblySearch.toLowerCase())
+                        );
+                        return filteredAssemblies.length === 0 ? (
+                          <p className="text-gray-500 text-sm">No assemblies found matching &quot;{assemblySearch}&quot;</p>
+                        ) : (
+                          filteredAssemblies.map((assembly) => (
+                            <label key={assembly} className="flex items-center space-x-2 py-1 hover:bg-gray-50 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={selectedAssemblies.includes(assembly)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedAssemblies(prev => [...prev, assembly]);
+                                  } else {
+                                    setSelectedAssemblies(prev => prev.filter(a => a !== assembly));
+                                  }
+                                }}
+                                className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                              />
+                              <span className="text-sm text-gray-700">{assembly}</span>
+                            </label>
+                          ))
+                        );
+                      })()
+                    )}
+                  </div>
+                  {selectedAssemblies.length > 0 && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      {selectedAssemblies.length} assembly(ies) selected
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateAccountModal(false);
+                      setCreateAccountData({ email: '', password: '', confirmPassword: '', name: '', role: 'dept-head' });
+                      setSelectedAssemblies([]);
+                      setAssemblySearch('');
+                      setCreateAccountError('');
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={createAccountLoading}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {createAccountLoading ? 'Creating...' : 'Create Account'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

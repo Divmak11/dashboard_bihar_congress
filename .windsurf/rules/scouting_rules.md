@@ -1,0 +1,29 @@
+---
+trigger: manual
+---
+
+#Scouting/Thinking Rules:
+
+
+For when analysing codebase for logical planning involving structure, files and edge cases consideration : 
+
+
+Guidelines:
+1. Output the summary of the understanding of the task in short.
+2. Analyse the code base thoroughly by referring (.windsurf/CodeMap.md) to check which files and code segements needs to be updated.
+3. Consider all cases and all existing implementation before suggesting any new changes
+4. Plan for the given requirement, according to the analysed data. 
+5. Check for places that require updation with the plan proposed.
+6. Summarise the plan in detail. 
+
+
+PREVENTIONS: 
+- Avoid refactoring or implementing anything.
+
+
+
+
+DELIVERABLES:
+- Summary of Required Task and changes required.
+- Your plan with short description of "Why" and "How" its better.
+- Next Steps if any to be done or check.
