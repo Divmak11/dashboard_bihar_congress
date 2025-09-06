@@ -3,6 +3,7 @@ import { aggregateReportData, createDateFilter, DateFilter } from '../utils/repo
 import { generateAndDownloadPDF } from '../utils/pdfGenerator';
 import { ReportProgressService, ProgressState } from '../services/reportProgressService';
 import { AdminUser } from '../../models/types';
+import { ReportFormat } from '../../models/reportTypes';
 
 export interface ReportGenerationOptions {
   dateFilter: {
@@ -13,6 +14,7 @@ export interface ReportGenerationOptions {
   vertical: 'wtm-slp' | 'shakti-abhiyaan';
   adminUser?: AdminUser | null;
   isLastDayFilter?: boolean;
+  format?: ReportFormat;
 }
 
 export interface UseReportGenerationReturn {
@@ -71,7 +73,8 @@ export function useReportGeneration(): UseReportGenerationReturn {
         options.vertical === 'shakti-abhiyaan' ? 'shakti-abhiyaan' : 'wtm-slp',
         {
           adminUser: options.adminUser,
-          isLastDayFilter: options.isLastDayFilter
+          isLastDayFilter: options.isLastDayFilter,
+          format: options.format || 'ac-wise'
         }
       );
 

@@ -10,7 +10,9 @@ import {
   ReportMetric,
   ACPerformanceSections,
   ACWithAssemblies,
-  ACAssemblyRow
+  ACAssemblyRow,
+  ZoneWisePerformanceSections,
+  ZoneWithPerformanceSections
 } from '../../models/reportTypes';
 import { 
   PDF_STYLES, 
@@ -546,7 +548,122 @@ const DetailedActivitiesSection: React.FC<{ activities: DetailedActivity[] }> = 
   );
 };
 
-// Zone-wise Summary Component with corrected AC counting
+/**
+ * Zone-wise Performance Section Component - New Zone-wise Layout
+ */
+interface ZoneWisePerformanceSectionProps {
+  sections: ZoneWisePerformanceSections;
+}
+
+const ZoneWisePerformanceSection: React.FC<ZoneWisePerformanceSectionProps> = ({ sections }) => {
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Zone-wise AC Performance Report</Text>
+      
+      {sections.zones.map((zone, index) => (
+        <ZonePerformanceComponent key={`zone-${zone.zoneNumber}`} zone={zone} />
+      ))}
+    </View>
+  );
+};
+
+/**
+ * Zone-specific AC Performance Section Component
+ * Designed specifically for zone-wise layout without nesting issues
+ */
+interface ZoneACPerformanceSectionProps {
+  title: string;
+  acs: ACWithAssemblies[];
+  zoneColor: 'green' | 'orange' | 'red' | 'unavailable';
+}
+
+const ZoneACPerformanceSection: React.FC<ZoneACPerformanceSectionProps> = ({ title, acs, zoneColor }) => {
+  const getTitleStyle = () => {
+    const baseStyle = { ...styles.performanceSectionTitle, marginTop: 5, marginBottom: 5 };
+    switch (zoneColor) {
+      case 'green':
+        return { ...baseStyle, ...styles.greenSectionTitle };
+      case 'orange':
+        return { ...baseStyle, ...styles.orangeSectionTitle };
+      case 'red':
+        return { ...baseStyle, ...styles.redSectionTitle };
+      case 'unavailable':
+        return { ...baseStyle, ...styles.unavailableSectionTitle };
+      default:
+        return baseStyle;
+    }
+  };
+
+  if (acs.length === 0) {
+    return (
+      <View style={{ marginBottom: 10 }}>
+        <Text style={getTitleStyle()}>{title}</Text>
+        <View style={{ padding: 10, alignItems: 'center', backgroundColor: '#f9fafb' }}>
+          <Text style={{ fontSize: 9, color: '#6b7280' }}>
+            No ACs in this performance zone
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ marginBottom: 10 }}>
+      <Text style={getTitleStyle()}>{title}</Text>
+      {acs.map((ac, index) => (
+        <ACWithAssembliesComponent key={ac.acId} ac={ac} />
+      ))}
+    </View>
+  );
+};
+
+/**
+ * Individual Zone Performance Component
+ */
+interface ZonePerformanceComponentProps {
+  zone: ZoneWithPerformanceSections;
+}
+
+const ZonePerformanceComponent: React.FC<ZonePerformanceComponentProps> = ({ zone }) => {
+  return (
+    <View style={styles.zoneContainer}>
+      <Text style={styles.zoneTitle}>
+        Zone {zone.zoneNumber}: {zone.zoneName}
+        {zone.zoneIncharge && zone.zoneIncharge !== 'N/A' && ` (${zone.zoneIncharge})`}
+      </Text>
+      
+      {/* Green Zone within this geographical zone */}
+      <ZoneACPerformanceSection 
+        title="High Performance ACs (Green)" 
+        acs={zone.acPerformanceSections.greenZone} 
+        zoneColor="green" 
+      />
+      
+      {/* Orange Zone within this geographical zone */}
+      <ZoneACPerformanceSection 
+        title="Moderate Performance ACs (Orange)" 
+        acs={zone.acPerformanceSections.orangeZone} 
+        zoneColor="orange" 
+      />
+      
+      {/* Red Zone within this geographical zone */}
+      <ZoneACPerformanceSection 
+        title="Poor Performance ACs (Red)" 
+        acs={zone.acPerformanceSections.redZone} 
+        zoneColor="red" 
+      />
+      
+      {/* Unavailable ACs within this geographical zone */}
+      <ZoneACPerformanceSection 
+        title="Unavailable ACs" 
+        acs={zone.acPerformanceSections.unavailable} 
+        zoneColor="unavailable" 
+      />
+    </View>
+  );
+};
+
+// Enhanced Error Boundary Component with corrected AC counting
 const ZoneWiseSummary = ({ zones }: { zones: ZoneData[] }) => {
   // Calculate corrected metrics for each zone
   const zoneMetrics = zones.map(zone => {
@@ -679,8 +796,12 @@ const PDFReport: React.FC<PDFReportProps> = ({ data }) => {
             </SafeComponent>
           )}
           
-          {/* New AC Performance Report Section - AC-wise Layout */}
-          {data.acPerformanceSections ? (
+          {/* AC Performance Report Section - Support both AC-wise and Zone-wise formats */}
+          {(data as any).zoneWisePerformanceSections ? (
+            <SafeComponent componentName="ZoneWisePerformanceSection" data={(data as any).zoneWisePerformanceSections}>
+              <ZoneWisePerformanceSection sections={(data as any).zoneWisePerformanceSections} />
+            </SafeComponent>
+          ) : data.acPerformanceSections ? (
             <SafeComponent componentName="ACPerformanceSection" data={data.acPerformanceSections}>
               <ACPerformanceSection sections={data.acPerformanceSections} />
             </SafeComponent>

@@ -643,11 +643,13 @@ The Generate Report module provides comprehensive PDF report generation for the 
 
 ###### **Report Data Aggregation** (`app/utils/reportDataAggregation.ts`)
 - **Main Function**: `aggregateReportData(dateFilter, vertical, options?)`
+- **New Feature**: **Report Format Selection** - Supports both 'ac-wise' (default) and 'zone-wise' formats
 - **Critical Logic**:
   - **Assembly-First Aggregation**: Groups by Assembly-AC combinations to avoid double counting
   - **AC Roster Pre-Seeding**: Builds complete roster before aggregation, includes placeholder for assemblies with no ACs
     - **AC Name Resolution**: Uses ONLY 'name' property from users collection (no displayName/uid fallback)
     - **AC-wise Performance Sections**: Groups ACs by performance zones (Green/Orange/Red/Unavailable)
+    - **Zone-wise Performance Sections**: Groups ACs by geographical zones first, then by performance zones within each zone
     - **Orphan Assembly Handling**: Creates "Unassigned Areas" zone for unmapped assemblies
     - **Date Filtering**: Adjusts "All Time" to 6 months to avoid Firestore limits
     - **Query Optimization**: Conditional fetching, batch processing, chunking for >10 assemblies
@@ -659,9 +661,11 @@ The Generate Report module provides comprehensive PDF report generation for the 
   5. Process activities grouped by assembly-AC key (`${assembly}::${acId}`)
   6. Resolve AC names from users collection
   7. Aggregate metrics at assembly and zone levels
-  8. Generate AC-wise performance sections using generateACPerformanceSections
+  8. Generate performance sections based on format:
+     - AC-wise: Use `generateACPerformanceSections()` to group by performance zones
+     - Zone-wise: Use `generateZoneWisePerformanceSections()` to group by geographical zones first
   9. Handle orphan assemblies as "Unassigned Areas"
-  10. Return structured LocalReportData object with acPerformanceSections
+  10. Return structured LocalReportData object with acPerformanceSections or zoneWisePerformanceSections
 - **Performance Zones**:
   - Active ACs (green): meetings >= 7
   - Moderate ACs (orange): meetings >= 5 and < 7
@@ -676,17 +680,28 @@ The Generate Report module provides comprehensive PDF report generation for the 
   - Automatic page breaks and formatting
   - Enhanced font sizes for better readability
   - Metric value highlighting (bold for >0, dimmed for 0)
+  - **Dual Format Support**: Conditionally renders AC-wise or Zone-wise layouts
 - **PDF Structure**:
   1. Report header with title and date range
   2. Executive summary with overall metrics
   3. Zone-wise Overview table with deduplicated AC counts
-  4. **AC Performance Report Section** (New AC-wise Layout):
+  4. **Performance Report Section** (Format-dependent):
+     
+     **AC-wise Format** (`ACPerformanceSection`):
      - High Performance Zone (Green): ACs with meetings ≥ 7
      - Moderate Performance Zone (Orange): ACs with meetings ≥ 5 and < 7
      - Poor Performance Zone (Red): ACs with meetings < 5
      - Unavailable ACs: ACs marked as unavailable
      - Each AC shows all assemblies in tabular format under single header
      - Assembly-level color grading based on attendance logic flags
+     
+     **Zone-wise Format** (`ZoneWisePerformanceSection`):
+     - Groups ACs by geographical zones first
+     - Within each zone, shows performance categories (Green/Orange/Red/Unavailable)
+     - Each zone rendered with `ZonePerformanceComponent` 
+     - Zone headers show zone number, name, and incharge information
+     - Same AC assembly tables but organized by geographical grouping first
+     
   5. Legacy Zone-wise detailed breakdown sections (fallback)
   - Uses vertical-specific fetch functions for WTM:
     - `fetchZonesForWTM()`: Filters zones by parentVertical='wtm' AND role='zonal-incharge'
