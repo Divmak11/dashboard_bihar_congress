@@ -440,6 +440,26 @@ export const PDF_STYLES = StyleSheet.create({
   section: {
     marginBottom: 20,
   },
+  
+  // Zone-wise report styles
+  zoneContainer: {
+    marginBottom: 15,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 4,
+    backgroundColor: '#f9fafb'
+  },
+  
+  zoneTitle: {
+    fontSize: 12,
+    fontWeight: 'bold' as const,
+    color: '#1f2937',
+    marginBottom: 10,
+    backgroundColor: '#e5e7eb',
+    padding: 8,
+    borderRadius: 3
+  },
   summaryTable: {
     marginTop: 10,
     borderWidth: 1,

@@ -20,6 +20,7 @@ import {
 interface ReportGenerationOptions {
   adminUser?: AdminUser | null;
   isLastDayFilter?: boolean;
+  format?: import('../../models/reportTypes').ReportFormat;
 }
 import { applyAttendanceAndAssemblyLogic } from './reportAttendanceLogic';
 import { 
@@ -1480,14 +1481,24 @@ export async function aggregateReportData(
     // Transform zone data to new format - always include assembly data
     const transformedZones = transformZoneData(zoneReportData);
     
-    // Generate AC-wise performance sections
-    const acPerformanceSections = generateACPerformanceSections(assemblyAcMap);
+    // Generate performance sections based on format
+    let acPerformanceSections: any = undefined;
+    let zoneWisePerformanceSections: any = undefined;
+
+    if (options?.format === 'zone-wise') {
+      console.log('[aggregateReportData] Generating zone-wise performance sections');
+      zoneWisePerformanceSections = generateZoneWisePerformanceSections(assemblyAcMap);
+    } else {
+      console.log('[aggregateReportData] Generating AC-wise performance sections (default)');
+      acPerformanceSections = generateACPerformanceSections(assemblyAcMap);
+    }
 
     const reportData: any = {
       header: reportHeader,
       summary: executiveSummary,
       zones: transformedZones,
       acPerformanceSections,
+      zoneWisePerformanceSections,
       metadata: {
         totalRecords: assemblyAcMap.size, // Total assembly-AC combinations
         processingTime: Date.now() - startTime,
@@ -1802,6 +1813,194 @@ function generateACPerformanceSections(assemblyAcMap: Map<string, any>): import(
     redZone,
     unavailable
   };
+}
+
+/**
+ * Generate Zone-wise performance sections for new report format
+ * Groups ACs by zones first, then by performance within each zone
+ */
+function generateZoneWisePerformanceSections(assemblyAcMap: Map<string, any>): import('../../models/reportTypes').ZoneWisePerformanceSections {
+  const zoneDataMap = new Map<string, {
+    zoneNumber: number;
+    zoneName: string;
+    zoneIncharge: string;
+    greenZone: import('../../models/reportTypes').ACWithAssemblies[];
+    orangeZone: import('../../models/reportTypes').ACWithAssemblies[];
+    redZone: import('../../models/reportTypes').ACWithAssemblies[];
+    unavailable: import('../../models/reportTypes').ACWithAssemblies[];
+  }>();
+
+  const acDataMap = new Map<string, {
+    acId: string;
+    acName: string;
+    zoneNumber: number;
+    zoneName: string;
+    zoneIncharge: string;
+    assemblies: import('../../models/reportTypes').ACAssemblyRow[];
+    primaryPerformance: 'high' | 'moderate' | 'poor' | 'unavailable';
+  }>();
+
+  // First pass: Group assembly data by AC (same as AC-wise)
+  assemblyAcMap.forEach((acData, key) => {
+    const [assembly, acId] = key.split('::');
+    
+    if (acId === 'no-ac-assigned' || acId === 'unknown') {
+      return;
+    }
+
+    const zoneMatch = acData.zone?.match(/(\d+)/);
+    const zoneNumber = zoneMatch ? parseInt(zoneMatch[1]) : 0;
+    
+    let rowColor: 'high' | 'moderate' | 'poor' | 'white' = 'white';
+
+    const assemblyRow: import('../../models/reportTypes').ACAssemblyRow = {
+      assembly,
+      meetings: Number(acData.metrics.meetings) || 0,
+      onboarded: Number(acData.metrics.volunteers) || 0,
+      slps: Number(acData.metrics.slps) || 0,
+      forms: Number(acData.metrics.forms) || 0,
+      videos: Number(acData.metrics.acVideos) || 0,
+      waGroups: (Number(acData.metrics.assemblyWaGroups) || 0) + (Number(acData.metrics.centralWaGroups) || 0),
+      includeInColorGrading: (acData as any).includeInColorGrading !== false,
+      shouldBeRed: (acData as any).shouldBeRed,
+      isUnavailable: (acData as any).isUnavailable,
+      workStatus: (acData as any).workStatus,
+      rowColor
+    };
+
+    if (!acDataMap.has(acId)) {
+      acDataMap.set(acId, {
+        acId,
+        acName: acData.acName,
+        zoneNumber,
+        zoneName: acData.zone || 'Unknown Zone',
+        zoneIncharge: 'N/A',
+        assemblies: [],
+        primaryPerformance: 'poor'
+      });
+    }
+
+    acDataMap.get(acId)!.assemblies.push(assemblyRow);
+  });
+
+  // Second pass: Determine primary performance and apply row coloring
+  acDataMap.forEach((acData) => {
+    let primaryPerformance: 'high' | 'moderate' | 'poor' | 'unavailable' = 'poor';
+    
+    const isUnavailable = acData.assemblies.some(a => a.isUnavailable);
+    
+    if (isUnavailable) {
+      primaryPerformance = 'unavailable';
+    } else {
+      const workedAssemblies = acData.assemblies.filter(a => a.includeInColorGrading);
+      
+      if (workedAssemblies.length > 0) {
+        const maxMeetings = Math.max(...workedAssemblies.map(a => a.meetings));
+        
+        if (maxMeetings >= 7) {
+          primaryPerformance = 'high';
+        } else if (maxMeetings >= 5) {
+          primaryPerformance = 'moderate';
+        } else {
+          primaryPerformance = 'poor';
+        }
+      } else {
+        primaryPerformance = 'poor';
+      }
+    }
+
+    // Apply row coloring logic (same as AC-wise)
+    if (primaryPerformance === 'poor' || primaryPerformance === 'unavailable') {
+      acData.assemblies.forEach(assembly => {
+        assembly.rowColor = 'white';
+      });
+    } else {
+      const workedAssemblies = acData.assemblies.filter(a => a.includeInColorGrading && a.meetings > 0);
+      const primaryWorkAssembly = workedAssemblies.length > 0 
+        ? workedAssemblies.reduce((max, current) => current.meetings > max.meetings ? current : max)
+        : null;
+      
+      acData.assemblies.forEach(assembly => {
+        if (assembly.isUnavailable) {
+          assembly.rowColor = 'white';
+        } else if (primaryWorkAssembly && assembly.assembly === primaryWorkAssembly.assembly) {
+          if (assembly.meetings >= 7) {
+            assembly.rowColor = 'high';
+          } else if (assembly.meetings >= 5) {
+            assembly.rowColor = 'moderate';
+          } else {
+            assembly.rowColor = 'poor';
+          }
+        } else {
+          assembly.rowColor = 'white';
+        }
+      });
+    }
+
+    acData.primaryPerformance = primaryPerformance;
+
+    // Create AC with assemblies object
+    const acWithAssemblies: import('../../models/reportTypes').ACWithAssemblies = {
+      acId: acData.acId,
+      acName: acData.acName,
+      zoneNumber: acData.zoneNumber,
+      zoneName: acData.zoneName,
+      zoneIncharge: acData.zoneIncharge,
+      primaryPerformanceLevel: primaryPerformance,
+      totalAssemblies: acData.assemblies.length,
+      workedAssemblies: acData.assemblies.filter(a => a.includeInColorGrading).length,
+      assemblies: acData.assemblies.sort((a, b) => b.meetings - a.meetings)
+    };
+
+    // Group by zone first
+    const zoneKey = `${acData.zoneNumber}-${acData.zoneName}`;
+    if (!zoneDataMap.has(zoneKey)) {
+      zoneDataMap.set(zoneKey, {
+        zoneNumber: acData.zoneNumber,
+        zoneName: acData.zoneName,
+        zoneIncharge: acData.zoneIncharge,
+        greenZone: [],
+        orangeZone: [],
+        redZone: [],
+        unavailable: []
+      });
+    }
+
+    const zoneData = zoneDataMap.get(zoneKey)!;
+    
+    // Assign to performance zone within this geographical zone
+    switch (primaryPerformance) {
+      case 'high':
+        zoneData.greenZone.push(acWithAssemblies);
+        break;
+      case 'moderate':
+        zoneData.orangeZone.push(acWithAssemblies);
+        break;
+      case 'poor':
+        zoneData.redZone.push(acWithAssemblies);
+        break;
+      case 'unavailable':
+        zoneData.unavailable.push(acWithAssemblies);
+        break;
+    }
+  });
+
+  // Convert to final structure - array of zones with their performance sections
+  const zones = Array.from(zoneDataMap.values())
+    .sort((a, b) => a.zoneNumber - b.zoneNumber)
+    .map(zone => ({
+      zoneNumber: zone.zoneNumber,
+      zoneName: zone.zoneName,
+      zoneIncharge: zone.zoneIncharge,
+      acPerformanceSections: {
+        greenZone: zone.greenZone,
+        orangeZone: zone.orangeZone,
+        redZone: zone.redZone,
+        unavailable: zone.unavailable
+      }
+    }));
+
+  return { zones };
 }
 
 /**
