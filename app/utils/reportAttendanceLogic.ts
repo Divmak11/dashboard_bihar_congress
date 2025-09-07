@@ -74,8 +74,20 @@ export async function checkACAttendance(
     endDate.setUTCHours(23, 59, 59, 999);
     const endTimestamp = endDate.getTime();
     
+    // Calculate total expected days in the date range
+    const totalExpectedDays = Math.ceil((endTimestamp - startTimestamp) / (24 * 60 * 60 * 1000)) + 1;
+    
     console.log(`[checkACAttendance] Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
     console.log(`[checkACAttendance] Timestamp range: ${startTimestamp} to ${endTimestamp}`);
+    console.log(`[checkACAttendance] Total expected days: ${totalExpectedDays}`);
+    
+    // Track attendance records per AC
+    const acAttendanceCount = new Map<string, number>();
+    
+    // Initialize count for all ACs
+    acIds.forEach(acId => {
+      acAttendanceCount.set(acId, 0);
+    });
     
     // Process in chunks to avoid Firebase 'in' query limit of 10
     const chunks: string[][] = [];
@@ -101,21 +113,40 @@ export async function checkACAttendance(
         const createdAt = data.created_at;
         
         if (acId && createdAt) {
-          // Mark AC as unavailable if attendance record exists
-          attendanceMap.set(acId, {
-            acId,
-            isUnavailable: true,
-            attendanceDate: new Date(createdAt)
-          });
-          
-          console.log(`[checkACAttendance] AC ${acId} marked unavailable - attendance record found at ${new Date(createdAt).toISOString()}`);
+          // Count attendance records per AC
+          const currentCount = acAttendanceCount.get(acId) || 0;
+          acAttendanceCount.set(acId, currentCount + 1);
         }
       });
     }
     
+    // Apply inverted logic: Mark as unavailable only if attendance records exist for ALL days
+    acAttendanceCount.forEach((recordCount, acId) => {
+      const missingDays = totalExpectedDays - recordCount;
+      
+      if (missingDays > 0) {
+        // AC has missing days - mark as AVAILABLE (partial presence)
+        attendanceMap.set(acId, {
+          acId,
+          isUnavailable: false
+        });
+        console.log(`[checkACAttendance] AC ${acId} marked AVAILABLE - ${recordCount} records, ${missingDays} missing days (partial presence)`);
+      } else {
+        // AC has records for all days - mark as UNAVAILABLE (completely absent)
+        attendanceMap.set(acId, {
+          acId,
+          isUnavailable: true,
+          attendanceDate: new Date() // Use current date as fallback
+        });
+        console.log(`[checkACAttendance] AC ${acId} marked UNAVAILABLE - ${recordCount} records for all ${totalExpectedDays} days (completely absent)`);
+      }
+    });
+    
     // Log summary
     const unavailableCount = Array.from(attendanceMap.values()).filter(a => a.isUnavailable).length;
-    console.log(`[checkACAttendance] Attendance check complete: ${unavailableCount}/${acIds.length} ACs marked unavailable`);
+    const availableCount = acIds.length - unavailableCount;
+    console.log(`[checkACAttendance] Attendance check complete: ${availableCount} available, ${unavailableCount} unavailable out of ${acIds.length} ACs`);
+    console.log(`[checkACAttendance] Logic: Available = missing days > 0, Unavailable = records for all ${totalExpectedDays} days`);
     
   } catch (error) {
     console.error('[checkACAttendance] Error checking attendance:', error);

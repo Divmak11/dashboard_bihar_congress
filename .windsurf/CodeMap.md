@@ -815,12 +815,27 @@ if (uniqueAssemblies.length > 10) {
 - **fetchCumulativeMetrics()**: Fetches aggregated metrics
 - **fetchDetailedData()**: Fetches detailed activity data
 
+##### **Attendance Logic (Report System)**
+
+###### **checkACAttendance** (`app/utils/reportAttendanceLogic.ts`)
+- **Purpose**: Determines AC availability for report generation using inverted attendance logic
+- **New Logic**: AC marked "available" if ANY day is missing attendance records (partial presence)
+- **Previous Logic**: AC marked "unavailable" if ANY attendance record exists (binary approach)
+- **Implementation**:
+  - Calculates total expected days in date range
+  - Counts actual attendance records per AC 
+  - Inverted Decision: `missingDays > 0` = Available, `missingDays = 0` = Unavailable
+  - Supports multi-day scenarios with partial AC presence
+- **Impact**: More ACs included in performance grading, better reflection of actual work patterns
+- **Database**: Queries 'attendence' collection (note: misspelled collection name)
+
 ##### **Error Handling**
 1. **Missing AC Names**: Fallback to 'Unknown' or 'Pending-{id}'
 2. **Missing Assemblies**: Create "Unassigned Areas" zone
 3. **Firestore Limits**: Automatic chunking for > 10 assemblies
 4. **Date Range Issues**: 6-month limit for "All Time" filter
 5. **Role Validation**: Prevents non-admin report generation
+6. **Attendance Errors**: Defaults to all ACs available on database errors
 
 ##### **Performance Optimizations**
 1. **Conditional Fetching**: Only fetch detailed data for non-zero metrics
