@@ -18,12 +18,13 @@ Guidelines:
 
 
 PREVENTIONS: 
-- Avoid refactoring or implementing anything.
+- Strictly Avoid refactoring or implementing anything.
+- Strictly Avoid proposing or presenting any code changes.
 
 
 
 
 DELIVERABLES:
-- Summary of Required Task and changes required.
-- Your plan with short description of "Why" and "How" its better.
-- Next Steps if any to be done or check.
+- Summary of Required Task and changes required in natural language.
+- Your plan and next steps in natural language.
+- Answer "How" and "Why" its better if the task is comparing or indicating any comparison. 
