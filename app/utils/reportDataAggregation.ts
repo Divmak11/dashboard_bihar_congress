@@ -1258,16 +1258,21 @@ export async function aggregateReportData(
           (zoneData.metrics as any)[key] = currentValue + numValue;
         });
       } else {
-        // Assembly doesn't belong to any zone (shouldn't happen, but handle gracefully)
-        console.log(`[aggregateReportData] Warning: Assembly '${assemblyName}' not found in any zone`);
-        // Create a default zone for unassigned assemblies
-        if (!zoneDataMap.has('unassigned')) {
-          const unassignedZone: ZoneReportData = {
-            id: 'unassigned',
-            name: 'Unassigned Areas',
-            inchargeName: 'Unassigned',
-            assemblies: [],
-            metrics: {
+        // Assembly doesn't belong to any zone - only create unassigned zone if assembly has actual data
+        const hasData = assemblyData.coordinators.some(ac => 
+          Object.values(ac.metrics).some(val => Number(val) > 0)
+        );
+        
+        if (hasData) {
+          console.log(`[aggregateReportData] Warning: Assembly '${assemblyName}' with data not found in any zone`);
+          // Create a default zone for unassigned assemblies with data
+          if (!zoneDataMap.has('unassigned')) {
+            const unassignedZone: ZoneReportData = {
+              id: 'unassigned',
+              name: 'Unassigned Areas',
+              inchargeName: 'Unassigned',
+              assemblies: [],
+              metrics: {
               meetings: 0,
               volunteers: 0,
               slps: 0,
@@ -1288,22 +1293,25 @@ export async function aggregateReportData(
             }
           };
           zoneDataMap.set('unassigned', unassignedZone);
+          }
+          
+          const unassignedZone = zoneDataMap.get('unassigned')!;
+          unassignedZone.assemblies.push({
+            id: assemblyData.assembly,
+            name: assemblyData.assembly,
+            coordinators: assemblyData.coordinators,
+            metrics: assemblyData.metrics
+          });
+          
+          // Aggregate metrics for unassigned zone
+          Object.keys(assemblyData.metrics).forEach(key => {
+            const numValue = Number(assemblyData.metrics[key as keyof CumulativeMetrics]) || 0;
+            const currentValue = Number(unassignedZone.metrics[key as keyof CumulativeMetrics]) || 0;
+            (unassignedZone.metrics as any)[key] = currentValue + numValue;
+          });
+        } else {
+          console.log(`[aggregateReportData] Skipping assembly '${assemblyName}' - not in zone and has no data`);
         }
-        
-        const unassignedZone = zoneDataMap.get('unassigned')!;
-        unassignedZone.assemblies.push({
-          id: assemblyData.assembly,
-          name: assemblyData.assembly,
-          coordinators: assemblyData.coordinators,
-          metrics: assemblyData.metrics
-        });
-        
-        // Aggregate metrics for unassigned zone
-        Object.keys(assemblyData.metrics).forEach(key => {
-          const numValue = Number(assemblyData.metrics[key as keyof CumulativeMetrics]) || 0;
-          const currentValue = Number(unassignedZone.metrics[key as keyof CumulativeMetrics]) || 0;
-          (unassignedZone.metrics as any)[key] = currentValue + numValue;
-        });
       }
     }
     
@@ -1660,9 +1668,21 @@ function generateACPerformanceSections(assemblyAcMap: Map<string, any>): import(
       return;
     }
 
+    // Skip entries without valid zone information
+    if (!acData.zone || acData.zone === 'Unknown Zone') {
+      console.log(`[generateACPerformanceSections] Skipping AC ${acData.acName} (${acId}) - missing zone information`);
+      return;
+    }
+
     // Extract zone information
     const zoneMatch = acData.zone?.match(/(\d+)/);
-    const zoneNumber = zoneMatch ? parseInt(zoneMatch[1]) : 0;
+    const zoneNumber = zoneMatch ? parseInt(zoneMatch[1]) : null;
+    
+    // Skip if zone number cannot be extracted
+    if (zoneNumber === null || zoneNumber === 0) {
+      console.log(`[generateACPerformanceSections] Skipping AC ${acData.acName} (${acId}) - invalid zone number`);
+      return;
+    }
     
     // Initialize row color - will be determined later based on AC's overall performance
     let rowColor: 'high' | 'moderate' | 'poor' | 'white' = 'white';
@@ -1689,7 +1709,7 @@ function generateACPerformanceSections(assemblyAcMap: Map<string, any>): import(
         acId,
         acName: acData.acName,
         zoneNumber,
-        zoneName: acData.zone || 'Unknown Zone',
+        zoneName: acData.zone, // Already validated to exist
         zoneIncharge: 'N/A', // Will be updated if available
         assemblies: [],
         primaryPerformance: 'poor' // Will be determined after all assemblies are processed
@@ -1707,6 +1727,12 @@ function generateACPerformanceSections(assemblyAcMap: Map<string, any>): import(
   const unavailable: import('../../models/reportTypes').ACWithAssemblies[] = [];
 
   acDataMap.forEach((acData) => {
+    // Skip Unknown ACs without valid name
+    if (acData.acName === 'Unknown' || acData.acName.startsWith('Pending-')) {
+      console.log(`[generateACPerformanceSections] Skipping unknown AC: ${acData.acName}`);
+      return;
+    }
+
     // Determine AC's primary performance level based on ALL assemblies
     let primaryPerformance: 'high' | 'moderate' | 'poor' | 'unavailable' = 'poor';
     
@@ -1848,8 +1874,20 @@ function generateZoneWisePerformanceSections(assemblyAcMap: Map<string, any>): i
       return;
     }
 
+    // Skip entries without valid zone information
+    if (!acData.zone || acData.zone === 'Unknown Zone') {
+      console.log(`[generateZoneWisePerformanceSections] Skipping AC ${acData.acName} (${acId}) - missing zone information`);
+      return;
+    }
+
     const zoneMatch = acData.zone?.match(/(\d+)/);
-    const zoneNumber = zoneMatch ? parseInt(zoneMatch[1]) : 0;
+    const zoneNumber = zoneMatch ? parseInt(zoneMatch[1]) : null;
+    
+    // Skip if zone number cannot be extracted
+    if (zoneNumber === null || zoneNumber === 0) {
+      console.log(`[generateZoneWisePerformanceSections] Skipping AC ${acData.acName} (${acId}) - invalid zone number`);
+      return;
+    }
     
     let rowColor: 'high' | 'moderate' | 'poor' | 'white' = 'white';
 
@@ -1873,7 +1911,7 @@ function generateZoneWisePerformanceSections(assemblyAcMap: Map<string, any>): i
         acId,
         acName: acData.acName,
         zoneNumber,
-        zoneName: acData.zone || 'Unknown Zone',
+        zoneName: acData.zone, // Already validated to exist
         zoneIncharge: 'N/A',
         assemblies: [],
         primaryPerformance: 'poor'
@@ -1885,6 +1923,12 @@ function generateZoneWisePerformanceSections(assemblyAcMap: Map<string, any>): i
 
   // Second pass: Determine primary performance and apply row coloring
   acDataMap.forEach((acData) => {
+    // Skip Unknown ACs without valid name
+    if (acData.acName === 'Unknown' || acData.acName.startsWith('Pending-')) {
+      console.log(`[generateZoneWisePerformanceSections] Skipping unknown AC: ${acData.acName}`);
+      return;
+    }
+
     let primaryPerformance: 'high' | 'moderate' | 'poor' | 'unavailable' = 'poor';
     
     const isUnavailable = acData.assemblies.some(a => a.isUnavailable);
