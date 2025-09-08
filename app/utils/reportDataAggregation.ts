@@ -1293,15 +1293,15 @@ export async function aggregateReportData(
             }
           };
           zoneDataMap.set('unassigned', unassignedZone);
-        }
+          }
           
           const unassignedZone = zoneDataMap.get('unassigned')!;
           unassignedZone.assemblies.push({
-          id: assemblyData.assembly,
-          name: assemblyData.assembly,
-          coordinators: assemblyData.coordinators,
-          metrics: assemblyData.metrics
-        });
+            id: assemblyData.assembly,
+            name: assemblyData.assembly,
+            coordinators: assemblyData.coordinators,
+            metrics: assemblyData.metrics
+          });
           
           // Aggregate metrics for unassigned zone
           Object.keys(assemblyData.metrics).forEach(key => {
