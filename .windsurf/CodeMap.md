@@ -1339,6 +1339,9 @@ YouTube influencer and campaign analytics module with independent Firebase insta
 4. **fetchVideoStatsFromLinks()** (fetchYoutubeData.ts): Extracts video IDs from links and fetches YouTube metrics
 5. **computeOverviewAggregates()** (fetchYoutubeData.ts): Aggregates data for overview dashboard
 
+### UI/UX Fixes:
+- **Modal Overlays**: Fixed all modal backgrounds from solid black (`bg-black bg-opacity-50`) to modern blurred effect (`bg-black/20 backdrop-blur-sm`) across all components
+
 ### Date Filtering
 - **Two Modes**: 
   - `entries`: Filter by `createdAt` (when data was entered)
