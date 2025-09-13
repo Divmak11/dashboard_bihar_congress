@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db } from "../utils/firebase";
 import { getWtmSlpSummary, getCurrentAdminUser } from "../utils/fetchFirebaseData";
@@ -29,6 +30,8 @@ export default function HomePage() {
   });
   const [role, setRole] = useState<string | null>(null);
   const [cacheInitialized, setCacheInitialized] = useState(false);
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
+  const router = useRouter();
   const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
   const [createAccountData, setCreateAccountData] = useState({
     email: '',
@@ -306,9 +309,12 @@ export default function HomePage() {
       {/* All cards in a single grid for alignment */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Ravi Pandit card with real data and dashboard link */}
-        <Link
-          href="/wtm-slp-new"
-          className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-red-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group"
+        <div
+          onClick={() => {
+            setNavigatingTo('/wtm-slp-new');
+            router.push('/wtm-slp-new');
+          }}
+          className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-red-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
         >
           <div className="flex flex-col items-center mb-2 gap-1">
             <h2 className="text-xl font-bold text-center group-hover:text-red-700 transition">WTM-SLP</h2>
@@ -346,13 +352,25 @@ export default function HomePage() {
               </>
             )}
           </div>
-        </Link>
+          {/* Loading overlay for navigation */}
+          {navigatingTo === '/wtm-slp-new' && (
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+              <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-red-500 border-t-transparent"></div>
+                <span className="text-gray-700 font-medium">Loading WTM-SLP...</span>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* WTM-Youtube card - only visible to admin and dept-head */}
         {hasYoutubeAccess ? (
-          <Link
-            href="/wtm-youtube"
-            className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-indigo-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group"
+          <div
+            onClick={() => {
+              setNavigatingTo('/wtm-youtube');
+              router.push('/wtm-youtube');
+            }}
+            className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-indigo-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
           >
             <div className="flex flex-col items-center mb-2 gap-1">
               <h2 className="text-xl font-bold text-center group-hover:text-indigo-700 transition">WTM-Youtube</h2>
@@ -390,7 +408,16 @@ export default function HomePage() {
                 </>
               )}
             </div>
-          </Link>
+            {/* Loading overlay for navigation */}
+            {navigatingTo === '/wtm-youtube' && (
+              <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-500 border-t-transparent"></div>
+                  <span className="text-gray-700 font-medium">Loading WTM-Youtube...</span>
+                </div>
+              </div>
+            )}
+          </div>
         ) : null}
 
         {/* COMMENTED OUT: Coming Soon cards as requested by user 

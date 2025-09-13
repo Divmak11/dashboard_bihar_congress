@@ -1341,6 +1341,7 @@ YouTube influencer and campaign analytics module with independent Firebase insta
 
 ### UI/UX Fixes:
 - **Modal Overlays**: Fixed all modal backgrounds from solid black (`bg-black bg-opacity-50`) to modern blurred effect (`bg-black/20 backdrop-blur-sm`) across all components
+- **Navigation Loading**: Added loading indicators for vertical card navigation to prevent perceived app freeze during route transitions
 
 ### Date Filtering
 - **Two Modes**: 
