@@ -11,6 +11,7 @@ import {
   MaiBahinYojnaActivity,
   LocalIssueVideoActivity
 } from '../../models/types';
+import { homePageCache, CACHE_KEYS, createUserCacheKey } from './cacheUtils';
 
 /**
  * Debug function to fetch raw documents from a collection
@@ -75,10 +76,13 @@ export async function getCurrentAdminUser(uid: string): Promise<AdminUser | null
 }
 
 /**
- * Fetches summary data for the WTM-SLP dashboard based on date range and assemblies
- * @param startDate - Optional start date in YYYY-MM-DD format (if omitted, retrieves all-time data)
- * @param endDate - Optional end date in YYYY-MM-DD format (if omitted, retrieves all-time data)
+ * Fetches summary statistics for WTM-SLP dashboard with caching
+ * @param startDate - Optional start date filter (YYYY-MM-DD format)
+ * @param endDate - Optional end date filter (YYYY-MM-DD format)
  * @param assemblies - Optional array of assembly names to filter by
+ * @param handler_id - Optional handler ID filter (for specific AC/SLP)
+ * @param slp - Optional SLP object for handler ID patterns
+ * @param forceRefresh - Optional flag to bypass cache and fetch fresh data
  * @returns Promise resolving to summary data object
  */
 export async function getWtmSlpSummary(
@@ -86,8 +90,23 @@ export async function getWtmSlpSummary(
   endDate?: string,
   assemblies?: string[],
   handler_id?: string,
-  slp?: { uid: string; handler_id?: string; isShaktiSLP?: boolean; shaktiId?: string }
+  slp?: { uid: string; handler_id?: string; isShaktiSLP?: boolean; shaktiId?: string },
+  forceRefresh?: boolean
 ): Promise<WtmSlpSummary> {
+  // For home page summary (no filters), use caching
+  const isHomepageSummary = !startDate && !endDate && !handler_id && !slp;
+  
+  if (isHomepageSummary && !forceRefresh) {
+    // Create cache key based on assemblies filter
+    const cacheKey = createUserCacheKey(CACHE_KEYS.WTM_SLP_SUMMARY, undefined, assemblies);
+    
+    return homePageCache.getOrSet(cacheKey, async () => {
+      console.log(`[getWtmSlpSummary] Cache miss - fetching fresh data for homepage summary`);
+      return fetchWtmSlpSummaryData(startDate, endDate, assemblies, handler_id, slp);
+    });
+  }
+  
+  // For filtered/detailed requests, fetch directly without caching
   console.log(`[getWtmSlpSummary] Fetching data${startDate && endDate ? ` between ${startDate} and ${endDate}` : ' for all time'}`);
   if (assemblies && assemblies.length > 0) {
     console.log(`[getWtmSlpSummary] Filtering by assemblies: ${assemblies.join(', ')}`);
@@ -99,6 +118,25 @@ export async function getWtmSlpSummary(
     console.log(`[getWtmSlpSummary] SLP details:`, { uid: slp.uid, handler_id: slp.handler_id, isShaktiSLP: slp.isShaktiSLP, shaktiId: slp.shaktiId });
   }
   
+  return fetchWtmSlpSummaryData(startDate, endDate, assemblies, handler_id, slp);
+}
+
+/**
+ * Internal function to fetch WTM-SLP summary data from Firestore
+ * @param startDate - Optional start date filter
+ * @param endDate - Optional end date filter
+ * @param assemblies - Optional array of assembly names
+ * @param handler_id - Optional handler ID filter
+ * @param slp - Optional SLP object
+ * @returns Promise resolving to summary data
+ */
+async function fetchWtmSlpSummaryData(
+  startDate?: string,
+  endDate?: string,
+  assemblies?: string[],
+  handler_id?: string,
+  slp?: { uid: string; handler_id?: string; isShaktiSLP?: boolean; shaktiId?: string }
+): Promise<WtmSlpSummary> {
   try {
     const wtmSlpCollection = collection(db, 'wtm-slp');
     console.log('[getWtmSlpSummary] Collection reference created');

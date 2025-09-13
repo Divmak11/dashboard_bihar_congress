@@ -1,44 +1,66 @@
-# PRD – Global Metrics Default for Hierarchical Dashboard
+# Tasks — WTM-Youtube Vertical
+**Updated:** 2025-09-13
 
-## Objective
-When a vertical (WTM Samvidhan Leader or Shakti-Abhiyaan) is selected **without** choosing a Zone, Assembly, AC, or SLP, the metric cards must display totals aggregated across **all** zones and assemblies for that vertical, instead of “-”.
+## General
+- [ ] PRD approval and sign-off
+- [ ] Confirm role gating approach (server + client)
+- [ ] Update `.windsurf/CodeMap.md` after merge
 
-## Success Metrics
-1. Metric cards show correct aggregated counts immediately on vertical selection with no lower-level filters.
-2. Detailed view lists match the aggregated metrics.
-3. No additional Firestore composite indexes are required.
-4. Existing behaviour for lower hierarchy selections remains unchanged.
-5. Dashboard performance stays within current baseline (< 3 s first paint).
+## Routing and Home
+- [ ] Create `app/home/page.tsx` (canonical Home) and move/replicate content from current `app/page.tsx`
+- [ ] Add redirect from `"/"` to `"/home"` (via `middleware.ts` or routing)
+- [ ] Update all internal links to point to `/home` if necessary
 
-## Assumptions
-• Existing Firestore queries already return global totals when no filters are supplied.  
-• Only the early-return guard in the React page prevents this fetch.
+## Home Card — WTM-Youtube
+- [ ] Duplicate the "WTM-SHAKTI-CLUB-2" card for WTM-Youtube and relabel to "WTM-Youtube"
+- [ ] Change lead name text from "Karan Chaurasaia" to "Karan Chourasia"
+- [ ] Role-gate visibility (admin, dept-head)
+- [ ] Show 2–3 summary metrics on the card:
+  - [ ] Total Campaigns (count of `theme-data`)
+  - [ ] Total Influencers (count of `influencer-data`)
+  - [ ] Total Videos (sum of `influencerEntries.length`)
+- [ ] Add loading skeleton/fallback until metrics load
+- [ ] On click → route to `/wtm-youtube`
 
-## Out of Scope
-• Firestore schema changes.  
-• Creating new composite indexes.  
-• Refactors unrelated to this behaviour.
+## Vertical — Files and Types
+- [ ] Create `models/youtubeTypes.ts` (exact interfaces provided in PRD)
+- [ ] Barrel export types if needed
 
-## High-Level Solution
-1. **Remove Early-Return Guard** – Delete the `setMetrics(emptyMetrics)` shortcut in `app/wtm-slp-new/page.tsx` (approx. lines 210-220).
-2. **Default Options** – When no Zone / Assembly / AC / SLP is selected, build `{ level: 'vertical' }` and call `fetchCumulativeMetrics`.
-3. **No Query Changes** – `fetchCumulativeMetrics` and helper queries already fetch all records when filters are absent.
+## Utils — Firestore
+- [ ] Create `app/utils/fetchYoutubeData.ts`
+- [ ] Implement `fetchYoutubeSummary()` for home card metrics (with ephemeral cache)
+- [ ] Implement `fetchInfluencers()` with filters (status, workingStatus, assembly, search)
+- [ ] Implement `fetchThemes()` with rangeMode 'entries' (createdAt) and 'campaign' (from/to overlap)
+- [ ] Implement `splitThemesByStatus()`, `aggregateTheme()`, `aggregateInfluencer()`
+- [ ] Implement `computeOverviewAggregates()` for Overview
 
-## Task Breakdown
-| ID | Description | Owner |
-|----|-------------|-------|
-|E1 |Remove early-return guard in page component|FE|
-|E2 |Create default options object and invoke metrics fetch|FE|
-|E3 |Manual QA on both verticals (no filters & with filters) |QA|
-|E4 |Add/adjust unit & integration tests for global totals|FE|
-|E5 |Monitor Firestore read counts post-release; rollback if reads ↑ >25 %|DevOps|
+## Utils — YouTube API
+- [ ] Create `app/utils/youtubeApi.ts`
+- [ ] Implement `extractVideoId()` for watch?v=, youtu.be, shorts
+- [ ] Implement `fetchVideoStats()` with batching + concurrency + TTL cache
+- [ ] Wire "Refresh" to clear in-memory cache and re-fetch
 
-## Timeline
-Coding & unit tests: **0.5 day**  
-QA & release: **0.5 day** (behind feature flag)
+## UI — Vertical Pages
+- [ ] `app/wtm-youtube/page.tsx` with role gating and tabs (Overview, Themes, Influencers)
+- [ ] `components/youtube/Overview.tsx` with KPI cards, charts (Recharts), top lists, date mode switch
+- [ ] `components/youtube/ThemesList.tsx` with Active/Past tabs and table view
+- [ ] `components/youtube/ThemeDetail.tsx` with KPIs, charts, roster, video list and warnings
+- [ ] `components/youtube/InfluencersList.tsx` with directory table and filters
+- [ ] `components/youtube/InfluencerProfile.tsx` with KPIs, charts, per-theme breakdown, video gallery
+- [ ] `components/youtube/KpiCard.tsx` for reusable KPI card (compact variant usable in home card if desired)
+- [ ] `components/youtube/VideoList.tsx` for consistent video presentation
 
-## Risks & Mitigations
-*Higher Firestore reads*: Acceptable based on current volumes; monitor and optimise if necessary.
+## Styling / UX Polish
+- [ ] Reuse Tailwind colors and design patterns from `wtm-slp-new`
+- [ ] Add subtle transitions/animations
+- [ ] Ensure responsive grids and sticky filters
 
-## Approval
-Product Lead · Engineering Lead · Data Analyst
+## Testing / QA
+- [ ] Unit tests for `extractVideoId()` with edge URLs
+- [ ] Verify API batching/concurrency and cache invalidation via Refresh
+- [ ] Validate Active vs Past split and both date modes
+- [ ] Verify role gating with non-admin users
+
+## Environment
+- [ ] Add `YOUTUBE_API_KEY` to `.env.local` and document steps
+- [ ] Ensure key is not exposed client-side improperly
