@@ -6,6 +6,7 @@ import { User, onAuthStateChanged } from 'firebase/auth';
 import { ClipLoader } from 'react-spinners';
 import { getCurrentAdminUser } from '../app/utils/fetchFirebaseData';
 import { AdminUser } from '../models/types';
+import { ReportFormat } from '../models/reportTypes';
 
 interface ReportGeneratorProps {
   currentDateFilter: {
@@ -24,6 +25,8 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
   const [userRole, setUserRole] = useState<string | null>(null);
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reportFormat, setReportFormat] = useState<ReportFormat>('ac-wise');
+  const [showFormatSelector, setShowFormatSelector] = useState(false);
   const { generateReport, isGenerating, progress, error } = useReportGeneration();
 
   // Auto-close modal when report generation is complete or fails
@@ -77,7 +80,13 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
     return null;
   }
 
-  const handleGenerateReport = async () => {
+  const handleFormatSelect = (format: ReportFormat) => {
+    setReportFormat(format);
+    setShowFormatSelector(false);
+    handleGenerateReportWithFormat(format);
+  };
+
+  const handleGenerateReportWithFormat = async (format: ReportFormat) => {
     setShowModal(true);
     
     await generateReport({
@@ -88,8 +97,13 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
       },
       vertical: selectedVertical === 'shakti-abhiyaan' ? 'shakti-abhiyaan' : 'wtm-slp',
       adminUser: adminUser,
-      isLastDayFilter: currentDateFilter.dateOption === 'Last Day'
+      isLastDayFilter: currentDateFilter.dateOption === 'Last Day',
+      format: format
     });
+  };
+
+  const handleGenerateReport = () => {
+    setShowFormatSelector(true);
   };
 
   return (
@@ -104,9 +118,49 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
         {isGenerating ? 'Generating...' : 'Generate Report'}
       </button>
 
+      {/* Format Selection Modal */}
+      {showFormatSelector && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Select Report Format
+            </h3>
+            
+            <div className="space-y-3 mb-6">
+              <button
+                onClick={() => handleFormatSelect('ac-wise')}
+                className="w-full p-4 text-left border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
+              >
+                <div className="font-medium text-gray-900">AC-wise Format</div>
+                <div className="text-sm text-gray-600 mt-1">
+                  Groups by performance zones first (Green, Orange, Red, Unavailable), then lists ACs within each zone
+                </div>
+              </button>
+              
+              <button
+                onClick={() => handleFormatSelect('zone-wise')}
+                className="w-full p-4 text-left border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
+              >
+                <div className="font-medium text-gray-900">Zone-wise Format</div>
+                <div className="text-sm text-gray-600 mt-1">
+                  Groups by geographical zones first, then shows performance categories within each zone
+                </div>
+              </button>
+            </div>
+            
+            <button
+              onClick={() => setShowFormatSelector(false)}
+              className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Progress Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Generating {selectedVertical === 'shakti-abhiyaan' ? 'Shakti Abhiyaan' : 'WTM-SLP'} Report

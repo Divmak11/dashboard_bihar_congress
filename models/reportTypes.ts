@@ -1,5 +1,7 @@
 // Report Generation Module - Data Models and Interfaces
 
+export type ReportFormat = 'ac-wise' | 'zone-wise';
+
 export interface ReportMetric {
   name: string;
   value: number;
@@ -111,6 +113,18 @@ export interface ACPerformanceSections {
   orangeZone: ACWithAssemblies[];
   redZone: ACWithAssemblies[];
   unavailable: ACWithAssemblies[];
+}
+
+// New types for Zone-wise performance report
+export interface ZoneWithPerformanceSections {
+  zoneNumber: number;
+  zoneName: string;
+  zoneIncharge: string;
+  acPerformanceSections: ACPerformanceSections;
+}
+
+export interface ZoneWisePerformanceSections {
+  zones: ZoneWithPerformanceSections[];
 }
 
 export interface ACWithAssemblies {

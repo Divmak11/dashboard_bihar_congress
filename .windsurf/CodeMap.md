@@ -53,8 +53,10 @@ my-dashboard/
 │   ├── config/                   # Configuration files
 │   │   └── pdfConfig.ts          # PDF styling with enhanced table styles + AC-wise section styles
 │   └── utils/                    # Core utility functions
-│       ├── fetchFirebaseData.ts  # Firebase data fetching
+│       ├── fetchFirebaseData.ts  # Firebase data fetching with caching
 │       ├── fetchHierarchicalData.ts # Hierarchical data logic
+│       ├── fetchYoutubeData.ts   # YouTube data fetching with caching
+│       ├── cacheUtils.ts         # Data caching utility with localStorage
 │       ├── firebase.ts           # Firebase config
 │       ├── errorUtils.ts         # Error handling
 │       ├── reportDataAggregation.ts # Zone-wise report aggregation + AC-wise sections
@@ -104,6 +106,100 @@ my-dashboard/
 
 ---
 
+## Data Caching System
+
+### Overview
+Implemented localStorage-based caching for home page vertical cards to prevent unnecessary re-fetching when users navigate between verticals and return.
+
+### Cache Architecture
+
+#### **DataCache Class** (`app/utils/cacheUtils.ts`)
+- **Storage**: localStorage with JSON serialization
+- **TTL**: 15 minutes default for home page metrics
+- **Key Management**: Prefixed keys with automatic cleanup
+- **Features**:
+  - Automatic expiration based on timestamp + TTL
+  - User-specific cache keys for role-based data
+  - Assembly filter support for cache key generation
+  - Cleanup of expired entries
+  - Cache statistics and debugging
+
+#### **Cache Keys**
+```typescript
+CACHE_KEYS = {
+  WTM_SLP_SUMMARY: 'wtm_slp_summary',
+  YOUTUBE_SUMMARY: 'youtube_summary'
+}
+```
+
+#### **Cache Utility Functions**
+- `homePageCache.getOrSet()`: Get cached data or fetch fresh if expired
+- `createUserCacheKey()`: Generate user/assembly-specific cache keys
+- `forceCacheRefresh()`: Clear specific cache entries
+- `initializeCache()`: Initialize cache and cleanup expired entries
+
+### Implementation Details
+
+#### **WTM-SLP Caching** (`app/utils/fetchFirebaseData.ts`)
+- **Function**: `getWtmSlpSummary()` enhanced with caching
+- **Scope**: Homepage summary only (no date/handler filters)
+- **Cache Key**: Based on user assemblies filter
+- **TTL**: 15 minutes
+- **Bypass**: Filtered requests (date ranges, handler_id, SLP details) skip cache
+
+#### **YouTube Caching** (`app/utils/fetchYoutubeData.ts`)
+- **Function**: `fetchYoutubeSummary()` enhanced with persistent caching
+- **Replaced**: In-memory cache with localStorage persistence
+- **TTL**: 15 minutes (inherits from DataCache default)
+- **Features**: Force refresh parameter support
+
+#### **Home Page Integration** (`app/home/page.tsx`)
+- **Initialization**: Cache setup on component mount
+- **Dependencies**: Data fetching waits for cache initialization
+- **Force Refresh**: Manual refresh button to clear cache and fetch fresh data
+- **UI Indicators**: Loading states and refresh button with spinner
+
+### Cache Behavior
+
+#### **Cache Hit Scenarios**
+- User returns to home page within 15 minutes
+- Same role and assembly filter combination
+- No force refresh requested
+- Valid cache entry exists in localStorage
+
+#### **Cache Miss Scenarios**
+- First visit or cache expired (>15 minutes)
+- Different user role or assembly filter
+- Cache cleared via refresh button
+- localStorage unavailable or corrupted
+
+#### **Force Refresh Flow**
+1. User clicks refresh button
+2. Clear specific cache keys via `forceCacheRefresh()`
+3. Set loading state
+4. Fetch fresh data with `forceRefresh: true` parameter
+5. Update cache with new data
+6. Update UI with fresh metrics
+
+### Performance Benefits
+- **Reduced Firestore Reads**: Cached data eliminates redundant database queries
+- **Faster Load Times**: Immediate display of cached metrics
+- **Better UX**: No loading delays when returning to home page
+- **Bandwidth Savings**: Prevents re-downloading same data within TTL window
+
+### Error Handling
+- **localStorage Unavailable**: Falls back to direct fetching
+- **Cache Corruption**: Automatic cleanup and fresh fetch
+- **Cache Full**: Cleanup expired entries to free space
+- **Network Errors**: Preserved in cache for next attempt
+
+### Debugging Features
+- **Console Logging**: Cache hits, misses, and operations
+- **Cache Statistics**: Total, valid, and expired entries count
+- **Manual Controls**: Force refresh and cache clearing functions
+
+---
+
 ## Firebase Collections & Schemas
 
 ### 1. **users** Collection
@@ -133,7 +229,7 @@ my-dashboard/
   email: string,
   role: 'admin' | 'zonal-incharge' | 'dept-head' | 'other',
   assemblies: string[],           // Assigned assemblies
-  parentVertical?: 'wtm' | 'shakti-abhiyaan',  // Vertical assignment
+  parentVertical?: 'wtm' | 'shakti-abhiyaan' | 'youtube',  // Vertical assignment
   createdAt: Timestamp
 }
 ```
@@ -643,11 +739,13 @@ The Generate Report module provides comprehensive PDF report generation for the 
 
 ###### **Report Data Aggregation** (`app/utils/reportDataAggregation.ts`)
 - **Main Function**: `aggregateReportData(dateFilter, vertical, options?)`
+- **New Feature**: **Report Format Selection** - Supports both 'ac-wise' (default) and 'zone-wise' formats
 - **Critical Logic**:
   - **Assembly-First Aggregation**: Groups by Assembly-AC combinations to avoid double counting
   - **AC Roster Pre-Seeding**: Builds complete roster before aggregation, includes placeholder for assemblies with no ACs
     - **AC Name Resolution**: Uses ONLY 'name' property from users collection (no displayName/uid fallback)
     - **AC-wise Performance Sections**: Groups ACs by performance zones (Green/Orange/Red/Unavailable)
+    - **Zone-wise Performance Sections**: Groups ACs by geographical zones first, then by performance zones within each zone
     - **Orphan Assembly Handling**: Creates "Unassigned Areas" zone for unmapped assemblies
     - **Date Filtering**: Adjusts "All Time" to 6 months to avoid Firestore limits
     - **Query Optimization**: Conditional fetching, batch processing, chunking for >10 assemblies
@@ -659,9 +757,11 @@ The Generate Report module provides comprehensive PDF report generation for the 
   5. Process activities grouped by assembly-AC key (`${assembly}::${acId}`)
   6. Resolve AC names from users collection
   7. Aggregate metrics at assembly and zone levels
-  8. Generate AC-wise performance sections using generateACPerformanceSections
+  8. Generate performance sections based on format:
+     - AC-wise: Use `generateACPerformanceSections()` to group by performance zones
+     - Zone-wise: Use `generateZoneWisePerformanceSections()` to group by geographical zones first
   9. Handle orphan assemblies as "Unassigned Areas"
-  10. Return structured LocalReportData object with acPerformanceSections
+  10. Return structured LocalReportData object with acPerformanceSections or zoneWisePerformanceSections
 - **Performance Zones**:
   - Active ACs (green): meetings >= 7
   - Moderate ACs (orange): meetings >= 5 and < 7
@@ -676,17 +776,28 @@ The Generate Report module provides comprehensive PDF report generation for the 
   - Automatic page breaks and formatting
   - Enhanced font sizes for better readability
   - Metric value highlighting (bold for >0, dimmed for 0)
+  - **Dual Format Support**: Conditionally renders AC-wise or Zone-wise layouts
 - **PDF Structure**:
   1. Report header with title and date range
   2. Executive summary with overall metrics
   3. Zone-wise Overview table with deduplicated AC counts
-  4. **AC Performance Report Section** (New AC-wise Layout):
+  4. **Performance Report Section** (Format-dependent):
+     
+     **AC-wise Format** (`ACPerformanceSection`):
      - High Performance Zone (Green): ACs with meetings ≥ 7
      - Moderate Performance Zone (Orange): ACs with meetings ≥ 5 and < 7
      - Poor Performance Zone (Red): ACs with meetings < 5
      - Unavailable ACs: ACs marked as unavailable
      - Each AC shows all assemblies in tabular format under single header
      - Assembly-level color grading based on attendance logic flags
+     
+     **Zone-wise Format** (`ZoneWisePerformanceSection`):
+     - Groups ACs by geographical zones first
+     - Within each zone, shows performance categories (Green/Orange/Red/Unavailable)
+     - Each zone rendered with `ZonePerformanceComponent` 
+     - Zone headers show zone number, name, and incharge information
+     - Same AC assembly tables but organized by geographical grouping first
+     
   5. Legacy Zone-wise detailed breakdown sections (fallback)
   - Uses vertical-specific fetch functions for WTM:
     - `fetchZonesForWTM()`: Filters zones by parentVertical='wtm' AND role='zonal-incharge'
@@ -800,12 +911,27 @@ if (uniqueAssemblies.length > 10) {
 - **fetchCumulativeMetrics()**: Fetches aggregated metrics
 - **fetchDetailedData()**: Fetches detailed activity data
 
+##### **Attendance Logic (Report System)**
+
+###### **checkACAttendance** (`app/utils/reportAttendanceLogic.ts`)
+- **Purpose**: Determines AC availability for report generation using inverted attendance logic
+- **New Logic**: AC marked "available" if ANY day is missing attendance records (partial presence)
+- **Previous Logic**: AC marked "unavailable" if ANY attendance record exists (binary approach)
+- **Implementation**:
+  - Calculates total expected days in date range
+  - Counts actual attendance records per AC 
+  - Inverted Decision: `missingDays > 0` = Available, `missingDays = 0` = Unavailable
+  - Supports multi-day scenarios with partial AC presence
+- **Impact**: More ACs included in performance grading, better reflection of actual work patterns
+- **Database**: Queries 'attendence' collection (note: misspelled collection name)
+
 ##### **Error Handling**
 1. **Missing AC Names**: Fallback to 'Unknown' or 'Pending-{id}'
 2. **Missing Assemblies**: Create "Unassigned Areas" zone
 3. **Firestore Limits**: Automatic chunking for > 10 assemblies
 4. **Date Range Issues**: 6-month limit for "All Time" filter
 5. **Role Validation**: Prevents non-admin report generation
+6. **Attendance Errors**: Defaults to all ACs available on database errors
 
 ##### **Performance Optimizations**
 1. **Conditional Fetching**: Only fetch detailed data for non-zero metrics
@@ -1158,6 +1284,90 @@ NEXT_PUBLIC_FIREBASE_APP_ID
 
 ---
 
+## WTM-Youtube Vertical
+
+### Overview
+YouTube influencer and campaign analytics module with independent Firebase instance and YouTube API integration.
+
+### Collections & Schema
+**Collection: `youtube`**
+- **Influencer Documents** (`form_type: 'influencer-data'`)
+  - `id`: string
+  - `createdAt`: number (epoch ms)
+  - `handler_id`: string
+  - `name`: string
+  - `phoneNumber`: string
+  - `subscribers`: number
+  - `channelName`: string
+  - `channelLink`: string
+  - `status`: 'Active' | 'Inactive'
+  - `workingStatus`: 'Working' | 'Busy' | 'Not Working For Us'
+  - `assembly?`: string (display "--" when missing)
+  - `remark?`: string
+
+- **Campaign/Theme Documents** (`form_type: 'theme-data'`)
+  - `id`: string
+  - `createdAt`: number (epoch ms)
+  - `weeklyTheme`: string
+  - `from`: number (campaign start epoch ms)
+  - `to`: number (campaign end epoch ms)
+  - `influencerIds`: string[]
+  - `influencerEntries`: Array of video entries
+    - `influencerId`: string
+    - `videoType`: 'Package' | 'Public Opinion One' | 'Public Opinion Two' | 'Reel/Short'
+    - `videoLink`: string
+    - `metrics?`: { views?: number; likes?: number } (fallback when API unavailable)
+
+### File Structure
+| Component | File | Purpose |
+|-----------|------|---------|
+| Types | `models/youtubeTypes.ts` | All YouTube data interfaces |
+| Data Fetching | `app/utils/fetchYoutubeData.ts` | Firestore queries and aggregation (uses shared Firebase) |
+| YouTube API | `app/utils/youtubeApi.ts` | Video stats fetching, ID extraction |
+| Main Page | `app/wtm-youtube/page.tsx` | Role-gated vertical page |
+| Overview | `components/youtube/Overview.tsx` | KPIs, charts, top lists |
+| Themes | `components/youtube/ThemesList.tsx` | Active/Past themes with details |
+| Influencers | `components/youtube/InfluencersList.tsx` | Directory with profiles |
+| KPI Card | `components/youtube/KpiCard.tsx` | Reusable metric card |
+
+### Key Functions and Data Flow:
+
+1. **fetchAllData()** (page.tsx): Main orchestrator that fetches influencers, themes, video stats, and computes aggregates
+   - **Fixed Issue**: Now uses freshly fetched video stats for overview aggregates instead of stale state
+2. **fetchInfluencers()** (fetchYoutubeData.ts): Queries influencer collection with search filters
+3. **fetchThemes()** (fetchYoutubeData.ts): Queries theme collection with date mode, date range, and search filters
+4. **fetchVideoStatsFromLinks()** (fetchYoutubeData.ts): Extracts video IDs from links and fetches YouTube metrics
+5. **computeOverviewAggregates()** (fetchYoutubeData.ts): Aggregates data for overview dashboard
+
+### UI/UX Fixes:
+- **Modal Overlays**: Fixed all modal backgrounds from solid black (`bg-black bg-opacity-50`) to modern blurred effect (`bg-black/20 backdrop-blur-sm`) across all components
+- **Navigation Loading**: Added loading indicators for vertical card navigation to prevent perceived app freeze during route transitions
+
+### Date Filtering
+- **Two Modes**: 
+  - `entries`: Filter by `createdAt` (when data was entered)
+  - `campaign`: Filter by `from`/`to` (campaign window overlap)
+- **Theme Status**: Active (to >= now) vs Past (to < now)
+
+### Caching Strategy
+- In-memory cache with TTL (10 minutes for API, 5 minutes for summary)
+- Cleared by Refresh button
+- No persistence to Firestore
+
+### Access Control
+- Role gating: Only `admin` and `dept-head` roles
+- Server-side check in page component
+- Card hidden on home for unauthorized roles
+
+### YouTube API Integration
+- Requires `NEXT_PUBLIC_YOUTUBE_API_KEY` environment variable
+- Batches up to 50 video IDs per request
+- Concurrency throttling (default: 3 parallel requests)
+- Falls back to stored metrics if API unavailable
+- Handles various URL formats (watch?v=, youtu.be, shorts)
+
+---
+
 ## Update Guidelines
 
 When modifying the codebase:
@@ -1172,6 +1382,6 @@ When modifying the codebase:
 
 ---
 
-*Last Updated: September 2025*
-*Version: 1.3.1*
-*Changes: Deprecated `fetchAssemblyCoordinators`; documented vertical-specific AC fetch functions*
+*Last Updated: December 2024*
+*Version: 1.4.0*
+*Changes: Added WTM-Youtube vertical documentation*

@@ -18,14 +18,11 @@ Guidelines:
 
 PREVENTIONS: 
 - Avoid refactoring unrelated code.
-- Avoid modifying existing code when its outside the scope. 
+- Avoid modifying existing code when its outside the scope.
 - Updating the (.windsurf/CodeMap.mp) after the changes
 
 
 DELIVERABLES:
-- Summary of Task and changes done
+- Summary of the task and changes done.
 - All Cases and places where the code is updated accordingly.
 - Next Steps if any to be done or check.
-
-
-
