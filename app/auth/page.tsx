@@ -60,21 +60,14 @@ export default function AuthPage() {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      // Set auth token cookie
-      document.cookie = `auth-token=${await userCredential.user.getIdToken()}; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 days
-      // Fetch role and redirect accordingly
-      try {
-        const userDocRef = doc(db, 'admin-users', userCredential.user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        const role = userDocSnap.exists() ? (userDocSnap.data()?.role as string | undefined) : undefined;
-        if (role && role === 'admin') {
-          router.push('/');
-        } else {
-          router.push('/wtm-slp-new');
-        }
-      } catch (roleErr) {
-        console.warn('Failed to fetch user role, defaulting to wtm-slp-new:', roleErr);
-        router.push('/wtm-slp-new');
+      if (userCredential.user) {
+        // Set auth token in cookie for middleware
+        await userCredential.user.getIdToken().then(token => {
+          document.cookie = `auth-token=${token}; path=/; max-age=3600`;
+        });
+
+        // Redirect to home - middleware will handle role-based routing
+        router.push('/home');
       }
     } catch (error: any) {
       console.error('Sign in error:', error);
@@ -123,13 +116,14 @@ export default function AuthPage() {
         createdAt: serverTimestamp()
       });
       
-      // Set auth token cookie
-      document.cookie = `auth-token=${await user.getIdToken()}; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 days
-      
-      if (newUserRole === 'admin') {
-        router.push('/');
-      } else {
-        router.push('/wtm-slp-new');
+      if (userCredential.user) {
+        // Set auth token in cookie for middleware
+        await userCredential.user.getIdToken().then(token => {
+          document.cookie = `auth-token=${token}; path=/; max-age=3600`;
+        });
+
+        // Redirect to home - middleware will handle role-based routing
+        router.push('/home');
       }
     } catch (error: any) {
       console.error('Create account error:', error);

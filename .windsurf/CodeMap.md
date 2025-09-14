@@ -35,53 +35,50 @@
 
 ## Authentication & Role-based Redirection
 
-### Auto-redirection Logic
-**Location**: `app/home/page.tsx`
+### Middleware-based Access Control
+**Location**: `middleware.ts` and `app/utils/authMiddleware.ts`
+
+**Architecture**: Server-side role-based routing that prevents UI flash and blocks unauthorized access
+
+**Flow**:
+1. **Authentication Check**: Middleware verifies auth token from cookies
+2. **Role Resolution**: Extracts UID from JWT token and fetches user role from Firestore
+3. **Access Control**: Enforces role-based access before page renders
+4. **Automatic Redirection**: Routes users to appropriate dashboards based on role
 
 **Implementation**:
 ```typescript
-// Auto-redirect non-admin users to their appropriate dashboards
-if (adminUser?.role !== 'admin') {
-  if (adminUser?.role === 'dept-head') {
-    if (adminUser?.parentVertical === 'youtube') {
-      console.log('[HomePage] YouTube dept-head detected - redirecting to /wtm-youtube');
-      setNavigatingTo('/wtm-youtube');
-      router.push('/wtm-youtube');
-      return; // Exit early, no need to fetch dashboard metrics
-    } else if (adminUser?.parentVertical === 'wtm' || adminUser?.parentVertical === 'shakti-abhiyaan') {
-      console.log(`[HomePage] ${adminUser.parentVertical.toUpperCase()} dept-head detected - redirecting to /wtm-slp-new`);
-      setNavigatingTo('/wtm-slp-new');
-      router.push('/wtm-slp-new');
-      return; // Exit early, no need to fetch dashboard metrics
-    }
-  } else if (adminUser?.role === 'zonal-incharge') {
-    console.log(`[HomePage] ${adminUser.parentVertical?.toUpperCase() || 'WTM'} zonal-incharge detected - redirecting to /wtm-slp-new`);
-    setNavigatingTo('/wtm-slp-new');
-    router.push('/wtm-slp-new');
-    return; // Exit early, no need to fetch dashboard metrics
-  }
+// middleware.ts - Server-side role-based access control
+export async function middleware(request: NextRequest) {
+  const authToken = request.cookies.get('auth-token')?.value;
+  const isHomePage = request.nextUrl.pathname === '/home';
   
-  // For any other non-admin role, redirect to wtm-slp-new as default
-  console.log(`[HomePage] Non-admin user with role ${adminUser?.role} detected - redirecting to /wtm-slp-new`);
-  setNavigatingTo('/wtm-slp-new');
-  router.push('/wtm-slp-new');
-  return; // Exit early, no need to fetch dashboard metrics
+  // Role-based access control for /home route
+  if (authToken && isHomePage) {
+    const uid = extractUidFromToken(authToken);
+    const adminUser = await getAdminUserForMiddleware(uid);
+    
+    // Only allow admin users to access /home
+    if (adminUser.role !== 'admin') {
+      const redirectUrl = getRedirectUrl(adminUser);
+      return NextResponse.redirect(new URL(redirectUrl, request.url));
+    }
+  }
 }
 ```
 
-**Redirection Rules**:
-- **Admin**: **Only role that stays on home page** - full access to all data
-- **Zonal Incharge**: **Auto-redirects to `/wtm-slp-new` with vertical locked to their parentVertical**
-- **Dept-head (wtm)**: **Auto-redirects to `/wtm-slp-new` with vertical locked to 'WTM-Samvidhan Leader'**
-- **Dept-head (shakti-abhiyaan)**: **Auto-redirects to `/wtm-slp-new` with vertical locked to 'Shakti Abhiyaan'**
-- **Dept-head (youtube)**: **Auto-redirects to `/wtm-youtube`**
-- **Any other role**: **Auto-redirects to `/wtm-slp-new` as fallback**
+**Role-based Redirection Rules**:
+- **Admin**: `/home` (full dashboard access)
+- **Dept-head (YouTube)**: `/wtm-youtube`
+- **Dept-head (WTM/Shakti)**: `/wtm-slp-new`
+- **Zonal-incharge**: `/wtm-slp-new`
+- **Others**: `/wtm-slp-new` (default)
 
-**Technical Details**:
-- Uses Next.js `useRouter` from `next/navigation`
-- Checks `adminUser.role === 'dept-head'` AND `adminUser.parentVertical === 'youtube'`
-- Sets loading state during redirect with `setNavigatingTo('/wtm-youtube')`
-- Early return prevents unnecessary dashboard data fetching
+**Key Benefits**:
+- ✅ **No UI Flash**: Server-side redirection prevents brief home page visibility
+- ✅ **Back Button Protection**: Non-admins cannot navigate back to /home
+- ✅ **Centralized Logic**: Single source of truth for role-based routing
+- ✅ **Security**: Server-side enforcement prevents client-side bypassing
 
 ---
 
