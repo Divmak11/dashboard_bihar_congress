@@ -28,8 +28,60 @@
 **Core Modules:**
 - WTM-SLP Dashboard (Samvidhan Leaders Program)
 - Shakti Abhiyaan Dashboard
+- YouTube Dashboard (Influencer Management)
 - Hierarchical Navigation (Zone → Assembly → AC → SLP)
 - Activity Tracking & Reporting
+- Role-based Auto-redirection System
+
+## Authentication & Role-based Redirection
+
+### Auto-redirection Logic
+**Location**: `app/home/page.tsx`
+
+**Implementation**:
+```typescript
+// Auto-redirect non-admin users to their appropriate dashboards
+if (adminUser?.role !== 'admin') {
+  if (adminUser?.role === 'dept-head') {
+    if (adminUser?.parentVertical === 'youtube') {
+      console.log('[HomePage] YouTube dept-head detected - redirecting to /wtm-youtube');
+      setNavigatingTo('/wtm-youtube');
+      router.push('/wtm-youtube');
+      return; // Exit early, no need to fetch dashboard metrics
+    } else if (adminUser?.parentVertical === 'wtm' || adminUser?.parentVertical === 'shakti-abhiyaan') {
+      console.log(`[HomePage] ${adminUser.parentVertical.toUpperCase()} dept-head detected - redirecting to /wtm-slp-new`);
+      setNavigatingTo('/wtm-slp-new');
+      router.push('/wtm-slp-new');
+      return; // Exit early, no need to fetch dashboard metrics
+    }
+  } else if (adminUser?.role === 'zonal-incharge') {
+    console.log(`[HomePage] ${adminUser.parentVertical?.toUpperCase() || 'WTM'} zonal-incharge detected - redirecting to /wtm-slp-new`);
+    setNavigatingTo('/wtm-slp-new');
+    router.push('/wtm-slp-new');
+    return; // Exit early, no need to fetch dashboard metrics
+  }
+  
+  // For any other non-admin role, redirect to wtm-slp-new as default
+  console.log(`[HomePage] Non-admin user with role ${adminUser?.role} detected - redirecting to /wtm-slp-new`);
+  setNavigatingTo('/wtm-slp-new');
+  router.push('/wtm-slp-new');
+  return; // Exit early, no need to fetch dashboard metrics
+}
+```
+
+**Redirection Rules**:
+- **Admin**: **Only role that stays on home page** - full access to all data
+- **Zonal Incharge**: **Auto-redirects to `/wtm-slp-new` with vertical locked to their parentVertical**
+- **Dept-head (wtm)**: **Auto-redirects to `/wtm-slp-new` with vertical locked to 'WTM-Samvidhan Leader'**
+- **Dept-head (shakti-abhiyaan)**: **Auto-redirects to `/wtm-slp-new` with vertical locked to 'Shakti Abhiyaan'**
+- **Dept-head (youtube)**: **Auto-redirects to `/wtm-youtube`**
+- **Any other role**: **Auto-redirects to `/wtm-slp-new` as fallback**
+
+**Technical Details**:
+- Uses Next.js `useRouter` from `next/navigation`
+- Checks `adminUser.role === 'dept-head'` AND `adminUser.parentVertical === 'youtube'`
+- Sets loading state during redirect with `setNavigatingTo('/wtm-youtube')`
+- Early return prevents unnecessary dashboard data fetching
 
 ---
 
@@ -42,6 +94,7 @@ my-dashboard/
 │   ├── dashboard/                # Main dashboard
 │   ├── wtm-slp/                  # Legacy WTM-SLP dashboard
 │   ├── wtm-slp-new/              # New hierarchical dashboard
+│   ├── wtm-youtube/              # YouTube dashboard
 │   ├── map/                      # Map visualization
 │   ├── report/                   # Report generation components
 │   │   ├── ReportButton.tsx      # Report trigger button

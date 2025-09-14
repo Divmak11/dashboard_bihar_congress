@@ -23,6 +23,7 @@ interface DashboardCardMetrics {
 
 export default function HomePage() {
   const [user, authLoading, authError] = useAuthState(auth);
+  const router = useRouter();
   const [metrics, setMetrics] = useState<DashboardCardMetrics>({
     wtmSlpMetrics: null,
     youtubeMetrics: null,
@@ -31,7 +32,6 @@ export default function HomePage() {
   const [role, setRole] = useState<string | null>(null);
   const [cacheInitialized, setCacheInitialized] = useState(false);
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
-  const router = useRouter();
   const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
   const [createAccountData, setCreateAccountData] = useState({
     email: '',
@@ -88,31 +88,44 @@ export default function HomePage() {
         console.log('[HomePage] Admin user data:', adminUser);
         setRole(adminUser?.role || null);
         
-        let assembliesFilter: string[] | undefined;
-        
-        // Determine which assemblies to filter by based on user role
-        if (adminUser?.role === 'admin') {
-          // Admin sees all assemblies (no filter)
-          assembliesFilter = undefined;
-          console.log('[HomePage] Admin user - fetching summary for all assemblies');
-        } else if (adminUser?.role === 'zonal-incharge' && adminUser.assemblies?.length > 0) {
-          // Zonal Incharge sees only their assigned assemblies
-          assembliesFilter = adminUser.assemblies;
-          console.log(`[HomePage] Zonal Incharge - fetching summary for assemblies: ${assembliesFilter.join(', ')}`);
-        } else {
-          // Other roles or no assemblies assigned
-          assembliesFilter = [];
-          console.log('[HomePage] Other role or no assemblies - showing empty data');
+        // Auto-redirect non-admin users to their appropriate dashboards
+        if (adminUser?.role !== 'admin') {
+          if (adminUser?.role === 'dept-head') {
+            if (adminUser?.parentVertical === 'youtube') {
+              console.log('[HomePage] YouTube dept-head detected - redirecting to /wtm-youtube');
+              setNavigatingTo('/wtm-youtube');
+              router.push('/wtm-youtube');
+              return; // Exit early, no need to fetch dashboard metrics
+            } else if (adminUser?.parentVertical === 'wtm' || adminUser?.parentVertical === 'shakti-abhiyaan') {
+              console.log(`[HomePage] ${adminUser.parentVertical.toUpperCase()} dept-head detected - redirecting to /wtm-slp-new`);
+              setNavigatingTo('/wtm-slp-new');
+              router.push('/wtm-slp-new');
+              return; // Exit early, no need to fetch dashboard metrics
+            }
+          } else if (adminUser?.role === 'zonal-incharge') {
+            console.log(`[HomePage] ${adminUser.parentVertical?.toUpperCase() || 'WTM'} zonal-incharge detected - redirecting to /wtm-slp-new`);
+            setNavigatingTo('/wtm-slp-new');
+            router.push('/wtm-slp-new');
+            return; // Exit early, no need to fetch dashboard metrics
+          }
+          
+          // For any other non-admin role, redirect to wtm-slp-new as default
+          console.log(`[HomePage] Non-admin user with role ${adminUser?.role} detected - redirecting to /wtm-slp-new`);
+          setNavigatingTo('/wtm-slp-new');
+          router.push('/wtm-slp-new');
+          return; // Exit early, no need to fetch dashboard metrics
         }
+        
+        // Only admin users reach this point - all other roles are redirected above
+        console.log('[HomePage] Admin user - fetching summary for all assemblies');
+        const assembliesFilter: string[] | undefined = undefined; // Admin sees all assemblies
         
         // Fetch summaries in parallel with caching
         const [wtmSlpSummary, youtubeSummary] = await Promise.all([
           // Fetch WTM-SLP summary for all time (no date parameters) - uses caching for homepage
           getWtmSlpSummary(undefined, undefined, assembliesFilter),
-          // Fetch YouTube summary for admin and dept-head only - uses caching
-          (adminUser?.role === 'admin' || adminUser?.role === 'dept-head') 
-            ? fetchYoutubeSummary() 
-            : Promise.resolve({ totalThemes: 0, totalInfluencers: 0, totalVideos: 0 })
+          // Fetch YouTube summary for admin only - uses caching
+          fetchYoutubeSummary()
         ]);
         
         console.log('[HomePage] WTM-SLP summary data:', wtmSlpSummary);
@@ -136,7 +149,7 @@ export default function HomePage() {
     }
     
     fetchDashboardData();
-  }, [user, cacheInitialized]);
+  }, [user, cacheInitialized, router]);
 
   // Function to force refresh all cached data
   const handleForceRefresh = async () => {
