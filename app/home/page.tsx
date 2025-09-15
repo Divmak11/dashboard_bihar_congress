@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect, useCallback } from 'react';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -11,8 +11,10 @@ import { WtmSlpSummary } from "../../models/types";
 import { YoutubeSummaryMetrics } from "../../models/youtubeTypes";
 import { initializeCache, forceCacheRefresh, CACHE_KEYS } from "../utils/cacheUtils";
 import LogoutButton from "../../components/LogoutButton";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, collection, getDocs } from "firebase/firestore";
+import { initializeApp, deleteApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
 
 // Interface for homepage card metrics
 interface DashboardCardMetrics {
@@ -23,6 +25,7 @@ interface DashboardCardMetrics {
 
 export default function HomePage() {
   const [user, authLoading, authError] = useAuthState(auth);
+  const router = useRouter();
   const [metrics, setMetrics] = useState<DashboardCardMetrics>({
     wtmSlpMetrics: null,
     youtubeMetrics: null,
@@ -31,7 +34,6 @@ export default function HomePage() {
   const [role, setRole] = useState<string | null>(null);
   const [cacheInitialized, setCacheInitialized] = useState(false);
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
-  const router = useRouter();
   const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
   const [createAccountData, setCreateAccountData] = useState({
     email: '',
@@ -73,70 +75,82 @@ export default function HomePage() {
     fetchAssemblies();
   }, []);
 
+  // Fetch dashboard data and handle role-based routing
+  const fetchDashboardData = useCallback(async () => {
+    if (!user?.uid) return;
+    
+    try {
+      console.log('[HomePage] Fetching admin user data and checking role');
+      
+      // Get user role and handle redirection
+      const adminUser = await getCurrentAdminUser(user.uid);
+      console.log('[HomePage] Admin user data:', adminUser);
+      setRole(adminUser?.role || null);
+      
+      // Auto-redirect non-admin users to their appropriate dashboards
+      if (adminUser?.role !== 'admin') {
+        console.log('[HomePage] Non-admin user detected, performing role-based redirect');
+        
+        let redirectUrl = '/wtm-slp-new'; // Default
+        
+        if (adminUser?.role === 'dept-head') {
+          if (adminUser?.parentVertical === 'youtube') {
+            redirectUrl = '/wtm-youtube';
+            console.log('[HomePage] YouTube dept-head detected - redirecting to /wtm-youtube');
+          } else if (adminUser?.parentVertical === 'wtm' || adminUser?.parentVertical === 'shakti-abhiyaan') {
+            redirectUrl = '/wtm-slp-new';
+            console.log(`[HomePage] ${adminUser.parentVertical.toUpperCase()} dept-head detected - redirecting to /wtm-slp-new`);
+          }
+        } else if (adminUser?.role === 'zonal-incharge') {
+          redirectUrl = '/wtm-slp-new';
+          console.log(`[HomePage] Zonal-incharge detected - redirecting to /wtm-slp-new`);
+        }
+        
+        setNavigatingTo(redirectUrl);
+        router.push(redirectUrl);
+        return; // Exit early, no need to fetch dashboard metrics
+      }
+      
+      // Only admin users reach this point - fetch dashboard data
+      console.log('[HomePage] Admin user confirmed - fetching dashboard data');
+      setMetrics(prev => ({ ...prev, isLoading: true }));
+      
+      // Fetch summaries in parallel with caching
+      const [wtmSlpSummary, youtubeSummary] = await Promise.all([
+        // Fetch WTM-SLP summary for all time (no date parameters) - uses caching for homepage
+        getWtmSlpSummary(undefined, undefined, undefined),
+        // Fetch YouTube summary for admin only - uses caching
+        fetchYoutubeSummary()
+      ]);
+      
+      console.log('[HomePage] WTM-SLP summary data:', wtmSlpSummary);
+      console.log('[HomePage] YouTube summary data:', youtubeSummary);
+      
+      // Update metrics state with fetched data
+      setMetrics({
+        wtmSlpMetrics: wtmSlpSummary,
+        youtubeMetrics: youtubeSummary,
+        isLoading: false
+      });
+      
+    } catch (error) {
+      console.error('[HomePage] Error in fetchDashboardData:', error);
+      setMetrics({
+        wtmSlpMetrics: null,
+        youtubeMetrics: null,
+        isLoading: false
+      });
+    }
+  }, [user?.uid, router]);
+  
   // Fetch data based on user role when user auth state changes
   useEffect(() => {
     // Skip if not authenticated yet or cache not initialized
     if (!user || !cacheInitialized) return;
     
-    async function fetchDashboardData() {
-      try {
-        console.log('[HomePage] Fetching dashboard data based on user role');
-        setMetrics(prev => ({ ...prev, isLoading: true }));
-        
-        // Get user role and assigned assemblies
-        const adminUser = await getCurrentAdminUser(user?.uid || "");
-        console.log('[HomePage] Admin user data:', adminUser);
-        setRole(adminUser?.role || null);
-        
-        let assembliesFilter: string[] | undefined;
-        
-        // Determine which assemblies to filter by based on user role
-        if (adminUser?.role === 'admin') {
-          // Admin sees all assemblies (no filter)
-          assembliesFilter = undefined;
-          console.log('[HomePage] Admin user - fetching summary for all assemblies');
-        } else if (adminUser?.role === 'zonal-incharge' && adminUser.assemblies?.length > 0) {
-          // Zonal Incharge sees only their assigned assemblies
-          assembliesFilter = adminUser.assemblies;
-          console.log(`[HomePage] Zonal Incharge - fetching summary for assemblies: ${assembliesFilter.join(', ')}`);
-        } else {
-          // Other roles or no assemblies assigned
-          assembliesFilter = [];
-          console.log('[HomePage] Other role or no assemblies - showing empty data');
-        }
-        
-        // Fetch summaries in parallel with caching
-        const [wtmSlpSummary, youtubeSummary] = await Promise.all([
-          // Fetch WTM-SLP summary for all time (no date parameters) - uses caching for homepage
-          getWtmSlpSummary(undefined, undefined, assembliesFilter),
-          // Fetch YouTube summary for admin and dept-head only - uses caching
-          (adminUser?.role === 'admin' || adminUser?.role === 'dept-head') 
-            ? fetchYoutubeSummary() 
-            : Promise.resolve({ totalThemes: 0, totalInfluencers: 0, totalVideos: 0 })
-        ]);
-        
-        console.log('[HomePage] WTM-SLP summary data:', wtmSlpSummary);
-        console.log('[HomePage] YouTube summary data:', youtubeSummary);
-        
-        // Update metrics state with fetched data
-        setMetrics({
-          wtmSlpMetrics: wtmSlpSummary,
-          youtubeMetrics: youtubeSummary,
-          isLoading: false
-        });
-        
-      } catch (error) {
-        console.error('[HomePage] Error fetching dashboard data:', error);
-        setMetrics({
-          wtmSlpMetrics: null,
-          youtubeMetrics: null,
-          isLoading: false
-        });
-      }
-    }
-    
+    // Call the unified fetchDashboardData function which handles both role checking and data fetching
     fetchDashboardData();
-  }, [user, cacheInitialized]);
+  }, [user, cacheInitialized, fetchDashboardData]);
 
   // Function to force refresh all cached data
   const handleForceRefresh = async () => {
@@ -147,24 +161,10 @@ export default function HomePage() {
       // Clear caches
       forceCacheRefresh([CACHE_KEYS.WTM_SLP_SUMMARY, CACHE_KEYS.YOUTUBE_SUMMARY]);
       
-      // Get current user data
-      const adminUser = await getCurrentAdminUser(user?.uid || "");
-      let assembliesFilter: string[] | undefined;
-      
-      if (adminUser?.role === 'admin') {
-        assembliesFilter = undefined;
-      } else if (adminUser?.role === 'zonal-incharge' && adminUser.assemblies?.length > 0) {
-        assembliesFilter = adminUser.assemblies;
-      } else {
-        assembliesFilter = [];
-      }
-      
       // Fetch fresh data
       const [wtmSlpSummary, youtubeSummary] = await Promise.all([
-        getWtmSlpSummary(undefined, undefined, assembliesFilter, undefined, undefined, true), // forceRefresh = true
-        (adminUser?.role === 'admin' || adminUser?.role === 'dept-head') 
-          ? fetchYoutubeSummary(true) // forceRefresh = true
-          : Promise.resolve({ totalThemes: 0, totalInfluencers: 0, totalVideos: 0 })
+        getWtmSlpSummary(undefined, undefined, undefined, undefined, undefined, true), // forceRefresh = true
+        fetchYoutubeSummary(true) // forceRefresh = true
       ]);
       
       setMetrics({
@@ -500,12 +500,31 @@ export default function HomePage() {
 
                 setCreateAccountLoading(true);
                 try {
-                  // Create user in Firebase Auth
-                  const userCredential = await createUserWithEmailAndPassword(auth, createAccountData.email, createAccountData.password);
+                  // Create a secondary Firebase app instance to avoid affecting current auth state
+                  const { db: primaryDb } = await import('../utils/firebase');
+                  
+                  // Create user using secondary auth instance to preserve admin session
+                  const secondaryApp = initializeApp({
+                    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+                    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+                    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+                    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+                    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+                    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+                  }, `secondary-${Date.now()}`);
+                  
+                  const secondaryAuth = getAuth(secondaryApp);
+                  
+                  // Create user with secondary auth instance (won't affect main auth state)
+                  const userCredential = await createUserWithEmailAndPassword(
+                    secondaryAuth, 
+                    createAccountData.email, 
+                    createAccountData.password
+                  );
                   const newUser = userCredential.user;
 
-                  // Add user to admin-users collection
-                  await setDoc(doc(db, 'admin-users', newUser.uid), {
+                  // Add user to admin-users collection using primary database
+                  await setDoc(doc(primaryDb, 'admin-users', newUser.uid), {
                     id: newUser.uid,
                     email: newUser.email,
                     name: createAccountData.name.trim(),
@@ -514,6 +533,9 @@ export default function HomePage() {
                     parentVertical: createAccountData.parentVertical,
                     createdAt: serverTimestamp()
                   });
+
+                  // Clean up secondary app to avoid memory leaks
+                  await deleteApp(secondaryApp);
 
                   // Reset form and close modal
                   setCreateAccountData({ email: '', password: '', confirmPassword: '', name: '', role: 'dept-head', parentVertical: 'wtm' });

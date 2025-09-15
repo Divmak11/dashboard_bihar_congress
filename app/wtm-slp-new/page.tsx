@@ -63,6 +63,14 @@ const HierarchicalDashboardPage: React.FC = () => {
   const shouldLockVertical = isZonalIncharge || isDeptHead;
   const lockedVertical = shouldLockVertical ? (adminUser?.parentVertical || 'wtm') : undefined;
 
+  // Initialize vertical based on user's parentVertical when user data loads
+  React.useEffect(() => {
+    if (adminUser && shouldLockVertical && adminUser.parentVertical) {
+      console.log(`[Navigation] Setting initial vertical to user's parentVertical: ${adminUser.parentVertical}`);
+      setSelectedVertical(adminUser.parentVertical);
+    }
+  }, [adminUser, shouldLockVertical]);
+
   // Navigation state
   const [zones, setZones] = useState<Zone[]>([]);
   const [assemblies, setAssemblies] = useState<string[]>([]);

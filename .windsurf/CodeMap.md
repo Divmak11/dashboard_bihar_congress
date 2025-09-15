@@ -28,8 +28,57 @@
 **Core Modules:**
 - WTM-SLP Dashboard (Samvidhan Leaders Program)
 - Shakti Abhiyaan Dashboard
+- YouTube Dashboard (Influencer Management)
 - Hierarchical Navigation (Zone → Assembly → AC → SLP)
 - Activity Tracking & Reporting
+- Role-based Auto-redirection System
+
+## Authentication & Role-based Redirection
+
+### Middleware-based Access Control
+**Location**: `middleware.ts` and `app/utils/authMiddleware.ts`
+
+**Architecture**: Server-side role-based routing that prevents UI flash and blocks unauthorized access
+
+**Flow**:
+1. **Authentication Check**: Middleware verifies auth token from cookies
+2. **Role Resolution**: Extracts UID from JWT token and fetches user role from Firestore
+3. **Access Control**: Enforces role-based access before page renders
+4. **Automatic Redirection**: Routes users to appropriate dashboards based on role
+
+**Implementation**:
+```typescript
+// middleware.ts - Server-side role-based access control
+export async function middleware(request: NextRequest) {
+  const authToken = request.cookies.get('auth-token')?.value;
+  const isHomePage = request.nextUrl.pathname === '/home';
+  
+  // Role-based access control for /home route
+  if (authToken && isHomePage) {
+    const uid = extractUidFromToken(authToken);
+    const adminUser = await getAdminUserForMiddleware(uid);
+    
+    // Only allow admin users to access /home
+    if (adminUser.role !== 'admin') {
+      const redirectUrl = getRedirectUrl(adminUser);
+      return NextResponse.redirect(new URL(redirectUrl, request.url));
+    }
+  }
+}
+```
+
+**Role-based Redirection Rules**:
+- **Admin**: `/home` (full dashboard access)
+- **Dept-head (YouTube)**: `/wtm-youtube`
+- **Dept-head (WTM/Shakti)**: `/wtm-slp-new`
+- **Zonal-incharge**: `/wtm-slp-new`
+- **Others**: `/wtm-slp-new` (default)
+
+**Key Benefits**:
+- ✅ **No UI Flash**: Server-side redirection prevents brief home page visibility
+- ✅ **Back Button Protection**: Non-admins cannot navigate back to /home
+- ✅ **Centralized Logic**: Single source of truth for role-based routing
+- ✅ **Security**: Server-side enforcement prevents client-side bypassing
 
 ---
 
@@ -42,6 +91,7 @@ my-dashboard/
 │   ├── dashboard/                # Main dashboard
 │   ├── wtm-slp/                  # Legacy WTM-SLP dashboard
 │   ├── wtm-slp-new/              # New hierarchical dashboard
+│   ├── wtm-youtube/              # YouTube dashboard
 │   ├── map/                      # Map visualization
 │   ├── report/                   # Report generation components
 │   │   ├── ReportButton.tsx      # Report trigger button
