@@ -17,3 +17,7 @@ globs: **/*
 - Ask for clarification if any requirement or instruction is ambiguous.
 
 - Only touch files where implementation is needed and nothing outside the scope.
+
+-  Always follow SOLID principles when planning for any implementation.
+
+- Always keep Models, Scripts, Helpers, Core Business Logic and UI separately either during any implementation or any modifcation. 

@@ -13,6 +13,7 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { fetchVideoStatsFromLinks } from './videoApi';
 import {
   YoutubeInfluencerDoc,
   YoutubeCampaignDoc,

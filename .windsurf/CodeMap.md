@@ -810,6 +810,7 @@ The Generate Report module provides comprehensive PDF report generation for the 
   8. Generate performance sections based on format:
      - AC-wise: Use `generateACPerformanceSections()` to group by performance zones
      - Zone-wise: Use `generateZoneWisePerformanceSections()` to group by geographical zones first
+       - Now includes placeholder "No AC assigned" assemblies in the red zone section
   9. Handle orphan assemblies as "Unassigned Areas"
   10. Return structured LocalReportData object with acPerformanceSections or zoneWisePerformanceSections
 - **Performance Zones**:
@@ -1371,9 +1372,11 @@ YouTube influencer and campaign analytics module with independent Firebase insta
 ### File Structure
 | Component | File | Purpose |
 |-----------|------|---------|
-| Types | `models/youtubeTypes.ts` | All YouTube data interfaces |
+| Types | `models/youtubeTypes.ts` | All video data interfaces (platform-agnostic) |
 | Data Fetching | `app/utils/fetchYoutubeData.ts` | Firestore queries and aggregation (uses shared Firebase) |
-| YouTube API | `app/utils/youtubeApi.ts` | Video stats fetching, ID extraction |
+| Unified Video API | `app/utils/videoApi.ts` | Platform detection and unified video stats fetching |
+| YouTube API | `app/utils/youtubeApi.ts` | YouTube-specific video stats fetching, ID extraction |
+| Facebook API | `app/utils/facebookApi.ts` | Facebook-specific video stats fetching, ID extraction |
 | Main Page | `app/wtm-youtube/page.tsx` | Role-gated vertical page |
 | Overview | `components/youtube/Overview.tsx` | KPIs, charts, top lists |
 | Themes | `components/youtube/ThemesList.tsx` | Active/Past themes with details |
