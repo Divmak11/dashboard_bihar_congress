@@ -1866,11 +1866,48 @@ function generateZoneWisePerformanceSections(assemblyAcMap: Map<string, any>): i
     primaryPerformance: 'high' | 'moderate' | 'poor' | 'unavailable';
   }>();
 
+  // Track placeholder assemblies (No AC assigned) separately
+  const placeholderAssembliesMap = new Map<string, {
+    zoneNumber: number;
+    zoneName: string;
+    zoneIncharge: string;
+    assembly: string;
+    acData: any;
+  }>();
+
   // First pass: Group assembly data by AC (same as AC-wise)
   assemblyAcMap.forEach((acData, key) => {
     const [assembly, acId] = key.split('::');
     
-    if (acId === 'no-ac-assigned' || acId === 'unknown') {
+    // Handle placeholder entries separately
+    if (acId === 'no-ac-assigned') {
+      // Extract zone information for placeholder entries
+      if (!acData.zone || acData.zone === 'Unknown Zone') {
+        console.log(`[generateZoneWisePerformanceSections] Skipping placeholder for assembly ${assembly} - missing zone information`);
+        return;
+      }
+
+      const zoneMatch = acData.zone?.match(/(\d+)/);
+      const zoneNumber = zoneMatch ? parseInt(zoneMatch[1]) : null;
+      
+      if (zoneNumber === null || zoneNumber === 0) {
+        console.log(`[generateZoneWisePerformanceSections] Skipping placeholder for assembly ${assembly} - invalid zone number`);
+        return;
+      }
+
+      // Store placeholder assembly for later processing
+      const placeholderKey = `${zoneNumber}-${assembly}`;
+      placeholderAssembliesMap.set(placeholderKey, {
+        zoneNumber,
+        zoneName: acData.zone,
+        zoneIncharge: 'N/A',
+        assembly,
+        acData
+      });
+      return;
+    }
+
+    if (acId === 'unknown') {
       return;
     }
 
@@ -2027,6 +2064,59 @@ function generateZoneWisePerformanceSections(assemblyAcMap: Map<string, any>): i
         zoneData.unavailable.push(acWithAssemblies);
         break;
     }
+  });
+
+  // Process placeholder assemblies (No AC assigned)
+  placeholderAssembliesMap.forEach((placeholderData) => {
+    const { zoneNumber, zoneName, zoneIncharge, assembly, acData } = placeholderData;
+    
+    // Create assembly row for placeholder AC
+    const assemblyRow: import('../../models/reportTypes').ACAssemblyRow = {
+      assembly,
+      meetings: 0,
+      onboarded: 0,
+      slps: 0,
+      forms: 0,
+      videos: 0,
+      waGroups: 0,
+      includeInColorGrading: false, // No color grading for placeholder
+      shouldBeRed: false,
+      isUnavailable: false,
+      workStatus: 'no-ac-assigned',
+      rowColor: 'white' // Neutral color for placeholder
+    };
+
+    // Create ACWithAssemblies entry for placeholder
+    const placeholderAcWithAssemblies: import('../../models/reportTypes').ACWithAssemblies = {
+      acId: 'no-ac-assigned',
+      acName: 'No AC assigned',
+      zoneNumber,
+      zoneName,
+      zoneIncharge: zoneIncharge || 'N/A',
+      primaryPerformanceLevel: 'poor', // Placeholder goes to poor/red zone
+      totalAssemblies: 1,
+      workedAssemblies: 0,
+      assemblies: [assemblyRow]
+    };
+
+    // Add to zone data
+    const zoneKey = `${zoneNumber}-${zoneName}`;
+    if (!zoneDataMap.has(zoneKey)) {
+      zoneDataMap.set(zoneKey, {
+        zoneNumber,
+        zoneName,
+        zoneIncharge: zoneIncharge || 'N/A',
+        greenZone: [],
+        orangeZone: [],
+        redZone: [],
+        unavailable: []
+      });
+    }
+
+    const zoneData = zoneDataMap.get(zoneKey)!;
+    // Add placeholder ACs to red zone to indicate they need attention
+    zoneData.redZone.push(placeholderAcWithAssemblies);
+    console.log(`[generateZoneWisePerformanceSections] Added placeholder for assembly ${assembly} in zone ${zoneName}`);
   });
 
   // Convert to final structure - array of zones with their performance sections

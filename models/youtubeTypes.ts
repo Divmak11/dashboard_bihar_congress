@@ -25,11 +25,17 @@ export interface YoutubeInfluencerDoc {
   assembly?: string; // Optional, display "--" when missing
 }
 
-// Video metrics interface
-export interface YoutubeVideoMetrics {
+// Video metrics interface (platform-agnostic)
+export interface VideoMetrics {
   views?: number;
   likes?: number;
 }
+
+// Legacy alias for backward compatibility
+export interface YoutubeVideoMetrics extends VideoMetrics {}
+
+// Video platform types
+export type VideoPlatform = 'youtube' | 'facebook';
 
 // Campaign influencer entry interface
 export interface YoutubeCampaignInfluencerEntry {
@@ -37,7 +43,7 @@ export interface YoutubeCampaignInfluencerEntry {
   id: string;
   videoType: YoutubeVideoType;
   videoLink: string;
-  metrics?: YoutubeVideoMetrics; // Optional, fallback when API unavailable
+  metrics?: VideoMetrics; // Optional, fallback when API unavailable
 }
 
 // Campaign/Theme document interface (form_type: 'theme-data')

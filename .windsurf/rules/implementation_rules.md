@@ -14,6 +14,7 @@ Guidelines:
 4. Check for similar places that require updation with the change proposed.
 5. Consider updating the code segments you found, that needs to be updated with the changes implemented.
 6. Always use SOLID principles.
+7. Always keep Models, Scripts, Helpers, Core Business Logic and UI separately either during any implementation or any updation. 
 
 
 PREVENTIONS: 

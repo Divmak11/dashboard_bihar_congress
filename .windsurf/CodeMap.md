@@ -80,6 +80,26 @@ export async function middleware(request: NextRequest) {
 - ✅ **Centralized Logic**: Single source of truth for role-based routing
 - ✅ **Security**: Server-side enforcement prevents client-side bypassing
 
+### Admin Create Account Flow (Secondary Firebase App)
+
+- Location: `app/home/page.tsx` (Create Account modal form)
+- Purpose: Allow admin to create Dept-Head/Zonal-Incharge accounts without disrupting current admin session.
+- Initialization Pattern: The secondary Firebase app now reuses the primary app configuration to avoid environment variable dependencies.
+
+```ts
+// Secondary app now uses primary app's options
+import { initializeApp, getApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+
+const primaryApp = getApp();
+const secondaryApp = initializeApp(primaryApp.options, `secondary-${Date.now()}`);
+const secondaryAuth = getAuth(secondaryApp);
+```
+
+- Why: Removes reliance on `NEXT_PUBLIC_*` Firebase env vars and fixes `Firebase: Error (auth/invalid-api-key)` when those envs are absent.
+- Cleanup: `deleteApp(secondaryApp)` after user creation to prevent resource leaks.
+- Firestore Write: New admin user is stored in `admin-users` via the primary DB instance.
+
 ---
 
 ## Directory Structure
@@ -810,6 +830,7 @@ The Generate Report module provides comprehensive PDF report generation for the 
   8. Generate performance sections based on format:
      - AC-wise: Use `generateACPerformanceSections()` to group by performance zones
      - Zone-wise: Use `generateZoneWisePerformanceSections()` to group by geographical zones first
+       - Now includes placeholder "No AC assigned" assemblies in the red zone section
   9. Handle orphan assemblies as "Unassigned Areas"
   10. Return structured LocalReportData object with acPerformanceSections or zoneWisePerformanceSections
 - **Performance Zones**:
@@ -1371,9 +1392,11 @@ YouTube influencer and campaign analytics module with independent Firebase insta
 ### File Structure
 | Component | File | Purpose |
 |-----------|------|---------|
-| Types | `models/youtubeTypes.ts` | All YouTube data interfaces |
+| Types | `models/youtubeTypes.ts` | All video data interfaces (platform-agnostic) |
 | Data Fetching | `app/utils/fetchYoutubeData.ts` | Firestore queries and aggregation (uses shared Firebase) |
-| YouTube API | `app/utils/youtubeApi.ts` | Video stats fetching, ID extraction |
+| Unified Video API | `app/utils/videoApi.ts` | Platform detection and unified video stats fetching |
+| YouTube API | `app/utils/youtubeApi.ts` | YouTube-specific video stats fetching, ID extraction |
+| Facebook API | `app/utils/facebookApi.ts` | Facebook-specific video stats fetching, ID extraction |
 | Main Page | `app/wtm-youtube/page.tsx` | Role-gated vertical page |
 | Overview | `components/youtube/Overview.tsx` | KPIs, charts, top lists |
 | Themes | `components/youtube/ThemesList.tsx` | Active/Past themes with details |

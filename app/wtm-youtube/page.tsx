@@ -13,9 +13,9 @@ import {
   computeOverviewAggregates
 } from "../utils/fetchYoutubeData";
 import { 
-  clearVideoStatsCache,
-  fetchVideoStatsFromLinks
-} from "../utils/youtubeApi";
+  clearAllVideoStatsCache,
+} from "../utils/videoApi";
+import { fetchVideoStatsFromLinks } from '../utils/videoApi';
 import {
   YoutubeInfluencerDoc,
   YoutubeCampaignDoc,
@@ -109,13 +109,18 @@ export default function WtmYoutubePage() {
         }
       });
       
-      // Fetch video stats from YouTube API if API key is available
+      // Fetch video stats from both YouTube and Facebook APIs if credentials are available
       let finalVideoStats = new Map<string, { views: number; likes: number }>();
-      const apiKey = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
-      if (apiKey && videoLinks.length > 0) {
+      const youtubeApiKey = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
+      const facebookAccessToken = process.env.NEXT_PUBLIC_FACEBOOK_ACCESS_TOKEN;
+      
+      if ((youtubeApiKey || facebookAccessToken) && videoLinks.length > 0) {
         try {
-          const stats = await fetchVideoStatsFromLinks(videoLinks, apiKey);
-          // Convert YoutubeVideoMetrics to required format
+          const stats = await fetchVideoStatsFromLinks(videoLinks, {
+            youtubeApiKey,
+            facebookAccessToken
+          });
+          // Convert VideoMetrics to required format
           const convertedStats = new Map<string, { views: number; likes: number }>();
           stats.forEach((metrics, videoId) => {
             convertedStats.set(videoId, {
@@ -157,7 +162,7 @@ export default function WtmYoutubePage() {
   // Handle refresh
   const handleRefresh = () => {
     clearYoutubeCache();
-    clearVideoStatsCache();
+    clearAllVideoStatsCache();
     fetchAllData();
   };
 

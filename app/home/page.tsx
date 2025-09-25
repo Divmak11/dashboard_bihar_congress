@@ -13,7 +13,7 @@ import { initializeCache, forceCacheRefresh, CACHE_KEYS } from "../utils/cacheUt
 import LogoutButton from "../../components/LogoutButton";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, collection, getDocs } from "firebase/firestore";
-import { initializeApp, deleteApp } from "firebase/app";
+import { initializeApp, deleteApp, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 
 // Interface for homepage card metrics
@@ -500,19 +500,10 @@ export default function HomePage() {
 
                 setCreateAccountLoading(true);
                 try {
-                  // Create a secondary Firebase app instance to avoid affecting current auth state
+                  // Create a secondary Firebase app instance using the same config as the primary app
                   const { db: primaryDb } = await import('../utils/firebase');
-                  
-                  // Create user using secondary auth instance to preserve admin session
-                  const secondaryApp = initializeApp({
-                    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-                    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-                    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-                    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-                    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-                    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
-                  }, `secondary-${Date.now()}`);
-                  
+                  const primaryApp = getApp();
+                  const secondaryApp = initializeApp(primaryApp.options, `secondary-${Date.now()}`);
                   const secondaryAuth = getAuth(secondaryApp);
                   
                   // Create user with secondary auth instance (won't affect main auth state)
