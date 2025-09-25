@@ -80,6 +80,26 @@ export async function middleware(request: NextRequest) {
 - ✅ **Centralized Logic**: Single source of truth for role-based routing
 - ✅ **Security**: Server-side enforcement prevents client-side bypassing
 
+### Admin Create Account Flow (Secondary Firebase App)
+
+- Location: `app/home/page.tsx` (Create Account modal form)
+- Purpose: Allow admin to create Dept-Head/Zonal-Incharge accounts without disrupting current admin session.
+- Initialization Pattern: The secondary Firebase app now reuses the primary app configuration to avoid environment variable dependencies.
+
+```ts
+// Secondary app now uses primary app's options
+import { initializeApp, getApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+
+const primaryApp = getApp();
+const secondaryApp = initializeApp(primaryApp.options, `secondary-${Date.now()}`);
+const secondaryAuth = getAuth(secondaryApp);
+```
+
+- Why: Removes reliance on `NEXT_PUBLIC_*` Firebase env vars and fixes `Firebase: Error (auth/invalid-api-key)` when those envs are absent.
+- Cleanup: `deleteApp(secondaryApp)` after user creation to prevent resource leaks.
+- Firestore Write: New admin user is stored in `admin-users` via the primary DB instance.
+
 ---
 
 ## Directory Structure
