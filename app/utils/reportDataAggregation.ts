@@ -382,7 +382,8 @@ export async function aggregateReportData(
               chaupals: 0,
               shaktiBaithaks: 0,
               centralWaGroups: 0,
-              assemblyWaGroups: 0
+              assemblyWaGroups: 0,
+              shaktiAssemblyWaGroups: 0
             }
           });
           assembliesWithNoACs++;
@@ -426,7 +427,8 @@ export async function aggregateReportData(
                 chaupals: 0,
                 shaktiBaithaks: 0,
                 centralWaGroups: 0,
-                assemblyWaGroups: 0
+                assemblyWaGroups: 0,
+                shaktiAssemblyWaGroups: 0
               }
             });
             
@@ -761,7 +763,8 @@ export async function aggregateReportData(
             chaupals: 0,
             shaktiBaithaks: 0,
             centralWaGroups: 0,
-            assemblyWaGroups: 0
+            assemblyWaGroups: 0,
+            shaktiAssemblyWaGroups: 0
           }
         });
       } else {
@@ -845,7 +848,8 @@ export async function aggregateReportData(
             chaupals: 0,
             shaktiBaithaks: 0,
             assemblyWaGroups: 0,
-            centralWaGroups: 0
+            centralWaGroups: 0,
+            shaktiAssemblyWaGroups: 0
           },
           activities: {
             meetings: [],
@@ -1159,7 +1163,8 @@ export async function aggregateReportData(
               chaupals: 0,
               shaktiBaithaks: 0,
               centralWaGroups: 0,
-              assemblyWaGroups: 0
+              assemblyWaGroups: 0,
+              shaktiAssemblyWaGroups: 0
             } as CumulativeMetrics,
             slps: []
           }],
@@ -1230,6 +1235,7 @@ export async function aggregateReportData(
               chaupals: 0,
               assemblyWaGroups: 0,
               centralWaGroups: 0,
+              shaktiAssemblyWaGroups: 0,
               shaktiLeaders: 0,
               shaktiBaithaks: 0,
               shaktiSaathi: 0,
@@ -1284,6 +1290,7 @@ export async function aggregateReportData(
               chaupals: 0,
               assemblyWaGroups: 0,
               centralWaGroups: 0,
+              shaktiAssemblyWaGroups: 0,
               shaktiLeaders: 0,
               shaktiBaithaks: 0,
               shaktiSaathi: 0,
@@ -1353,7 +1360,8 @@ export async function aggregateReportData(
       chaupals: 0,
       shaktiBaithaks: 0,
       centralWaGroups: 0,
-      assemblyWaGroups: 0
+      assemblyWaGroups: 0,
+      shaktiAssemblyWaGroups: 0
     };
     
     // Aggregate metrics from filtered data (excluding placeholder entries and unavailable ACs)
