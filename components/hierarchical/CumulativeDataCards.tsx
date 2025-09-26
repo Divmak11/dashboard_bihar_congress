@@ -46,6 +46,7 @@ const CumulativeDataCards: React.FC<Props> = ({
     { id: 'shaktiBaithaks', label: 'Shakti Baithaks', value: metrics.shaktiBaithaks, color: 'amber' },
     { id: 'centralWaGroups', label: 'Central WA Groups', value: metrics.centralWaGroups, color: 'teal' },
     { id: 'assemblyWaGroups', label: 'Assembly WA Groups', value: metrics.assemblyWaGroups, color: 'emerald' },
+    { id: 'shaktiAssemblyWaGroups', label: 'Shakti Assembly WA Groups', value: metrics.shaktiAssemblyWaGroups as any, color: 'sienna' },
   ];
 
   const cardData = allCards.filter(card => {
@@ -54,6 +55,7 @@ const CumulativeDataCards: React.FC<Props> = ({
       return ['shaktiLeaders', 'shaktiSaathi', 'shaktiClubs', 'shaktiForms', 'shaktiBaithaks', 'shaktiVideos'].includes(card.id);
     } else {
       // WTM - exclude Shakti-specific cards
+      // NOTE: intentionally allowing 'shaktiAssemblyWaGroups' to show alongside 'assemblyWaGroups'
       return !['shaktiLeaders', 'shaktiSaathi', 'shaktiClubs', 'shaktiForms', 'shaktiBaithaks', 'shaktiVideos'].includes(card.id);
     }
   });

@@ -45,6 +45,7 @@ export type MetricKey =
   | 'chaupals'
   | 'centralWaGroups'
   | 'assemblyWaGroups'
+  | 'shaktiAssemblyWaGroups'
   | 'shaktiBaithaks'
   | 'shaktiVideos';
 
@@ -68,6 +69,7 @@ export interface CumulativeMetrics extends MetricRecord {
   shaktiBaithaks: number | string;
   centralWaGroups: number | string;
   assemblyWaGroups: number | string;
+  shaktiAssemblyWaGroups: number | string;
 }
 
 export interface DetailedData {

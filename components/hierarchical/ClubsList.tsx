@@ -105,6 +105,8 @@ const ClubsList: React.FC<ClubsListProps> = ({ data, loading = false, activityTy
         <h4 className="text-lg font-medium text-gray-900">
           {activityType === 'assemblyWaGroups'
             ? 'Assembly WA Groups'
+            : activityType === 'shaktiAssemblyWaGroups'
+            ? 'Shakti Assembly WA Groups'
             : activityType === 'centralWaGroups'
             ? 'Central WA Groups'
             : activityType === 'shaktiClubs'

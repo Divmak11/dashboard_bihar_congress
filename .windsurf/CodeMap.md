@@ -313,6 +313,7 @@ CACHE_KEYS = {
   type?: 'meetings' | 'activity' | 'assembly-wa',  // Legacy field
   handler_id?: string,            // AC/SLP who created entry
   assembly?: string,
+  parentVertical?: 'wtm' | 'shakti-abhiyaan', // NEW: used to split Assembly WA Groups by vertical
   
   // SLP recruitment fields
   recommendedPosition?: 'SLP',    // Marks as potential SLP
@@ -736,6 +737,9 @@ app/wtm-slp-new/page.tsx (Main Page)
 | forms | Mai-Bahin Forms | ActivitiesList | getHierarchicalMaiBahinActivity |
 | shaktiLeaders | Shakti Leaders | MembersList | getShaktiLeaders |
 | shaktiBaithaks | Shakti Baithaks | ChaupalsList | getShaktiBaithaks |
+| centralWaGroups | Central WA Groups | ClubsList | getHierarchicalCentralWaGroups |
+| assemblyWaGroups | Assembly WA Groups | ClubsList | getHierarchicalAssemblyWaGroups |
+| shaktiAssemblyWaGroups | Shakti Assembly WA Groups | ClubsList | getHierarchicalShaktiAssemblyWaGroups |
 
 ### Props Flow Pattern
 ```typescript
@@ -765,6 +769,10 @@ app/wtm-slp-new/page.tsx (Main Page)
 - **Returns**: CumulativeMetrics object with all counts
 - **Calls**: Multiple specialized functions based on options
 - **AC Name Resolution**: Uses `resolveUserNamesByIds` helper for profile-based names
+- **NEW Metrics**:
+  - `assemblyWaGroups`: Fetches 'assembly-wa' from wtm-slp excluding Shakti docs (`parentVertical === 'shakti-abhiyaan'`), treating missing `parentVertical` as WTM
+  - `shaktiAssemblyWaGroups`: Fetches 'assembly-wa' from wtm-slp including only Shakti docs (`parentVertical === 'shakti-abhiyaan'`)
+  - Both functions support assembly chunking for >10 assemblies and optional `handler_id`/`createdAt` filters
 
 #### 2. **getWtmSlpSummary** (`fetchFirebaseData.ts`)
 - **Collections**: wtm-slp

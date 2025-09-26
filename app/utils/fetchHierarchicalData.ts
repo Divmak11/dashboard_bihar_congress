@@ -1081,41 +1081,134 @@ const getHierarchicalCentralWaGroups = async (assemblies?: string[], dateRange?:
 };
 
 /**
- * Fetch Assembly WA Groups for hierarchical levels
+ * Fetch Assembly WA Groups for hierarchical levels (WTM only)
+ * - Excludes Shakti docs (parentVertical === 'shakti-abhiyaan') and treats missing parentVertical as WTM
+ * - Supports assembly chunking for >10 assemblies
  */
-const getHierarchicalAssemblyWaGroups = async (assemblies?: string[], dateRange?: { startDate: string; endDate: string }, handler_id?: string): Promise<any[]> => {
+const getHierarchicalAssemblyWaGroups = async (
+  assemblies?: string[],
+  dateRange?: { startDate: string; endDate: string },
+  handler_id?: string
+): Promise<any[]> => {
   try {
     const wtmSlpCollection = collection(db, 'wtm-slp');
-    let assemblyQuery = query(wtmSlpCollection, where('form_type', '==', 'assembly-wa'));
-
-    if (assemblies && assemblies.length > 0) {
-      assemblyQuery = query(assemblyQuery, where('assembly', 'in', assemblies));
-    }
+    let baseQuery = query(wtmSlpCollection, where('form_type', '==', 'assembly-wa'));
 
     if (handler_id) {
-      assemblyQuery = query(assemblyQuery, where('handler_id', '==', handler_id));
+      baseQuery = query(baseQuery, where('handler_id', '==', handler_id));
     }
 
     if (dateRange) {
       // Convert coordinator date range (YYYY-MM-DD) to ISO strings for createdAt field (stored as string)
       const startDateISO = `${dateRange.startDate}T00:00:00.000Z`;
       const endDateISO = `${dateRange.endDate}T23:59:59.999Z`;
-      
       console.log('[getHierarchicalAssemblyWaGroups] Filtering by createdAt (string):', startDateISO, 'to', endDateISO);
-      
-      assemblyQuery = query(assemblyQuery, where('createdAt', '>=', startDateISO), where('createdAt', '<=', endDateISO));
+      baseQuery = query(baseQuery, where('createdAt', '>=', startDateISO), where('createdAt', '<=', endDateISO));
     }
 
-    const assemblySnap = await getDocs(assemblyQuery);
-    const results: any[] = [];
+    // Execute queries with assembly chunking to handle >10 assembly limit
+    let snaps: any[] = [];
+    if (assemblies && assemblies.length > 0) {
+      const uniqueAssemblies = [...new Set(assemblies)];
+      if (uniqueAssemblies.length <= 10) {
+        const q1 = query(baseQuery, where('assembly', 'in', uniqueAssemblies));
+        const s1 = await getDocs(q1);
+        snaps = [s1];
+      } else {
+        const chunks: string[][] = [];
+        for (let i = 0; i < uniqueAssemblies.length; i += 10) {
+          chunks.push(uniqueAssemblies.slice(i, i + 10));
+        }
+        console.log(`[getHierarchicalAssemblyWaGroups] Chunking ${uniqueAssemblies.length} assemblies into ${chunks.length} queries`);
+        const promises = chunks.map(chunk => getDocs(query(baseQuery, where('assembly', 'in', chunk))));
+        snaps = await Promise.all(promises);
+      }
+    } else {
+      const s = await getDocs(baseQuery);
+      snaps = [s];
+    }
 
-    assemblySnap.forEach((doc) => {
-      results.push({ ...doc.data(), id: doc.id, source: 'assembly' });
+    // Collect and filter results to only WTM (exclude Shakti)
+    const results: any[] = [];
+    snaps.forEach((snap) => {
+      snap.forEach((d: any) => {
+        const data = d.data();
+        if (data?.parentVertical === 'shakti-abhiyaan') return; // exclude Shakti
+        results.push({ ...data, id: d.id, source: 'assembly' });
+      });
     });
 
     return results;
   } catch (error) {
     console.error('[getHierarchicalAssemblyWaGroups] Error:', error);
+    return [];
+  }
+};
+
+/**
+ * Fetch Shakti Assembly WA Groups for hierarchical levels
+ * - Uses composite-index-friendly query with parentVertical === 'shakti-abhiyaan'
+ * - Supports assembly chunking for >10 assemblies
+ */
+const getHierarchicalShaktiAssemblyWaGroups = async (
+  assemblies?: string[],
+  dateRange?: { startDate: string; endDate: string },
+  handler_id?: string
+): Promise<any[]> => {
+  try {
+    const wtmSlpCollection = collection(db, 'wtm-slp');
+    // Composite-index-friendly query with explicit parentVertical filter
+    let baseQuery = query(
+      wtmSlpCollection,
+      where('form_type', '==', 'assembly-wa'),
+      where('parentVertical', '==', 'shakti-abhiyaan')
+    );
+
+    if (handler_id) {
+      baseQuery = query(baseQuery, where('handler_id', '==', handler_id));
+    }
+
+    if (dateRange) {
+      const startDateISO = `${dateRange.startDate}T00:00:00.000Z`;
+      const endDateISO = `${dateRange.endDate}T23:59:59.999Z`;
+      console.log('[getHierarchicalShaktiAssemblyWaGroups] Filtering by createdAt (string):', startDateISO, 'to', endDateISO);
+      baseQuery = query(baseQuery, where('createdAt', '>=', startDateISO), where('createdAt', '<=', endDateISO));
+    }
+
+    // Execute queries with assembly chunking to handle >10 assembly limit
+    let snaps: any[] = [];
+    if (assemblies && assemblies.length > 0) {
+      const uniqueAssemblies = [...new Set(assemblies)];
+      if (uniqueAssemblies.length <= 10) {
+        const q1 = query(baseQuery, where('assembly', 'in', uniqueAssemblies));
+        const s1 = await getDocs(q1);
+        snaps = [s1];
+      } else {
+        const chunks: string[][] = [];
+        for (let i = 0; i < uniqueAssemblies.length; i += 10) {
+          chunks.push(uniqueAssemblies.slice(i, i + 10));
+        }
+        console.log(`[getHierarchicalShaktiAssemblyWaGroups] Chunking ${uniqueAssemblies.length} assemblies into ${chunks.length} queries`);
+        const promises = chunks.map(chunk => getDocs(query(baseQuery, where('assembly', 'in', chunk))));
+        snaps = await Promise.all(promises);
+      }
+    } else {
+      const s = await getDocs(baseQuery);
+      snaps = [s];
+    }
+
+    // Collect results (already filtered to Shakti by query)
+    const results: any[] = [];
+    snaps.forEach((snap) => {
+      snap.forEach((d: any) => {
+        const data = d.data();
+        results.push({ ...data, id: d.id, source: 'assembly' });
+      });
+    });
+
+    return results;
+  } catch (error) {
+    console.error('[getHierarchicalShaktiAssemblyWaGroups] Error:', error);
     return [];
   }
 };
@@ -1214,7 +1307,8 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
       chaupals, 
       shaktiBaithaks,
       centralWaGroups, 
-      assemblyWaGroups
+      assemblyWaGroups,
+      shaktiAssemblyWaGroups
     ] = await Promise.allSettled([
       getWtmSlpSummary(adjustedDateRange?.startDate, adjustedDateRange?.endDate, options.assemblies, options.handler_id, options.slp),
       getHierarchicalMemberActivity(options.assemblies, adjustedDateRange, options.handler_id),
@@ -1231,6 +1325,7 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
       getHierarchicalShaktiBaithaks(options.assemblies, adjustedDateRange, options.handler_id),
       getHierarchicalCentralWaGroups(options.assemblies, adjustedDateRange, options.handler_id),
       getHierarchicalAssemblyWaGroups(options.assemblies, adjustedDateRange, options.handler_id),
+      getHierarchicalShaktiAssemblyWaGroups(options.assemblies, adjustedDateRange, options.handler_id),
     ]);
 
     const getResultValue = (result: PromiseSettledResult<any>) => {
@@ -1247,6 +1342,11 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
       }
       return 0;
     };
+
+    // AC-level metrics must be 0 when SLP level is selected
+    const isSlpLevel = options.level === 'slp';
+    const assemblyWaGroupsCount = isSlpLevel ? 0 : getResultValue(assemblyWaGroups);
+    const shaktiAssemblyWaGroupsCount = isSlpLevel ? 0 : getResultValue(shaktiAssemblyWaGroups);
 
     return {
       meetings: getSummaryValue(wtmSummary, 'totalMeetings'),
@@ -1265,7 +1365,8 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
       chaupals: getResultValue(chaupals),
       shaktiBaithaks: getResultValue(shaktiBaithaks),
       centralWaGroups: getResultValue(centralWaGroups),
-      assemblyWaGroups: getResultValue(assemblyWaGroups),
+      assemblyWaGroups: assemblyWaGroupsCount,
+      shaktiAssemblyWaGroups: shaktiAssemblyWaGroupsCount,
     };
   } catch (error) {
     const errorCode = error instanceof Error && error.message.includes('date') 
@@ -2377,6 +2478,8 @@ export const fetchDetailedData = async (metricType: string, options: FetchMetric
       return getHierarchicalCentralWaGroups(options.assemblies, options.dateRange, options.handler_id);
     case 'assemblyWaGroups':
       return getHierarchicalAssemblyWaGroups(options.assemblies, options.dateRange, options.handler_id);
+    case 'shaktiAssemblyWaGroups':
+      return getHierarchicalShaktiAssemblyWaGroups(options.assemblies, options.dateRange, options.handler_id);
     default:
       console.warn(`[fetchDetailedData] Unknown metric type: ${metricType}`);
       return [];
