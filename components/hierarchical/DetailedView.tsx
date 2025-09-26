@@ -139,7 +139,7 @@ const DetailedView: React.FC<Props> = ({
       return <FormsList data={detailedData} loading={loading} />;
     }
 
-    if (['clubs','shaktiClubs','centralWaGroups','assemblyWaGroups'].includes(selectedCard)) {
+    if (['clubs','shaktiClubs','centralWaGroups','assemblyWaGroups','shaktiAssemblyWaGroups'].includes(selectedCard)) {
       return <ClubsList data={detailedData} loading={loading} activityType={selectedCard} />;
     }
 

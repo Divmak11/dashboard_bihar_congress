@@ -39,6 +39,7 @@ const emptyMetrics: CumulativeMetrics = {
   shaktiBaithaks: '-',
   centralWaGroups: '-',
   assemblyWaGroups: '-',
+  shaktiAssemblyWaGroups: '-',
 };
 
 const HierarchicalDashboardPage: React.FC = () => {
