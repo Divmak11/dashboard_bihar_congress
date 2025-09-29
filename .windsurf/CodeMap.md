@@ -145,6 +145,10 @@ my-dashboard/
 │   ├── DashboardHome.tsx         # Dashboard home component
 │   ├── DateRangeFilter.tsx      # Date filtering component
 │   └── NavBar.tsx                # Navigation bar
+├── scripts/                      # Utility Node.js scripts for data sync/reporting
+│   ├── ac-assembly-slp-report.js # Generates AC→Assembly→SLP coverage CSV (phone-first, name fallback)
+│   ├── sync-slp-activity-status.js # Sync SLP activityStatus via Excel + FB matching
+│   └── non-matching-slps-report.js # Extracts sheet SLPs not found in Firestore
 ├── models/                       # TypeScript type definitions
 │   ├── types.ts                  # Core data types
 │   ├── hierarchicalTypes.ts     # Hierarchy-specific types
