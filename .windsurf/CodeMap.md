@@ -1467,6 +1467,45 @@ When modifying the codebase:
 
 ---
 
-*Last Updated: December 2024*
-*Version: 1.4.0*
-*Changes: Added WTM-Youtube vertical documentation*
+## Ghar-Ghar Yatra Analytics - Performance Optimizations
+
+**Location**:
+- `app/utils/fetchGharGharYatraData.ts`
+- `app/verticals/ghar-ghar-yatra-analytics/page.tsx`
+- `models/gharGharYatraTypes.ts`
+
+**Motivation**: The Overview tab performed redundant and expansive reads by iterating over every date in range and fetching data twice (for metrics and charts). This caused slow loads even for sparse data.
+
+**Key Changes**:
+- Added single-source data fetch that discovers existing dates first, then fetches only those dates.
+- Avoids duplicate reads by computing both metrics and charts from the same in-memory source.
+- Annotates SLP records with their `date` for precise daily aggregation.
+- Limits SLP metadata reads to Top-N (10) for charts.
+- Batches Firestore requests to avoid request storms.
+
+**New/Updated Functions** (`app/utils/fetchGharGharYatraData.ts`):
+- `listExistingDatesInRange(startDate, endDate)`: Lists only existing document IDs using `orderBy(documentId())`, `startAt`, `endAt`.
+- `fetchDateDocumentsForDates(dates[])`: Fetches main `ghar_ghar_yatra/{date}` docs in chunks.
+- `fetchAllSLPDataForDates(dates[])`: Fetches `slp_data` for provided dates and annotates each record with its `date`.
+- `fetchOverviewSourceData(startDate, endDate)`: Orchestrates the above and returns `{ dateDocuments, slpData, existingDates }` once.
+- `generateAggregatedMetricsFromSource(source)`: Computes overview metrics from pre-fetched data (no reads).
+- `generateChartDataFromSource(source)`: Computes chart data from pre-fetched data, fetching metadata only for top 10 SLPs.
+
+**Types** (`models/gharGharYatraTypes.ts`):
+- Added `SLPDataWithDate extends SLPDataDocument { date: string }` for accurate per-day aggregations.
+
+**Page Integration** (`app/verticals/ghar-ghar-yatra-analytics/page.tsx`):
+- Replaced separate calls to `generateAggregatedMetrics()` and `generateChartData()` with a single-source fetch via `fetchOverviewSourceData()` followed by `generateAggregatedMetricsFromSource()` and `generateChartDataFromSource()`.
+- Added console timings: `[Overview] Source fetch` and `[Overview] Compute metrics+charts`.
+
+**Expected Impact**:
+- Dramatically fewer Firestore reads for long/sparse ranges (e.g., All Time).
+- No duplicated fetches for metrics vs charts.
+- Accurate daily trend/calling patterns using exact record dates.
+- Faster initial render and improved perceived performance.
+
+---
+
+*Last Updated: October 2025*
+*Version: 1.5.0*
+*Changes: Added Ghar-Ghar Yatra overview performance optimizations and documentation*

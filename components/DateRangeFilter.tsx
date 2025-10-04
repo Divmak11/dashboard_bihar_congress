@@ -27,29 +27,32 @@ function getDateRange(option: string) {
 
   switch (option) {
     case "lastDay":
-      // Yesterday only (T-1)
+      // Yesterday only (EXCLUDES TODAY)
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
       start.setHours(0, 0, 0, 0); // Start of yesterday
       end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
       end.setHours(23, 59, 59, 999); // End of yesterday
       break;
     case "lastWeek":
-      // Last 7 days (T-7 to T-1)
+      // Last 7 days ending yesterday (EXCLUDES TODAY)
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
       start.setHours(0, 0, 0, 0); // Start of day 7 days ago
       end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
       end.setHours(23, 59, 59, 999); // End of yesterday
       break;
     case "last3Months":
-      // Last 3 months ending yesterday
+      // Last 3 months including today (INCLUDES TODAY)
       start = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
       start.setHours(0, 0, 0, 0);
-      end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-      end.setHours(23, 59, 59, 999); // End of yesterday
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      end.setHours(23, 59, 59, 999); // End of today
       break;
     case "all":
-      start = null;
-      end = null;
+      // All time: from 5 years ago to today (INCLUDES TODAY)
+      start = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
+      start.setHours(0, 0, 0, 0);
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      end.setHours(23, 59, 59, 999);
       break;
     case "custom":
     default:

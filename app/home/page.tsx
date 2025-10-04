@@ -257,6 +257,18 @@ export default function HomePage() {
         { label: "Total Volunteers", value: 0 },
       ],
     },
+    {
+      key: "ghar-ghar-yatra-analytics",
+      title: "Ghar-Ghar Yatra Data",
+      lead: "Data Analytics Team",
+      color: "bg-indigo-100",
+      metrics: [
+        { label: "Total Calls Tracked", value: 0 },
+        { label: "Active SLPs", value: 0 },
+        { label: "Data Match Rate", value: 0 },
+        { label: "Days with Data", value: 0 },
+      ],
+    },
   ];
 
   // Check if user has access to YouTube vertical
@@ -414,6 +426,47 @@ export default function HomePage() {
                 <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-500 border-t-transparent"></div>
                   <span className="text-gray-700 font-medium">Loading WTM-Youtube...</span>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {/* Ghar-Ghar Yatra Analytics card - Admin only */}
+        {role === 'admin' ? (
+          <div
+            onClick={() => {
+              setNavigatingTo('/verticals/ghar-ghar-yatra-analytics');
+              router.push('/verticals/ghar-ghar-yatra-analytics');
+            }}
+            className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-indigo-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
+          >
+            <div className="flex flex-col items-center mb-2 gap-1">
+              <h2 className="text-xl font-bold text-center group-hover:text-indigo-700 transition">Ghar-Ghar Yatra Data</h2>
+              <span className="px-3 py-1 rounded-full bg-white/70 text-gray-800 text-xs font-semibold border border-gray-300 mt-1">
+                Lead: Data Analytics Team
+              </span>
+            </div>
+            <div className="flex flex-col gap-2 mt-2">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-gray-700">Total Calls Tracked:</span>
+                <span className="text-gray-900 dark:text-gray-100 font-bold">-</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-gray-700">Active SLPs:</span>
+                <span className="text-gray-900 dark:text-gray-100 font-bold">-</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-gray-700">Match Rate:</span>
+                <span className="text-gray-900 dark:text-gray-100 font-bold">-</span>
+              </div>
+            </div>
+            {/* Loading overlay for navigation */}
+            {navigatingTo === '/verticals/ghar-ghar-yatra-analytics' && (
+              <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-500 border-t-transparent"></div>
+                  <span className="text-gray-700 font-medium">Loading Analytics...</span>
                 </div>
               </div>
             )}
