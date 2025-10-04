@@ -13,9 +13,12 @@ import {
   orderBy,
   startAt,
   endAt,
+  limit,
+  startAfter,
   documentId,
   CollectionReference,
-  DocumentData
+  DocumentData,
+  DocumentSnapshot
 } from 'firebase/firestore';
 import {
   GharGharYatraDocument,
@@ -31,7 +34,9 @@ import {
   DataQualityDataPoint,
   CallingPatternDataPoint,
   DateRange,
-  SLPDataWithDate
+  SLPDataWithDate,
+  OtherDataDocument,
+  PaginationState
 } from '../../models/gharGharYatraTypes';
 
 /**
@@ -618,10 +623,37 @@ export async function generateAggregatedMetricsFromSource(
 
   const summaries = Array.from(dateDocuments.values()).map(doc => doc.summary);
 
-  const totalPunches = slpData.reduce((sum, r) => sum + r.totalPunches, 0);
-  const totalUniquePunches = slpData.reduce((sum, r) => sum + r.uniquePunches, 0);
-  const totalDoubleEntries = slpData.reduce((sum, r) => sum + r.doubleEntries, 0);
-  const totalTripleEntries = slpData.reduce((sum, r) => sum + r.tripleEntries, 0);
+  // Prefer pre-calculated summary fields (new data model), fallback to aggregation (old data)
+  let totalPunches = 0;
+  let totalUniquePunches = 0;
+  let totalDoubleEntries = 0;
+  let totalTripleEntries = 0;
+  let usedPreCalculated = false;
+
+  // Check if all summaries have the new fields
+  const allHaveNewFields = summaries.every(s => 
+    s.total_punches !== undefined && 
+    s.total_unique_entries !== undefined && 
+    s.total_double_entries !== undefined && 
+    s.total_triple_and_more_entries !== undefined
+  );
+
+  if (allHaveNewFields && summaries.length > 0) {
+    // Use pre-calculated totals from summary (fast path)
+    totalPunches = summaries.reduce((sum, s) => sum + (s.total_punches || 0), 0);
+    totalUniquePunches = summaries.reduce((sum, s) => sum + (s.total_unique_entries || 0), 0);
+    totalDoubleEntries = summaries.reduce((sum, s) => sum + (s.total_double_entries || 0), 0);
+    totalTripleEntries = summaries.reduce((sum, s) => sum + (s.total_triple_and_more_entries || 0), 0);
+    usedPreCalculated = true;
+    console.log('[Metrics] Using pre-calculated summary fields (optimized)');
+  } else {
+    // Fallback to aggregating from slpData (backward compatibility)
+    totalPunches = slpData.reduce((sum, r) => sum + r.totalPunches, 0);
+    totalUniquePunches = slpData.reduce((sum, r) => sum + r.uniquePunches, 0);
+    totalDoubleEntries = slpData.reduce((sum, r) => sum + r.doubleEntries, 0);
+    totalTripleEntries = slpData.reduce((sum, r) => sum + r.tripleEntries, 0);
+    console.log('[Metrics] Using aggregated slpData (backward compatibility fallback)');
+  }
 
   const perSlp = new Map<string, { punches: number; dates: Set<string> }>();
   slpData.forEach(r => {
@@ -671,16 +703,36 @@ export async function generateChartDataFromSource(
 ): Promise<ChartData> {
   const { dateDocuments, slpData } = source;
 
-  // Daily trend using exact dates from SLP records
+  // Build maps for calling patterns - prefer summary fields, fallback to slpData
   const punchesByDate = new Map<string, number>();
   const uniqueByDate = new Map<string, number>();
   const doubleByDate = new Map<string, number>();
   const tripleByDate = new Map<string, number>();
+
+  // First pass: try to use pre-calculated summary fields
+  dateDocuments.forEach((doc, date) => {
+    const s = doc.summary;
+    if (s.total_punches !== undefined && 
+        s.total_unique_entries !== undefined && 
+        s.total_double_entries !== undefined && 
+        s.total_triple_and_more_entries !== undefined) {
+      // Use pre-calculated fields (new data model)
+      punchesByDate.set(date, s.total_punches);
+      uniqueByDate.set(date, s.total_unique_entries);
+      doubleByDate.set(date, s.total_double_entries);
+      tripleByDate.set(date, s.total_triple_and_more_entries);
+    }
+  });
+
+  // Second pass: for dates without pre-calculated fields, aggregate from slpData (fallback)
   slpData.forEach(r => {
-    punchesByDate.set(r.date, (punchesByDate.get(r.date) || 0) + r.totalPunches);
-    uniqueByDate.set(r.date, (uniqueByDate.get(r.date) || 0) + r.uniquePunches);
-    doubleByDate.set(r.date, (doubleByDate.get(r.date) || 0) + r.doubleEntries);
-    tripleByDate.set(r.date, (tripleByDate.get(r.date) || 0) + r.tripleEntries);
+    if (!punchesByDate.has(r.date)) {
+      // Fallback aggregation for backward compatibility
+      punchesByDate.set(r.date, (punchesByDate.get(r.date) || 0) + r.totalPunches);
+      uniqueByDate.set(r.date, (uniqueByDate.get(r.date) || 0) + r.uniquePunches);
+      doubleByDate.set(r.date, (doubleByDate.get(r.date) || 0) + r.doubleEntries);
+      tripleByDate.set(r.date, (tripleByDate.get(r.date) || 0) + r.tripleEntries);
+    }
   });
   const allDates = Array.from(new Set([
     ...Array.from(dateDocuments.keys()),
@@ -730,4 +782,117 @@ export async function generateChartDataFromSource(
     dataQuality,
     callingPatterns
   };
+}
+
+/**
+ * Fetch other_data sub-collection with pagination
+ * @param date Date in YYYY-MM-DD format
+ * @param lastDoc Last document from previous page (for cursor-based pagination)
+ * @param pageSize Number of entries per page (default 25)
+ * @param filterType Filter by entry type: 'all', 'unmatched', or 'incorrect'
+ */
+export async function fetchOtherDataPaginated(
+  date: string,
+  lastDoc?: DocumentSnapshot,
+  pageSize: number = 25,
+  filterType: 'all' | 'unmatched' | 'incorrect' = 'all'
+): Promise<{ entries: OtherDataDocument[]; pagination: PaginationState }> {
+  console.log(`[fetchOtherDataPaginated] Fetching other_data for ${date}, filter: ${filterType}, pageSize: ${pageSize}`);
+  
+  try {
+    const colRef = collection(db, 'ghar_ghar_yatra', date, 'other_data');
+    // Order by totalPunches descending (highest first), then by documentId for stable pagination
+    let q = query(colRef, orderBy('totalPunches', 'desc'), orderBy(documentId()), limit(pageSize));
+    
+    // Apply cursor for pagination
+    if (lastDoc) {
+      q = query(colRef, orderBy('totalPunches', 'desc'), orderBy(documentId()), startAfter(lastDoc), limit(pageSize));
+    }
+    
+    const snapshot = await getDocs(q);
+    
+    let entries: OtherDataDocument[] = [];
+    snapshot.forEach(doc => {
+      const data = doc.data() as Omit<OtherDataDocument, 'entryType'>;
+      const docId = doc.id;
+      
+      // Determine entry type from document ID
+      let entryType: 'unmatched' | 'incorrect' = docId.startsWith('unmatched-') ? 'unmatched' : 'incorrect';
+      
+      // Apply filter
+      if (filterType === 'all' || filterType === entryType) {
+        entries.push({
+          ...data,
+          entryType
+        });
+      }
+    });
+    
+    const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+    const hasMore = snapshot.docs.length === pageSize;
+    
+    console.log(`[fetchOtherDataPaginated] Fetched ${entries.length} entries, hasMore: ${hasMore}`);
+    
+    return {
+      entries,
+      pagination: {
+        hasMore,
+        lastVisible,
+        currentPage: 0, // Will be managed by component
+        totalFetched: entries.length
+      }
+    };
+  } catch (error) {
+    console.error('[fetchOtherDataPaginated] Error:', error);
+    throw new Error(`Failed to fetch other_data for ${date}`);
+  }
+}
+
+/**
+ * Search other_data by phone number pattern
+ * @param date Date in YYYY-MM-DD format
+ * @param searchTerm Phone number digits to search
+ * @param filterType Filter by entry type
+ */
+export async function searchOtherData(
+  date: string,
+  searchTerm: string,
+  filterType: 'all' | 'unmatched' | 'incorrect' = 'all'
+): Promise<OtherDataDocument[]> {
+  console.log(`[searchOtherData] Searching other_data for ${date}, term: ${searchTerm}, filter: ${filterType}`);
+  
+  try {
+    const colRef = collection(db, 'ghar_ghar_yatra', date, 'other_data');
+    const snapshot = await getDocs(colRef);
+    
+    const results: OtherDataDocument[] = [];
+    
+    snapshot.forEach(doc => {
+      const data = doc.data() as Omit<OtherDataDocument, 'entryType'>;
+      const docId = doc.id;
+      const entryType: 'unmatched' | 'incorrect' = docId.startsWith('unmatched-') ? 'unmatched' : 'incorrect';
+      
+      // Apply filter
+      if (filterType !== 'all' && filterType !== entryType) {
+        return;
+      }
+      
+      // Search by phone number
+      if (data.slpPhoneNumber && data.slpPhoneNumber.includes(searchTerm)) {
+        results.push({
+          ...data,
+          entryType
+        });
+      }
+    });
+    
+    // Sort results by totalPunches descending (highest first)
+    results.sort((a, b) => b.totalPunches - a.totalPunches);
+    
+    console.log(`[searchOtherData] Found ${results.length} matching entries`);
+    return results;
+  } catch (error) {
+    console.error('[searchOtherData] Error:', error);
+    throw new Error(`Failed to search other_data for ${date}`);
+  }
 }

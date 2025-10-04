@@ -11,6 +11,13 @@ export interface GharGharYatraSummary {
   unidentifiable_count: number;
   incorrect_count: number;
   no_match_count: number;
+  
+  // New pre-calculated aggregate fields (optional for backward compatibility)
+  total_punches?: number;
+  total_unique_entries?: number;
+  total_double_entries?: number;
+  total_triple_and_more_entries?: number;
+  numbers_without_param2?: number;
 }
 
 /**
@@ -211,4 +218,41 @@ export interface CSVExportData {
   headers: string[];
   rows: (string | number)[][];
   filename: string;
+}
+
+/**
+ * Other data document from other_data sub-collection
+ * Path: ghar_ghar_yatra/{date}/other_data/{doc_id}
+ * Doc IDs: 'unmatched-{digits}' or 'incorrect-{digits}'
+ */
+export interface OtherDataDocument {
+  totalPunches: number;
+  uniquePunches: number;
+  doubleEntries: number;
+  tripleEntries: number;
+  slpPhoneNumber: string;
+  entryType?: 'unmatched' | 'incorrect'; // Derived from doc ID
+}
+
+/**
+ * Pagination state for other_data queries
+ */
+export interface PaginationState {
+  hasMore: boolean;
+  lastVisible: any; // Firestore DocumentSnapshot
+  currentPage: number;
+  totalFetched: number;
+}
+
+/**
+ * Data structure for unidentified entries view
+ */
+export interface UnidentifiedEntriesViewData {
+  date: string; // YYYY-MM-DD
+  entries: OtherDataDocument[];
+  loading: boolean;
+  error: string | null;
+  pagination: PaginationState;
+  filterType: 'all' | 'unmatched' | 'incorrect';
+  searchTerm: string;
 }
