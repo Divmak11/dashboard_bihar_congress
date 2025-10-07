@@ -1,0 +1,553 @@
+Assembly,AC Names,Row Type,SLP Status,SLP Name,Contact No.,Matched Count,Unmatched Count,Notes
+(Unknown),Not Found,Summary,,,,0,1,
+(Unknown),Not Found,SLP,Unmatched,-,-,,,
+Araria,Mohd Arhaan,Summary,,,,9,6,
+Araria,Mohd Arhaan,SLP,Matched,Abdullah,8002445456,,,Matched by phone
+Araria,Mohd Arhaan,SLP,Matched,Mohd Ehsan,8603676581,,,Matched by phone
+Araria,Mohd Arhaan,SLP,Matched,Dilip Kumar,6200533200,,,Matched by phone
+Araria,Mohd Arhaan,SLP,Matched,Mohammad Ali,7428559853,,,Matched by phone
+Araria,Mohd Arhaan,SLP,Matched,Tajmul,9631247107,,,Matched by phone
+Araria,Mohd Arhaan,SLP,Matched,Ramzaan,9546552553,,,Matched by phone
+Araria,Mohd Arhaan,SLP,Matched,Sarfaraz,8210422480,,,Matched by phone
+Araria,Mohd Arhaan,SLP,Matched,Bablu Kumar,9661054109,,,Matched by phone
+Araria,Mohd Arhaan,SLP,Matched,Nitesh Kumar,8084365403,,,Matched by phone
+Araria,Mohd Arhaan,SLP,Unmatched,Dilshan Ahsan,6201254692,,,
+Araria,Mohd Arhaan,SLP,Unmatched,Abdul Quddus,9801340522,,,
+Araria,Mohd Arhaan,SLP,Unmatched,Afroz Alam,8825255103,,,Ambiguous phone match (2 candidates)
+Araria,Mohd Arhaan,SLP,Unmatched,Raj Kumar,8002428582,,,
+Araria,Mohd Arhaan,SLP,Unmatched,Sarban Sharma,7320838415,,,
+Araria,Mohd Arhaan,SLP,Unmatched,Nurul Huda,8292812008,,,
+Arwal,Om Prakash Kumar,Summary,,,,0,4,
+Arwal,Om Prakash Kumar,SLP,Unmatched,Sonu Kumar,8969296378,,,Ambiguous name match (5 candidates)
+Arwal,Om Prakash Kumar,SLP,Unmatched,Sunny Kumar,7461973611,,,
+Arwal,Om Prakash Kumar,SLP,Unmatched,Raushan Kumar,9973870891,,,Ambiguous phone match (2 candidates)
+Arwal,Om Prakash Kumar,SLP,Unmatched,Shaurabh Kumar,9110060467,,,
+Aurangabad,Abdullah Amin Khan,Summary,,,,4,6,
+Aurangabad,Abdullah Amin Khan,SLP,Matched,Munna Yadav,9113360727,,,Matched by name
+Aurangabad,Abdullah Amin Khan,SLP,Matched,Raju Kumar,8271784711,,,Matched by name
+Aurangabad,Abdullah Amin Khan,SLP,Matched,Kaushal Kumar,8965321548,,,Matched by name
+Aurangabad,Abdullah Amin Khan,SLP,Matched,Sharique,8581985565,,,Matched by phone
+Aurangabad,Abdullah Amin Khan,SLP,Unmatched,Md. Asgar,8777674850,,,
+Aurangabad,Abdullah Amin Khan,SLP,Unmatched,Ziauddin Khan,9852787878,,,
+Aurangabad,Abdullah Amin Khan,SLP,Unmatched,Aman Khan,9031265117,,,
+Aurangabad,Abdullah Amin Khan,SLP,Unmatched,Sudhir Chandravanshi,9939312926,,,
+Aurangabad,Abdullah Amin Khan,SLP,Unmatched,Chandrashekhar,6204785007,,,
+Aurangabad,Abdullah Amin Khan,SLP,Unmatched,Gunjan,8935821307,,,
+Bachhwara,Niraj kumar,Summary,,,,9,1,
+Bachhwara,Niraj kumar,SLP,Matched,Gandhi Sah,8406089070,,,Matched by phone
+Bachhwara,Niraj kumar,SLP,Matched,Anil Kumar,8874199919,,,Matched by name
+Bachhwara,Niraj kumar,SLP,Matched,Ashok Kumar,9525169081,,,Matched by phone
+Bachhwara,Niraj kumar,SLP,Matched,Aashutosh Kumar,8307226816,,,Matched by phone
+Bachhwara,Niraj kumar,SLP,Matched,Avdhesh Kumar,6200838371,,,Matched by phone
+Bachhwara,Niraj kumar,SLP,Matched,Raju Kumar,8271784711,,,Matched by phone
+Bachhwara,Niraj kumar,SLP,Matched,Shayam Sundar Paswan,8877881295,,,Matched by phone
+Bachhwara,Niraj kumar,SLP,Matched,Md. Sadiq,8777859920,,,Matched by phone
+Bachhwara,Niraj kumar,SLP,Matched,Ajay Kumar,8986144886,,,Matched by phone
+Bachhwara,Niraj kumar,SLP,Unmatched,Aadarsh Kumar (Rahul Kumar),8877594860,,,Ambiguous phone match (2 candidates)
+Baniyapur,Ajaykumar Yadav,Summary,,,,8,2,
+Baniyapur,Ajaykumar Yadav,SLP,Matched,Dinesh Kumar Manjhi,9625271421,,,Matched by phone
+Baniyapur,Ajaykumar Yadav,SLP,Matched,Brajesh Yadav,9973255223,,,Matched by phone
+Baniyapur,Ajaykumar Yadav,SLP,Matched,Junaid Khan,7004901095,,,Matched by phone
+Baniyapur,Ajaykumar Yadav,SLP,Matched,Raju Ray,9934781442,,,Matched by phone
+Baniyapur,Ajaykumar Yadav,SLP,Matched,Brajesh kumar,7463041130,,,Matched by phone
+Baniyapur,Ajaykumar Yadav,SLP,Matched,Javed Alam,7635059168,,,Matched by phone
+Baniyapur,Ajaykumar Yadav,SLP,Matched,Vinod Ram,9576885460,,,Matched by phone
+Baniyapur,Ajaykumar Yadav,SLP,Matched,Beauty Rani,7462032415,,,Matched by phone
+Baniyapur,Ajaykumar Yadav,SLP,Unmatched,Arvind Kumar Pandit,8873399521,,,Ambiguous phone match (2 candidates)
+Baniyapur,Ajaykumar Yadav,SLP,Unmatched,Ankit Manjhi,9871062066,,,
+Barbigha,Ashutosh,Summary,,,,12,3,
+Barbigha,Ashutosh,SLP,Matched,Pushpa Kumari,7061241164,,,Matched by phone
+Barbigha,Ashutosh,SLP,Matched,Phulo Devi,9798467660,,,Matched by phone
+Barbigha,Ashutosh,SLP,Matched,Malti Devi,8651288676,,,Matched by phone
+Barbigha,Ashutosh,SLP,Matched,Basant Paswan,8235103426,,,Matched by phone
+Barbigha,Ashutosh,SLP,Matched,Rajendra Kumar,7217781490,,,Matched by phone
+Barbigha,Ashutosh,SLP,Matched,Sulochana Kumari,7319735087,,,Matched by phone
+Barbigha,Ashutosh,SLP,Matched,Prakash Kumar,6299278792,,,Matched by phone
+Barbigha,Ashutosh,SLP,Matched,Ajit Paswan,9122637028,,,Matched by phone
+Barbigha,Ashutosh,SLP,Matched,Munna Kumar,8340371344,,,Matched by phone
+Barbigha,Ashutosh,SLP,Matched,Baby Kumari,8102242835,,,Matched by phone
+Barbigha,Ashutosh,SLP,Matched,Neetu Devi,9155559071,,,Matched by phone
+Barbigha,Ashutosh,SLP,Matched,Amarjeet Paswan,9339525709,,,Matched by phone
+Barbigha,Ashutosh,SLP,Unmatched,Afsana Khatoon,6202892987,,,
+Barbigha,Ashutosh,SLP,Unmatched,Umashankar Ram,9540136292,,,
+Barbigha,Ashutosh,SLP,Unmatched,Mangru Ram,7050465482,,,
+Begusarai,Manish Kumar abhinandan,Summary,,,,8,2,
+Begusarai,Manish Kumar abhinandan,SLP,Matched,Santosh Kumar Sharma,6202378204,,,Matched by phone
+Begusarai,Manish Kumar abhinandan,SLP,Matched,Raja Kumar,8298683562,,,Matched by phone
+Begusarai,Manish Kumar abhinandan,SLP,Matched,Lalbabu Kumar,6205850429,,,Matched by phone
+Begusarai,Manish Kumar abhinandan,SLP,Matched,Santu Kumar,9155157023,,,Matched by phone
+Begusarai,Manish Kumar abhinandan,SLP,Matched,Amrit Raj,7547090256,,,Matched by phone
+Begusarai,Manish Kumar abhinandan,SLP,Matched,Niraj Kumar,7631805303,,,Matched by phone
+Begusarai,Manish Kumar abhinandan,SLP,Matched,Md.Iqabal,7370092752,,,Matched by phone
+Begusarai,Manish Kumar abhinandan,SLP,Matched,Kedar Sah,8709772710,,,Matched by phone
+Begusarai,Manish Kumar abhinandan,SLP,Unmatched,Tejo Kumar Paswan,7603867357,,,
+Begusarai,Manish Kumar abhinandan,SLP,Unmatched,Mukesh Kumar,6207925596,,,Ambiguous phone match (2 candidates)
+Benipur,VeerBhadra,Summary,,,,7,3,
+Benipur,VeerBhadra,SLP,Matched,Murari Kumar,9931548828,,,Matched by phone
+Benipur,VeerBhadra,SLP,Matched,Ranjan Kumar Safi,7048931492,,,Matched by phone
+Benipur,VeerBhadra,SLP,Matched,Ram Pravesh Sahu,8294236611,,,Matched by phone
+Benipur,VeerBhadra,SLP,Matched,Md Sahnawaj,8102702188,,,Matched by phone
+Benipur,VeerBhadra,SLP,Matched,Pawan Kumar,6200490041,,,Matched by phone
+Benipur,VeerBhadra,SLP,Matched,Nandan Kumar Ray,9110098506,,,Matched by phone
+Benipur,VeerBhadra,SLP,Matched,Vijay Paswan,9102054287,,,Matched by phone
+Benipur,VeerBhadra,SLP,Unmatched,Rahul Kumar Chaupal,8340546590,,,
+Benipur,VeerBhadra,SLP,Unmatched,Rajesh Paswan,9931175340,,,
+Benipur,VeerBhadra,SLP,Unmatched,Gautam Kumar Laldev,7543024971,,,
+Bhagalpur,Pranav,Summary,,,,2,1,
+Bhagalpur,Pranav,SLP,Matched,Zaid Iqbal,9031967797,,,Matched by phone
+Bhagalpur,Pranav,SLP,Matched,Sanjeev Kumar,8340335473,,,Matched by name
+Bhagalpur,Pranav,SLP,Unmatched,Rashmi Prabha,9546756478,,,
+Buxar,Hare Ram Mishra,Summary,,,,6,4,
+Buxar,Hare Ram Mishra,SLP,Matched,Suresh Kumar,9128958081,,,Matched by phone
+Buxar,Hare Ram Mishra,SLP,Matched,Roshani Kumari,8651371623,,,Matched by phone
+Buxar,Hare Ram Mishra,SLP,Matched,Shoba Kumari,9852232932,,,Matched by phone
+Buxar,Hare Ram Mishra,SLP,Matched,Markandey Yadav,7091688001,,,Matched by phone
+Buxar,Hare Ram Mishra,SLP,Matched,Jai Prakash Ram,9693171709,,,Matched by name
+Buxar,Hare Ram Mishra,SLP,Matched,Upendra Kumar Sharma,8877787010,,,Matched by phone
+Buxar,Hare Ram Mishra,SLP,Unmatched,Shahnawaz Khan,7488574340,,,
+Buxar,Hare Ram Mishra,SLP,Unmatched,Karan Ram,8271074973,,,
+Buxar,Hare Ram Mishra,SLP,Unmatched,Tej Kumar Ram,9199793452,,,
+Buxar,Hare Ram Mishra,SLP,Unmatched,Surendra Kumar Ram,9472622435,,,
+Chainpur,Nitesh Tiwari,Summary,,,,7,4,
+Chainpur,Nitesh Tiwari,SLP,Matched,Sonu Lal Yadav,8294126758,,,Matched by phone
+Chainpur,Nitesh Tiwari,SLP,Matched,Bechan Ram,9572987036,,,Matched by phone
+Chainpur,Nitesh Tiwari,SLP,Matched,Seraj Khan,8757568718,,,Matched by phone
+Chainpur,Nitesh Tiwari,SLP,Matched,Bhanu Kumar,7258947557,,,Matched by phone
+Chainpur,Nitesh Tiwari,SLP,Matched,Rahul Singh,9174074831,,,Matched by name
+Chainpur,Nitesh Tiwari,SLP,Matched,Shri Mushahar,9835728763,,,Matched by phone
+Chainpur,Nitesh Tiwari,SLP,Matched,Shri Chhohada Yadav,7068612133,,,Matched by phone
+Chainpur,Nitesh Tiwari,SLP,Unmatched,Sonu Yadav,9523542972,,,Ambiguous phone match (2 candidates)
+Chainpur,Nitesh Tiwari,SLP,Unmatched,Pramod Kumar,9608148557,,,Ambiguous phone match (2 candidates)
+Chainpur,Nitesh Tiwari,SLP,Unmatched,Dinesh Giri,7905178481,,,
+Chainpur,Nitesh Tiwari,SLP,Unmatched,Shri Mulai Bind,8521016956,,,
+Chanpatia,Hasibur rahman,Summary,,,,11,0,
+Chanpatia,Hasibur rahman,SLP,Matched,Azad Alam,8873770867,,,Matched by phone
+Chanpatia,Hasibur rahman,SLP,Matched,Manjur Alam,7250025729,,,Matched by phone
+Chanpatia,Hasibur rahman,SLP,Matched,Nipu Kumar,6299835393,,,Matched by phone
+Chanpatia,Hasibur rahman,SLP,Matched,Sant Ram,8084969590,,,Matched by phone
+Chanpatia,Hasibur rahman,SLP,Matched,Sanjay Ram,9162305965,,,Matched by phone
+Chanpatia,Hasibur rahman,SLP,Matched,Nagendra Paswan,8084838557,,,Matched by phone
+Chanpatia,Hasibur rahman,SLP,Matched,Munna Paswan ( Shailesh Kumar ),7254885011,,,Matched by phone
+Chanpatia,Hasibur rahman,SLP,Matched,Lal Mohammad,9852729962,,,Matched by phone
+Chanpatia,Hasibur rahman,SLP,Matched,Babu Lal,6200394341,,,Matched by phone
+Chanpatia,Hasibur rahman,SLP,Matched,Guddu Alam,6201784369,,,Matched by phone
+Chanpatia,Hasibur rahman,SLP,Matched,Ashok Ram,8002854699,,,Matched by phone
+Chenari (SC),Sachin,Summary,,,,7,4,
+Chenari (SC),Sachin,SLP,Matched,Birbal Kumar,8873524038,,,Matched by phone
+Chenari (SC),Sachin,SLP,Matched,Ajaykumar,9973151183,,,Matched by phone
+Chenari (SC),Sachin,SLP,Matched,Mushtaq Ansari,9334127167,,,Matched by phone
+Chenari (SC),Sachin,SLP,Matched,Ramkishun Paswan,6203274869,,,Matched by phone
+Chenari (SC),Sachin,SLP,Matched,Brijkishor Paswan,9934293836,,,Matched by phone
+Chenari (SC),Sachin,SLP,Matched,Bihari Ram,9852407231,,,Matched by phone
+Chenari (SC),Sachin,SLP,Matched,Rinu Devi,9546499909,,,Matched by name
+Chenari (SC),Sachin,SLP,Unmatched,Chinta Devi,9523746527,,,
+Chenari (SC),Sachin,SLP,Unmatched,Raja Babu,9128010020,,,
+Chenari (SC),Sachin,SLP,Unmatched,Ayodhya Baitha,8521959822,,,
+Chenari (SC),Sachin,SLP,Unmatched,Ravi Bind,8877872109,,,
+Chiraia,Tribhuwan Kumar,Summary,,,,3,7,
+Chiraia,Tribhuwan Kumar,SLP,Matched,Bittu Kumar,9135540877,,,Matched by phone
+Chiraia,Tribhuwan Kumar,SLP,Matched,Dippu Yadav,9097001811,,,Matched by phone
+Chiraia,Tribhuwan Kumar,SLP,Matched,Jaikaran Yadav,7654803054,,,Matched by phone
+Chiraia,Tribhuwan Kumar,SLP,Unmatched,Devbrat Kumar,9128145915,,,Ambiguous phone match (4 candidates)
+Chiraia,Tribhuwan Kumar,SLP,Unmatched,Mani Kumar,9625914789,,,
+Chiraia,Tribhuwan Kumar,SLP,Unmatched,Arshad Alam,8209823203,,,Ambiguous phone match (2 candidates)
+Chiraia,Tribhuwan Kumar,SLP,Unmatched,Triloki Yadav,8210032428,,,Ambiguous phone match (2 candidates)
+Chiraia,Tribhuwan Kumar,SLP,Unmatched,Abhishek Kumar,9798072478,,,Ambiguous phone match (2 candidates)
+Chiraia,Tribhuwan Kumar,SLP,Unmatched,Ranjan Kumar,7808360317,,,Ambiguous phone match (4 candidates)
+Chiraia,Tribhuwan Kumar,SLP,Unmatched,Md Kalim,9507341485,,,Ambiguous phone match (2 candidates)
+Govindganj,Jamshed Alam,Summary,,,,6,4,
+Govindganj,Jamshed Alam,SLP,Matched,Khursheed Alam,9934209607,,,Matched by phone
+Govindganj,Jamshed Alam,SLP,Matched,Aftab Alam,9931510786,,,Matched by phone
+Govindganj,Jamshed Alam,SLP,Matched,Anissurrahman Ansari,8789344886,,,Matched by phone
+Govindganj,Jamshed Alam,SLP,Matched,Zahir Hussain,9955161629,,,Matched by phone
+Govindganj,Jamshed Alam,SLP,Matched,Neyaz Alam,9810208394,,,Matched by phone
+Govindganj,Jamshed Alam,SLP,Matched,Sunil Ram,9507519092,,,Matched by phone
+Govindganj,Jamshed Alam,SLP,Unmatched,Afak Alam,9142341901,,,
+Govindganj,Jamshed Alam,SLP,Unmatched,Jairam Kumar,9525313845,,,
+Govindganj,Jamshed Alam,SLP,Unmatched,Abdul Kalam,8113990366,,,
+Govindganj,Jamshed Alam,SLP,Unmatched,Mantu Ram,9955453905,,,
+Harlakhi,zartab alam,Summary,,,,11,1,
+Harlakhi,zartab alam,SLP,Matched,mohammad shafique,9871828656,,,Matched by phone
+Harlakhi,zartab alam,SLP,Matched,Naresh,7070832712,,,Matched by phone
+Harlakhi,zartab alam,SLP,Matched,Sonu Kumar,9801562016,,,Matched by name
+Harlakhi,zartab alam,SLP,Matched,Gokhula Anand jha,6202427733,,,Matched by phone
+Harlakhi,zartab alam,SLP,Matched,Md Sohail,7764079174,,,Matched by phone
+Harlakhi,zartab alam,SLP,Matched,Sitesh Kumar Paswan,9631275390,,,Matched by phone
+Harlakhi,zartab alam,SLP,Matched,govind kumar mahto,9973734918,,,Matched by phone
+Harlakhi,zartab alam,SLP,Matched,naresh shah,8084651416,,,Matched by phone
+Harlakhi,zartab alam,SLP,Matched,hariom kumar,7050720310,,,Matched by phone
+Harlakhi,zartab alam,SLP,Matched,vivek kumar mahto,9661084733,,,Matched by phone
+Harlakhi,zartab alam,SLP,Matched,anjali kumari,7781897016,,,Matched by phone
+Harlakhi,zartab alam,SLP,Unmatched,Anjali kumari 2,8340248951,,,
+Harnaut,Vivek kumar,Summary,,,,1,8,
+Harnaut,Vivek kumar,SLP,Matched,Dinesh Jamadar,7633948045,,,Matched by phone
+Harnaut,Vivek kumar,SLP,Unmatched,Anuja Kumari,7903156069,,,
+Harnaut,Vivek kumar,SLP,Unmatched,Shrikant Paswan,7091445796,,,
+Harnaut,Vivek kumar,SLP,Unmatched,Rambabu Sharma,9905487919,,,
+Harnaut,Vivek kumar,SLP,Unmatched,Arun malakar,9931815900,,,
+Harnaut,Vivek kumar,SLP,Unmatched,Amarnaath,7549440176,,,
+Harnaut,Vivek kumar,SLP,Unmatched,Anil manjhi,8002438548,,,
+Harnaut,Vivek kumar,SLP,Unmatched,shippu kumar sharma,6200549536,,,
+Harnaut,Vivek kumar,SLP,Unmatched,Ajeet kumar ram,9934272087,,,
+Hisua,Avinash Pandey,Summary,,,,10,7,
+Hisua,Avinash Pandey,SLP,Matched,Gopal Kumar,9431272007,,,Matched by phone
+Hisua,Avinash Pandey,SLP,Matched,Divakar,9334231538,,,Matched by phone
+Hisua,Avinash Pandey,SLP,Matched,Jeetu,7978250971,,,Matched by phone
+Hisua,Avinash Pandey,SLP,Matched,Sarik Raja,8486667723,,,Matched by phone
+Hisua,Avinash Pandey,SLP,Matched,Gulshan,9931855046,,,Matched by phone
+Hisua,Avinash Pandey,SLP,Matched,Nasimuddin,9576473207,,,Matched by phone
+Hisua,Avinash Pandey,SLP,Matched,Golu,8579949663,,,Matched by phone
+Hisua,Avinash Pandey,SLP,Matched,Sudhanshu Kumar,8544533392,,,Matched by phone
+Hisua,Avinash Pandey,SLP,Matched,Abhay kumar singh,9934683119,,,Matched by phone
+Hisua,Avinash Pandey,SLP,Matched,Sunil Kumar,9162874432,,,Matched by phone
+Hisua,Avinash Pandey,SLP,Unmatched,Pradeep Chaudhry,7250423639,,,
+Hisua,Avinash Pandey,SLP,Unmatched,Utpalkant,9934971757,,,
+Hisua,Avinash Pandey,SLP,Unmatched,Kaulesh,8757476065,,,
+Hisua,Avinash Pandey,SLP,Unmatched,Sudhir Singh,9801282243,,,
+Hisua,Avinash Pandey,SLP,Unmatched,Eshan,9973160864,,,
+Hisua,Avinash Pandey,SLP,Unmatched,Ram Swarup Raj,9771863606,,,
+Hisua,Avinash Pandey,SLP,Unmatched,Kamlesh yadav,9546843156,,,Ambiguous phone match (2 candidates)
+Jale,Ejaz Ahmad,Summary,,,,2,8,
+Jale,Ejaz Ahmad,SLP,Matched,Dinesh Ram,9709937392,,,Matched by name
+Jale,Ejaz Ahmad,SLP,Matched,Ram Shiwalak Yadav,8521802196,,,Matched by phone
+Jale,Ejaz Ahmad,SLP,Unmatched,Ejaj Ahmed,8235183588,,,
+Jale,Ejaz Ahmad,SLP,Unmatched,Rajendra Kumar Paswan,9330539914,,,
+Jale,Ejaz Ahmad,SLP,Unmatched,Bhushan Prasad,9113706735,,,
+Jale,Ejaz Ahmad,SLP,Unmatched,Subodh Majhi,8651610545,,,
+Jale,Ejaz Ahmad,SLP,Unmatched,Ramesh Kumar,9341414434,,,
+Jale,Ejaz Ahmad,SLP,Unmatched,Praveen Kumar,9576711207,,,Ambiguous name match (3 candidates)
+Jale,Ejaz Ahmad,SLP,Unmatched,Mishri Ram,9507090921,,,
+Jale,Ejaz Ahmad,SLP,Unmatched,Manish Kumar,9835385981,,,Ambiguous name match (5 candidates)
+Jamalpur,PRAGYA PHILLIPS | MD NAFEES AKHTAR,Summary,,,,9,1,
+Jamalpur,PRAGYA PHILLIPS | MD NAFEES AKHTAR,SLP,Matched,Sudhakar Kumar,9360433756,,,Matched by phone
+Jamalpur,PRAGYA PHILLIPS | MD NAFEES AKHTAR,SLP,Matched,Md Siraj Ansari,6207778019,,,Matched by phone
+Jamalpur,PRAGYA PHILLIPS | MD NAFEES AKHTAR,SLP,Matched,Upendra Mahto,7004798726,,,Matched by phone
+Jamalpur,PRAGYA PHILLIPS | MD NAFEES AKHTAR,SLP,Matched,Rikesh Kumar,9123111454,,,Matched by phone
+Jamalpur,PRAGYA PHILLIPS | MD NAFEES AKHTAR,SLP,Matched,Ravikishan Kumar,6203685497,,,Matched by phone
+Jamalpur,PRAGYA PHILLIPS | MD NAFEES AKHTAR,SLP,Matched,Gopal Yadav,9113522430,,,Matched by phone
+Jamalpur,PRAGYA PHILLIPS | MD NAFEES AKHTAR,SLP,Matched,Amarjeet Kumar,9304960034,,,Matched by phone
+Jamalpur,PRAGYA PHILLIPS | MD NAFEES AKHTAR,SLP,Matched,Ritesh Yadav,9117128196,,,Matched by phone
+Jamalpur,PRAGYA PHILLIPS | MD NAFEES AKHTAR,SLP,Matched,Parveen Kumar,6200773885,,,Matched by phone
+Jamalpur,PRAGYA PHILLIPS | MD NAFEES AKHTAR,SLP,Unmatched,Kundan Kumar,7004888767,,,Ambiguous phone match (2 candidates)
+Kadwa,Himanshu Jaihind,Summary,,,,8,2,
+Kadwa,Himanshu Jaihind,SLP,Matched,Musaddique,9867677194,,,Matched by phone
+Kadwa,Himanshu Jaihind,SLP,Matched,Md Anzar Ul Haq,9155570086,,,Matched by name
+Kadwa,Himanshu Jaihind,SLP,Matched,Jasim (Khurshid),8409277478,,,Matched by phone
+Kadwa,Himanshu Jaihind,SLP,Matched,Md Kausar Alam,9955453730,,,Matched by phone
+Kadwa,Himanshu Jaihind,SLP,Matched,Md Manjar,8002097751,,,Matched by phone
+Kadwa,Himanshu Jaihind,SLP,Matched,Aftab Alam,9939715953,,,Matched by name
+Kadwa,Himanshu Jaihind,SLP,Matched,Anjar Alam,9702265288,,,Matched by phone
+Kadwa,Himanshu Jaihind,SLP,Matched,Parveen (Farzana),8235800207,,,Matched by phone
+Kadwa,Himanshu Jaihind,SLP,Unmatched,Moyassar Shafi,8521807875,,,
+Kadwa,Himanshu Jaihind,SLP,Unmatched,Md Gani,7070312398,,,
+Kahalgaon,Pranav,Summary,,,,4,6,
+Kahalgaon,Pranav,SLP,Matched,Vishnu Kumar Verma,7667144607,,,Matched by name
+Kahalgaon,Pranav,SLP,Matched,Sangeeta Kumar,96936 80804,,,Matched by name
+Kahalgaon,Pranav,SLP,Matched,Jaya Preety,7542002246,,,Matched by name
+Kahalgaon,Pranav,SLP,Matched,Adarsh Ankur,8298014227,,,Matched by name
+Kahalgaon,Pranav,SLP,Unmatched,Shekhar Suman,91220 36200,,,
+Kahalgaon,Pranav,SLP,Unmatched,Adarsh Raunak,7372872439,,,
+Kahalgaon,Pranav,SLP,Unmatched,Yudhishtir Kumar,7520 154 067,,,
+Kahalgaon,Pranav,SLP,Unmatched,Raju Ranjana,62013 61489,,,
+Kahalgaon,Pranav,SLP,Unmatched,Badal Kumar,83406 45622,,,
+Kahalgaon,Pranav,SLP,Unmatched,Sanjay Kisku,90650 32392,,,
+Kalyanpur (SC),Ahmad Owais,Summary,,,,7,1,
+Kalyanpur (SC),Ahmad Owais,SLP,Matched,Ganesh Kumar Yadav,9931452326,,,Matched by phone
+Kalyanpur (SC),Ahmad Owais,SLP,Matched,Ayush Kumar,8825364330,,,Matched by phone
+Kalyanpur (SC),Ahmad Owais,SLP,Matched,Sanjiv Kumar,8340335473,,,Matched by phone
+Kalyanpur (SC),Ahmad Owais,SLP,Matched,Santosh Kumar,7520831920,,,Matched by phone
+Kalyanpur (SC),Ahmad Owais,SLP,Matched,Nitish Kumar,7970932821,,,Matched by phone
+Kalyanpur (SC),Ahmad Owais,SLP,Matched,Abhay Raj,7485852728,,,Matched by phone
+Kalyanpur (SC),Ahmad Owais,SLP,Matched,Ajay Kumar,8986144886,,,Matched by name
+Kalyanpur (SC),Ahmad Owais,SLP,Unmatched,Md. Saqib,7349570533,,,Ambiguous phone match (2 candidates)
+Karghar,Sachin,Summary,,,,1,14,
+Karghar,Sachin,SLP,Matched,Gautam Kumar,9801969116,,,Matched by phone
+Karghar,Sachin,SLP,Unmatched,Aslam Rain,7903361092,,,
+Karghar,Sachin,SLP,Unmatched,Drapati Devi,9229249846,,,
+Karghar,Sachin,SLP,Unmatched,Janki Devi,98017 78244 /77598 66541,,,
+Karghar,Sachin,SLP,Unmatched,Shivkailash Ji,9006879593,,,
+Karghar,Sachin,SLP,Unmatched,Akshaywar Singh,8292308911,,,
+Karghar,Sachin,SLP,Unmatched,Usha Devi,7250067154,,,Ambiguous name match (4 candidates)
+Karghar,Sachin,SLP,Unmatched,Vikas Kumar,9341452450,,,Ambiguous name match (4 candidates)
+Karghar,Sachin,SLP,Unmatched,Vishal Ji,7323020457,,,
+Karghar,Sachin,SLP,Unmatched,Manish Ji,9546690088,,,
+Karghar,Sachin,SLP,Unmatched,Jahir Ansari,6202061291,,,
+Karghar,Sachin,SLP,Unmatched,Jitu Kumar Gautam,9801106838,,,
+Karghar,Sachin,SLP,Unmatched,Munna Ram,92413 92950 / 92411 36093,,,
+Karghar,Sachin,SLP,Unmatched,Jugnu Ram,9905067274,,,
+Karghar,Sachin,SLP,Unmatched,Ram Kuber Ram,9939421939,,,
+Khagaria,Manish Kumar abhinandan,Summary,,,,4,3,
+Khagaria,Manish Kumar abhinandan,SLP,Matched,Gautam Kumar,9801969116,,,Matched by name
+Khagaria,Manish Kumar abhinandan,SLP,Matched,Bhupendra Rai,8825344927,,,Matched by phone
+Khagaria,Manish Kumar abhinandan,SLP,Matched,Ramvilash Yadav,8252708295,,,Matched by phone
+Khagaria,Manish Kumar abhinandan,SLP,Matched,Nandani Kumari,7061511041,,,Matched by phone
+Khagaria,Manish Kumar abhinandan,SLP,Unmatched,Dilip sah,6352506127,,,
+Khagaria,Manish Kumar abhinandan,SLP,Unmatched,Ranvir Yadav,9430235440,,,
+Khagaria,Manish Kumar abhinandan,SLP,Unmatched,Rajaram,7759076718,,,
+Kishanganj,Shumsh uddin Ansari,Summary,,,,10,0,
+Kishanganj,Shumsh uddin Ansari,SLP,Matched,Shadab Alam,6204005191,,,Matched by phone
+Kishanganj,Shumsh uddin Ansari,SLP,Matched,Ashfaq Alam,7908608094,,,Matched by phone
+Kishanganj,Shumsh uddin Ansari,SLP,Matched,Md Rehan,7292830314,,,Matched by phone
+Kishanganj,Shumsh uddin Ansari,SLP,Matched,Muftadi Anwer,6299419122,,,Matched by phone
+Kishanganj,Shumsh uddin Ansari,SLP,Matched,Badrul Ajmal,9564198822,,,Matched by phone
+Kishanganj,Shumsh uddin Ansari,SLP,Matched,Musadique Reza,9334571770,,,Matched by phone
+Kishanganj,Shumsh uddin Ansari,SLP,Matched,Sarfaraz Aktar,9771212782,,,Matched by phone
+Kishanganj,Shumsh uddin Ansari,SLP,Matched,Jakir Alam,9801100112,,,Matched by phone
+Kishanganj,Shumsh uddin Ansari,SLP,Matched,Nahid Anwer,7503677661,,,Matched by phone
+Kishanganj,Shumsh uddin Ansari,SLP,Matched,Radha Kumari,6202309302,,,Matched by phone
+Korha (SC),Himanshu Jaihind,Summary,,,,4,2,
+Korha (SC),Himanshu Jaihind,SLP,Matched,Abdul Sattar,9973107164,,,Matched by phone
+Korha (SC),Himanshu Jaihind,SLP,Matched,Shahabuddin Salafi,7562942990,,,Matched by phone
+Korha (SC),Himanshu Jaihind,SLP,Matched,Najrul,9006107166,,,Matched by phone
+Korha (SC),Himanshu Jaihind,SLP,Matched,Shakeel,7654470548,,,Matched by phone
+Korha (SC),Himanshu Jaihind,SLP,Unmatched,Samsul ul huque,8780563160,,,
+Korha (SC),Himanshu Jaihind,SLP,Unmatched,MD Ashfaqullah,957051699,,,
+Kusheshwarsthan (SC),VeerBhadra,Summary,,,,2,7,
+Kusheshwarsthan (SC),VeerBhadra,SLP,Matched,Vijay Yadav,6206109377,,,Matched by phone
+Kusheshwarsthan (SC),VeerBhadra,SLP,Matched,Kanchan Kumari,9934303700,,,Matched by name
+Kusheshwarsthan (SC),VeerBhadra,SLP,Unmatched,Shambhu Kumar,8409364193,,,
+Kusheshwarsthan (SC),VeerBhadra,SLP,Unmatched,Sidhant Kumar Ray,7319949251,,,
+Kusheshwarsthan (SC),VeerBhadra,SLP,Unmatched,Kamal Mukhiya,9631217052,,,
+Kusheshwarsthan (SC),VeerBhadra,SLP,Unmatched,Jay Prakash,7764094577,,,
+Kusheshwarsthan (SC),VeerBhadra,SLP,Unmatched,Nadeem Alam,7562830131,,,
+Kusheshwarsthan (SC),VeerBhadra,SLP,Unmatched,Md Sakir,7857077780,,,
+Kusheshwarsthan (SC),VeerBhadra,SLP,Unmatched,Pranav Gupta,9661744002,,,
+Kutumba (SC),Abdullah Amin Khan,Summary,,,,0,10,
+Kutumba (SC),Abdullah Amin Khan,SLP,Unmatched,Ravindra Ram,7781863873,,,
+Kutumba (SC),Abdullah Amin Khan,SLP,Unmatched,Surender Ram,8797615093,,,
+Kutumba (SC),Abdullah Amin Khan,SLP,Unmatched,Dhananjay Kumar,9304214924,,,
+Kutumba (SC),Abdullah Amin Khan,SLP,Unmatched,Md. Jabbar Ansari,9931883951,,,
+Kutumba (SC),Abdullah Amin Khan,SLP,Unmatched,Babar Ansari,9939121885,,,
+Kutumba (SC),Abdullah Amin Khan,SLP,Unmatched,Aftab Alam,6291009048,,,Ambiguous name match (2 candidates)
+Kutumba (SC),Abdullah Amin Khan,SLP,Unmatched,Rani Devi,7488826034,,,
+Kutumba (SC),Abdullah Amin Khan,SLP,Unmatched,Vikas Kumar Bharti,9835427440,,,
+Kutumba (SC),Abdullah Amin Khan,SLP,Unmatched,Ramkesh Ram,6299385891,,,
+Kutumba (SC),Abdullah Amin Khan,SLP,Unmatched,Ankit Chandravanshi,6205430154,,,
+Lakhisarai,Ashutosh,Summary,,,,5,1,
+Lakhisarai,Ashutosh,SLP,Matched,Mamta Kumari,9507715363,,,Matched by phone
+Lakhisarai,Ashutosh,SLP,Matched,Rajeev Kahar,9097447464,,,Matched by phone
+Lakhisarai,Ashutosh,SLP,Matched,Rekha Devi,8292547763,,,Matched by phone
+Lakhisarai,Ashutosh,SLP,Matched,Ganga Rajak,7970406319,,,Matched by phone
+Lakhisarai,Ashutosh,SLP,Matched,Pintu Thakur,6204476435,,,Matched by phone
+Lakhisarai,Ashutosh,SLP,Unmatched,Sunil Gupta,7870221640,,,
+Lalganj,Jay pratap,Summary,,,,8,3,
+Lalganj,Jay pratap,SLP,Matched,Dinanath Ram,9504233976,,,Matched by phone
+Lalganj,Jay pratap,SLP,Matched,Sonu Khan,9135971922,,,Matched by phone
+Lalganj,Jay pratap,SLP,Matched,Usha Kumari,9708538581,,,Matched by phone
+Lalganj,Jay pratap,SLP,Matched,Shankar Shah,9060057983,,,Matched by phone
+Lalganj,Jay pratap,SLP,Matched,Jahangir,7250133786,,,Matched by phone
+Lalganj,Jay pratap,SLP,Matched,Sanjeev,9525517839,,,Matched by phone
+Lalganj,Jay pratap,SLP,Matched,Laxman Ray,9973595104,,,Matched by phone
+Lalganj,Jay pratap,SLP,Matched,Chand kumar,6203301916,,,Matched by phone
+Lalganj,Jay pratap,SLP,Unmatched,Puneet Ram,9931203486,,,
+Lalganj,Jay pratap,SLP,Unmatched,Ranvijay Ram,7562056843,,,
+Lalganj,Jay pratap,SLP,Unmatched,Rakesh,9507673367,,,
+Maharajganj,Abdul Basit,Summary,,,,4,1,
+Maharajganj,Abdul Basit,SLP,Matched,Abhimanyu Kumar,9973304024,,,Matched by phone
+Maharajganj,Abdul Basit,SLP,Matched,Meraj Ansari,7209031543,,,Matched by phone
+Maharajganj,Abdul Basit,SLP,Matched,Pramood Sahni,9708717286,,,Matched by phone
+Maharajganj,Abdul Basit,SLP,Matched,Vikas Yadav,7633937820,,,Matched by phone
+Maharajganj,Abdul Basit,SLP,Unmatched,Muraad Ali,9060919658,,,
+Manihari (ST),MD IMBESAT AHMAD,Summary,,,,10,0,
+Manihari (ST),MD IMBESAT AHMAD,SLP,Matched,Nandini Singh,8709942676,,,Matched by phone
+Manihari (ST),MD IMBESAT AHMAD,SLP,Matched,Resham Kumari Paswan,7481014407,,,Matched by phone
+Manihari (ST),MD IMBESAT AHMAD,SLP,Matched,Supriya Gupta,6200987052,,,Matched by phone
+Manihari (ST),MD IMBESAT AHMAD,SLP,Matched,Aftab Husain,8210099553,,,Matched by phone
+Manihari (ST),MD IMBESAT AHMAD,SLP,Matched,Md Kushal,9942626220,,,Matched by phone
+Manihari (ST),MD IMBESAT AHMAD,SLP,Matched,Md Sahrul Alam,9534782117,,,Matched by phone
+Manihari (ST),MD IMBESAT AHMAD,SLP,Matched,Azmat Husain,8789231749,,,Matched by phone
+Manihari (ST),MD IMBESAT AHMAD,SLP,Matched,Syed Mahfooz,8709389035,,,Matched by phone
+Manihari (ST),MD IMBESAT AHMAD,SLP,Matched,Aditya Kumar Singh,7903872517,,,Matched by phone
+Manihari (ST),MD IMBESAT AHMAD,SLP,Matched,Bhavesh Kumar,8810604379,,,Matched by phone
+Mohania (SC),Nitesh Tiwari,Summary,,,,5,8,
+Mohania (SC),Nitesh Tiwari,SLP,Matched,Nandan Yadav,7061046525,,,Matched by name
+Mohania (SC),Nitesh Tiwari,SLP,Matched,Lokesh Shrivastava,9939091680,,,Matched by phone
+Mohania (SC),Nitesh Tiwari,SLP,Matched,Suman Kumari,6205879354,,,Matched by phone
+Mohania (SC),Nitesh Tiwari,SLP,Matched,Nur Mohammad Ali,8210452064,,,Matched by phone
+Mohania (SC),Nitesh Tiwari,SLP,Matched,Sunita Devi,6206925003,,,Matched by phone
+Mohania (SC),Nitesh Tiwari,SLP,Unmatched,Kumari Gunjan,9939399246,,,Ambiguous phone match (3 candidates)
+Mohania (SC),Nitesh Tiwari,SLP,Unmatched,Saurabh Kumar,7281881851,,,Ambiguous phone match (2 candidates)
+Mohania (SC),Nitesh Tiwari,SLP,Unmatched,Prince Kumar,9631852322,,,Ambiguous phone match (2 candidates)
+Mohania (SC),Nitesh Tiwari,SLP,Unmatched,Chitranjan Rajak,9931399116,,,Ambiguous phone match (2 candidates)
+Mohania (SC),Nitesh Tiwari,SLP,Unmatched,Devendra Singh,9973706409,,,Ambiguous phone match (2 candidates)
+Mohania (SC),Nitesh Tiwari,SLP,Unmatched,Ramesh Pandey,8252077316,,,
+Mohania (SC),Nitesh Tiwari,SLP,Unmatched,Dasharath Mallah,9973146038,,,
+Mohania (SC),Nitesh Tiwari,SLP,Unmatched,Gulam Peer Mohammad,8541820430,,,
+Nalanda,Vivek kumar,Summary,,,,2,12,
+Nalanda,Vivek kumar,SLP,Matched,Manish Kumar,8873024149,,,Matched by phone
+Nalanda,Vivek kumar,SLP,Matched,Sonu Kumar,9801562016,,,Matched by phone
+Nalanda,Vivek kumar,SLP,Unmatched,Sudhir Kumar Sinha,7462042160,,,
+Nalanda,Vivek kumar,SLP,Unmatched,Surendra Paswan,8084009248,,,
+Nalanda,Vivek kumar,SLP,Unmatched,Awdesh Kushwaha,6203582812,,,
+Nalanda,Vivek kumar,SLP,Unmatched,Mahesh Ravidas,9019175641,,,
+Nalanda,Vivek kumar,SLP,Unmatched,Priya Ranjan Patel,9905069997,,,
+Nalanda,Vivek kumar,SLP,Unmatched,Dinesh Manjhi,9006206247,,,
+Nalanda,Vivek kumar,SLP,Unmatched,Abhishek Kumar,8540040020,,,Ambiguous name match (6 candidates)
+Nalanda,Vivek kumar,SLP,Unmatched,Sanju Ravidas,9835565028,,,
+Nalanda,Vivek kumar,SLP,Unmatched,Blmiki Ravidas,8969399747,,,
+Nalanda,Vivek kumar,SLP,Unmatched,Preeti Sahu,7294097838,,,
+Nalanda,Vivek kumar,SLP,Unmatched,Subodh Pandit,9798286274,,,
+Nalanda,Vivek kumar,SLP,Unmatched,Sambhu Chaudhry,9835561499,,,
+Nautan,Naveen Kumar,Summary,,,,10,0,
+Nautan,Naveen Kumar,SLP,Matched,Nandkishore Kushwaha,7004419653,,,Matched by phone
+Nautan,Naveen Kumar,SLP,Matched,Sunil Kumar Chaudhary,6280926002,,,Matched by phone
+Nautan,Naveen Kumar,SLP,Matched,Girja Yadav,8789921345,,,Matched by phone
+Nautan,Naveen Kumar,SLP,Matched,Shambhu Ram,8809464916,,,Matched by phone
+Nautan,Naveen Kumar,SLP,Matched,Nandkishore Prasad,6205563502,,,Matched by phone
+Nautan,Naveen Kumar,SLP,Matched,Mukesh Kumar,7970708242,,,Matched by phone
+Nautan,Naveen Kumar,SLP,Matched,Sekh Babul,9162519766,,,Matched by phone
+Nautan,Naveen Kumar,SLP,Matched,Sunaina Devi,8873327664,,,Matched by phone
+Nautan,Naveen Kumar,SLP,Matched,Madan Ram,9693910288,,,Matched by phone
+Nautan,Naveen Kumar,SLP,Matched,Amit Kumar,8294956394,,,Matched by phone
+Paru,Mohammad sarfraz,Summary,,,,4,6,
+Paru,Mohammad sarfraz,SLP,Matched,Ajay Ram,6202721054,,,Matched by phone
+Paru,Mohammad sarfraz,SLP,Matched,Ansar Alam,9064978953,,,Matched by phone
+Paru,Mohammad sarfraz,SLP,Matched,Mumtaz Ansari,9931083299,,,Matched by phone
+Paru,Mohammad sarfraz,SLP,Matched,Inderjeet,8084104962,,,Matched by phone
+Paru,Mohammad sarfraz,SLP,Unmatched,Raza Ansari,9117343385,,,
+Paru,Mohammad sarfraz,SLP,Unmatched,Nijamuddin,8651505002,,,
+Paru,Mohammad sarfraz,SLP,Unmatched,Basir Alam,7369075500,,,
+Paru,Mohammad sarfraz,SLP,Unmatched,Saroj Kushwaha,8292597165,,,
+Paru,Mohammad sarfraz,SLP,Unmatched,Mandip Yadav,9905877730,,,
+Paru,Mohammad sarfraz,SLP,Unmatched,Ajay Thakur,8119819835,,,
+Pranpur,MD IMBESAT AHMAD,Summary,,,,11,1,
+Pranpur,MD IMBESAT AHMAD,SLP,Matched,Raushan Jamil,7320883378,,,Matched by phone
+Pranpur,MD IMBESAT AHMAD,SLP,Matched,Md Raunak,8809354786,,,Matched by phone
+Pranpur,MD IMBESAT AHMAD,SLP,Matched,Md Mamnoon Akhtar,7631212149,,,Matched by phone
+Pranpur,MD IMBESAT AHMAD,SLP,Matched,Md Azad Alam,9304913550,,,Matched by phone
+Pranpur,MD IMBESAT AHMAD,SLP,Matched,Md Shamim Akhtar,8292199733,,,Matched by phone
+Pranpur,MD IMBESAT AHMAD,SLP,Matched,Tanveer Shah,9264167757,,,Matched by phone
+Pranpur,MD IMBESAT AHMAD,SLP,Matched,Md Shadab Karim,7488257331,,,Matched by phone
+Pranpur,MD IMBESAT AHMAD,SLP,Matched,Mohd Tufail Ali Reza,8368302453,,,Matched by phone
+Pranpur,MD IMBESAT AHMAD,SLP,Matched,Md Shah Jahan,9113325794,,,Matched by phone
+Pranpur,MD IMBESAT AHMAD,SLP,Matched,Md Shabbir Alam,7903915451,,,Matched by phone
+Pranpur,MD IMBESAT AHMAD,SLP,Matched,Sukhdev Rai,9939026809,,,Matched by phone
+Pranpur,MD IMBESAT AHMAD,SLP,Unmatched,Pradip Kumar Rai,8084057411,,,
+Raja Pakar (SC),Shadab Khan,Summary,,,,5,3,
+Raja Pakar (SC),Shadab Khan,SLP,Matched,Amarjeet Yadav,7549224155,,,Matched by phone
+Raja Pakar (SC),Shadab Khan,SLP,Matched,Gaurav Kumar,6205900025,,,Matched by phone
+Raja Pakar (SC),Shadab Khan,SLP,Matched,Shankar Ram,7808182292,,,Matched by phone
+Raja Pakar (SC),Shadab Khan,SLP,Matched,Raja Kumar,9534385290,,,Matched by phone
+Raja Pakar (SC),Shadab Khan,SLP,Matched,Nitesh Kumar,9576042659,,,Matched by phone
+Raja Pakar (SC),Shadab Khan,SLP,Unmatched,Avinash Kumar Yadav,7631102738,,,
+Raja Pakar (SC),Shadab Khan,SLP,Unmatched,Surendra Ram,7783002092,,,Ambiguous phone match (2 candidates)
+Raja Pakar (SC),Shadab Khan,SLP,Unmatched,Md. Haider,9570036277,,,Ambiguous phone match (2 candidates)
+Rajgir (SC),Raman Khokhar,Summary,,,,9,2,
+Rajgir (SC),Raman Khokhar,SLP,Matched,Veer Bahadur Manjhi,7320820657,,,Matched by phone
+Rajgir (SC),Raman Khokhar,SLP,Matched,Vikas Chaudhary,9766331850,,,Matched by phone
+Rajgir (SC),Raman Khokhar,SLP,Matched,Mohit Kumar,6203886623,,,Matched by name
+Rajgir (SC),Raman Khokhar,SLP,Matched,Anuj Kumar,8226834984,,,Matched by phone
+Rajgir (SC),Raman Khokhar,SLP,Matched,Umesh Kumar,8488727175,,,Matched by name
+Rajgir (SC),Raman Khokhar,SLP,Matched,Akash Kumar Manjhi,6299995262,,,Matched by phone
+Rajgir (SC),Raman Khokhar,SLP,Matched,Vishvendar Kumar,9006333024,,,Matched by phone
+Rajgir (SC),Raman Khokhar,SLP,Matched,Mukesh Paswan,6205372009,,,Matched by phone
+Rajgir (SC),Raman Khokhar,SLP,Matched,Sanjay Prasad,6206650407,,,Matched by phone
+Rajgir (SC),Raman Khokhar,SLP,Unmatched,Parmod Kumar,9304402589,,,
+Rajgir (SC),Raman Khokhar,SLP,Unmatched,Saukhin Kumar,8651959441,,,
+Rajpur (SC),Hare Ram Mishra,Summary,,,,3,8,
+Rajpur (SC),Hare Ram Mishra,SLP,Matched,Pritam Kumar Ram,9229727223,,,Matched by phone
+Rajpur (SC),Hare Ram Mishra,SLP,Matched,Sonu Yadav,8340550332,,,Matched by phone
+Rajpur (SC),Hare Ram Mishra,SLP,Matched,Anand Yadav,9771521591,,,Matched by phone
+Rajpur (SC),Hare Ram Mishra,SLP,Unmatched,Suman Kumar yadav,8271982065,,,Ambiguous phone match (2 candidates)
+Rajpur (SC),Hare Ram Mishra,SLP,Unmatched,Priyanka kumari yadav,8210491569,,,Ambiguous phone match (3 candidates)
+Rajpur (SC),Hare Ram Mishra,SLP,Unmatched,Gita Devi yadav,9135260543,,,
+Rajpur (SC),Hare Ram Mishra,SLP,Unmatched,Manji Singh yadav,6205343229,,,Ambiguous phone match (4 candidates)
+Rajpur (SC),Hare Ram Mishra,SLP,Unmatched,Chandan kumar Ram,62203022669,,,
+Rajpur (SC),Hare Ram Mishra,SLP,Unmatched,Rajesh Kumar,8651430383,,,Ambiguous phone match (2 candidates)
+Rajpur (SC),Hare Ram Mishra,SLP,Unmatched,Arvind Yadav,7485883223,,,Ambiguous phone match (2 candidates)
+Rajpur (SC),Hare Ram Mishra,SLP,Unmatched,Prince Kumar,7562827966,,,Ambiguous name match (3 candidates)
+Ramnagar (SC),Agni vrat Kumar,Summary,,,,8,2,
+Ramnagar (SC),Agni vrat Kumar,SLP,Matched,Md.Naeem,9801105962,,,Matched by phone
+Ramnagar (SC),Agni vrat Kumar,SLP,Matched,Madan Ram,8084625677,,,Matched by phone
+Ramnagar (SC),Agni vrat Kumar,SLP,Matched,Firoj Akhtar,9142685885,,,Matched by phone
+Ramnagar (SC),Agni vrat Kumar,SLP,Matched,Ashika Devi,8434012578,,,Matched by phone
+Ramnagar (SC),Agni vrat Kumar,SLP,Matched,Md. Imran,9771378459,,,Matched by phone
+Ramnagar (SC),Agni vrat Kumar,SLP,Matched,Arjun Ram,7079008815,,,Matched by phone
+Ramnagar (SC),Agni vrat Kumar,SLP,Matched,Shivnath Yadav,9931261711,,,Matched by phone
+Ramnagar (SC),Agni vrat Kumar,SLP,Matched,Aftab Ansari,7070406500,,,Matched by phone
+Ramnagar (SC),Agni vrat Kumar,SLP,Unmatched,Naushad Ali,9835249375,,,Ambiguous phone match (2 candidates)
+Ramnagar (SC),Agni vrat Kumar,SLP,Unmatched,Nazir Hussain,9006484536,,,
+Riga,Shahrukh hassan,Summary,,,,3,7,
+Riga,Shahrukh hassan,SLP,Matched,Saksham Kumar,9523856416,,,Matched by phone
+Riga,Shahrukh hassan,SLP,Matched,Md Nasim,7368814464,,,Matched by name
+Riga,Shahrukh hassan,SLP,Matched,Aditya Kumar,9263990487,,,Matched by phone
+Riga,Shahrukh hassan,SLP,Unmatched,Rohan Kumar,9304400427,,,Ambiguous phone match (14 candidates)
+Riga,Shahrukh hassan,SLP,Unmatched,Prakash Kumar,7322025749,,,Ambiguous phone match (11 candidates)
+Riga,Shahrukh hassan,SLP,Unmatched,Samir Kumar,9341479230,,,
+Riga,Shahrukh hassan,SLP,Unmatched,Anshu Kumar,9334624907,,,Ambiguous phone match (2 candidates)
+Riga,Shahrukh hassan,SLP,Unmatched,Sahil Raj,9153568288,,,Ambiguous phone match (2 candidates)
+Riga,Shahrukh hassan,SLP,Unmatched,Md Sharique,9525881501,,,
+Riga,Shahrukh hassan,SLP,Unmatched,Ghanshyam Kumar,9708851744,,,Ambiguous phone match (2 candidates)
+Rosera (SC),Chandan Kumar,Summary,,,,3,6,
+Rosera (SC),Chandan Kumar,SLP,Matched,Nandini Kumari,9263476415,,,Matched by phone
+Rosera (SC),Chandan Kumar,SLP,Matched,Tanuja Kumari,9525930962,,,Matched by phone
+Rosera (SC),Chandan Kumar,SLP,Matched,Umashankar Roy,9507689463,,,Matched by phone
+Rosera (SC),Chandan Kumar,SLP,Unmatched,Bipin Kumar,7370981710,,,Ambiguous phone match (2 candidates)
+Rosera (SC),Chandan Kumar,SLP,Unmatched,Nitish Kumar,9135100301,,,Ambiguous name match (3 candidates)
+Rosera (SC),Chandan Kumar,SLP,Unmatched,Amrita Bharti,7352854652,,,Ambiguous phone match (2 candidates)
+Rosera (SC),Chandan Kumar,SLP,Unmatched,Pankaj jha,7779860284,,,
+Rosera (SC),Chandan Kumar,SLP,Unmatched,Rishu Raman,8298316114,,,
+Rosera (SC),Chandan Kumar,SLP,Unmatched,Punam Devi,9525556194,,,Ambiguous name match (2 candidates)
+Sakra (SC),Shadab Khan,Summary,,,,5,5,
+Sakra (SC),Shadab Khan,SLP,Matched,Avinash Kumar,8102996608,,,Matched by phone
+Sakra (SC),Shadab Khan,SLP,Matched,Aftab Alam,9939715953,,,Matched by phone
+Sakra (SC),Shadab Khan,SLP,Matched,Vinay Kumar Ram,9508226325,,,Matched by phone
+Sakra (SC),Shadab Khan,SLP,Matched,Sonu Kumar,9835323115,,,Matched by phone
+Sakra (SC),Shadab Khan,SLP,Matched,Md. Tufail,9031797448,,,Matched by phone
+Sakra (SC),Shadab Khan,SLP,Unmatched,Avinash Kumar,9002958934,,,Ambiguous name match (3 candidates)
+Sakra (SC),Shadab Khan,SLP,Unmatched,Sudhir Kumar Aka Rahul Ray,7033426749,,,
+Sakra (SC),Shadab Khan,SLP,Unmatched,Deepak Devanand,8651653309,,,
+Sakra (SC),Shadab Khan,SLP,Unmatched,Md Farhan Raza,9693446639,,,
+Sakra (SC),Shadab Khan,SLP,Unmatched,Uday Yadav,9939774232,,,
+Sikandra (SC),Shubham Gupta,Summary,,,,8,2,
+Sikandra (SC),Shubham Gupta,SLP,Matched,Anshu Kumar,9334624907,,,Matched by name
+Sikandra (SC),Shubham Gupta,SLP,Matched,Md. Wahid,8084551922,,,Matched by phone
+Sikandra (SC),Shubham Gupta,SLP,Matched,Nanhu Qureshi,6287519526,,,Matched by phone
+Sikandra (SC),Shubham Gupta,SLP,Matched,Dasrath Saw,7992298759,,,Matched by phone
+Sikandra (SC),Shubham Gupta,SLP,Matched,Shahzad Alam,8709468872,,,Matched by phone
+Sikandra (SC),Shubham Gupta,SLP,Matched,Manoj Kumar Or Ghanshyam Yadav,9142002597,,,Matched by phone
+Sikandra (SC),Shubham Gupta,SLP,Matched,Nageshwar Yadav,7463834952,,,Matched by name
+Sikandra (SC),Shubham Gupta,SLP,Matched,Surendra Chowdhury,7331036393,,,Matched by phone
+Sikandra (SC),Shubham Gupta,SLP,Unmatched,Rahul Kumar,6201954100,,,Ambiguous name match (2 candidates)
+Sikandra (SC),Shubham Gupta,SLP,Unmatched,Sayla Kumari,9931770558,,,
+Sonbarsha (SC),Aditya Kumar Paswan,Summary,,,,0,16,
+Sonbarsha (SC),Aditya Kumar Paswan,SLP,Unmatched,Ganesh Sada,7361020554,,,
+Sonbarsha (SC),Aditya Kumar Paswan,SLP,Unmatched,Ranjit Ram,6201974733,,,
+Sonbarsha (SC),Aditya Kumar Paswan,SLP,Unmatched,Rana Sada,7901798481,,,
+Sonbarsha (SC),Aditya Kumar Paswan,SLP,Unmatched,Dharmendra Kr Yadav,6287315747,,,
+Sonbarsha (SC),Aditya Kumar Paswan,SLP,Unmatched,Darilal Sada,92299223921,,,
+Sonbarsha (SC),Aditya Kumar Paswan,SLP,Unmatched,Nawal Jha,6364683871,,,
+Sonbarsha (SC),Aditya Kumar Paswan,SLP,Unmatched,Irfan Khan,7250382786,,,
+Sonbarsha (SC),Aditya Kumar Paswan,SLP,Unmatched,Sipi Paswan,6203309178,,,
+Sonbarsha (SC),Aditya Kumar Paswan,SLP,Unmatched,Tejnarayan Yadav,9801197136,,,
+Sonbarsha (SC),Aditya Kumar Paswan,SLP,Unmatched,Ashok Kumar,9608787160,,,Ambiguous name match (3 candidates)
+Sonbarsha (SC),Aditya Kumar Paswan,SLP,Unmatched,Diwakar Kumar,6203254592,,,
+Sonbarsha (SC),Aditya Kumar Paswan,SLP,Unmatched,Santosh Rajak,6204067865,,,
+Sonbarsha (SC),Aditya Kumar Paswan,SLP,Unmatched,Narayan Yadav,9523800409,,,
+Sonbarsha (SC),Aditya Kumar Paswan,SLP,Unmatched,Sanjay Thakur,8809011728,,,
+Sonbarsha (SC),Aditya Kumar Paswan,SLP,Unmatched,Krishanmohan Sah,8709952905,,,
+Sonbarsha (SC),Aditya Kumar Paswan,SLP,Unmatched,Kailash Yadav,8409448502,,,
+Sultanganj,Pranav,Summary,,,,3,9,
+Sultanganj,Pranav,SLP,Matched,Manohar Pal,7320863217,,,Matched by name
+Sultanganj,Pranav,SLP,Matched,Rajiv Kumar,7033701213,,,Matched by name
+Sultanganj,Pranav,SLP,Matched,Vikas Kumar,9973468451,,,Matched by phone
+Sultanganj,Pranav,SLP,Unmatched,Shiromani Kumar,870 925 1213,,,
+Sultanganj,Pranav,SLP,Unmatched,Balmiki Tanti,7667929175,,,
+Sultanganj,Pranav,SLP,Unmatched,Rupesh Kumar,6299359790,,,
+Sultanganj,Pranav,SLP,Unmatched,Vipin Singh,9661015858,,,
+Sultanganj,Pranav,SLP,Unmatched,Raj Raman,6201786468,,,
+Sultanganj,Pranav,SLP,Unmatched,Balbodh Kumar,9708727609,,,
+Sultanganj,Pranav,SLP,Unmatched,Nandkishor Yadav,7563079663,,,
+Sultanganj,Pranav,SLP,Unmatched,Anuj Kumar Akela,9973679233,,,
+Sultanganj,Pranav,SLP,Unmatched,Subodh Kumar,94310 96257,,,Ambiguous name match (3 candidates)
+Tikri,Ashish Kumar,Summary,,,,4,6,
+Tikri,Ashish Kumar,SLP,Matched,Shudesh Kumar,8789964573,,,Matched by phone
+Tikri,Ashish Kumar,SLP,Matched,Omprey Kr Yadav,9631649075,,,Matched by phone
+Tikri,Ashish Kumar,SLP,Matched,Chitranjan Kumar Das,6200141584,,,Matched by phone
+Tikri,Ashish Kumar,SLP,Matched,Anuj Kumar,8226834984,,,Matched by name
+Tikri,Ashish Kumar,SLP,Unmatched,Ritish Kumar Rahi,9798581150,,,
+Tikri,Ashish Kumar,SLP,Unmatched,Manju Devi,7766875105,,,Ambiguous phone match (2 candidates)
+Tikri,Ashish Kumar,SLP,Unmatched,Sakina Parveen,7050291787,,,
+Tikri,Ashish Kumar,SLP,Unmatched,Pinki Devi,7763893108,,,
+Tikri,Ashish Kumar,SLP,Unmatched,Upender Kr Das,9771297370,,,
+Tikri,Ashish Kumar,SLP,Unmatched,Meera Devi,9661600389,,,

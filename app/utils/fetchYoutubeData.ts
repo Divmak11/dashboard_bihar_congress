@@ -10,7 +10,9 @@ import {
   DocumentData,
   orderBy,
   limit as firestoreLimit,
-  Timestamp
+  Timestamp,
+  doc,
+  updateDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { fetchVideoStatsFromLinks } from './videoApi';
@@ -465,4 +467,31 @@ export function computeOverviewAggregates(args: {
       topThemes
     }
   };
+}
+
+// Update influencer's last fetched video ID
+export async function updateInfluencerLastVideo(
+  influencerId: string,
+  lastVideoId: string,
+  lastFetchedAt: number = Date.now()
+): Promise<{ success: boolean; error?: string }> {
+  console.log(`[updateInfluencerLastVideo] Updating ${influencerId} with video ${lastVideoId}`);
+
+  try {
+    const influencerRef = doc(db, 'youtube', influencerId);
+    
+    await updateDoc(influencerRef, {
+      lastVideoId,
+      lastFetchedAt
+    });
+
+    console.log(`[updateInfluencerLastVideo] Successfully updated ${influencerId}`);
+    return { success: true };
+  } catch (error) {
+    console.error('[updateInfluencerLastVideo] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update influencer'
+    };
+  }
 }

@@ -1,20 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-  createUserWithEmailAndPassword, 
   signInWithEmailAndPassword 
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
-import { auth, db } from '../utils/firebase';
-import Link from 'next/link';
-
-type AuthView = 'signIn' | 'createAccount';
+import { auth } from '../utils/firebase';
 
 export default function AuthPage() {
   const router = useRouter();
-  const [view, setView] = useState<AuthView>('signIn');
   
   // Stylish header component
   const AuthHeader = () => (
@@ -26,32 +20,9 @@ export default function AuthPage() {
   );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [name, setName] = useState('');
-  const [selectedAssemblies, setSelectedAssemblies] = useState<string[]>([]);
-  const [assemblies, setAssemblies] = useState<string[]>([]);
-  const [assemblySearch, setAssemblySearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Fetch the Bihar assemblies
-  useEffect(() => {
-    async function fetchAssemblies() {
-      try {
-        const response = await fetch('/data/bihar_assemblies.json');
-        if (!response.ok) {
-          throw new Error('Failed to fetch assemblies');
-        }
-        const data = await response.json();
-        setAssemblies(data);
-      } catch (error) {
-        console.error('Error fetching assemblies:', error);
-        setError('Failed to load assembly data. Please try again later.');
-      }
-    }
-
-    fetchAssemblies();
-  }, []);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +33,7 @@ export default function AuthPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       if (userCredential.user) {
         // Set auth token in cookie for middleware
-        await userCredential.user.getIdToken().then(token => {
+        await userCredential.user.getIdToken().then((token: string) => {
           document.cookie = `auth-token=${token}; path=/; max-age=3600`;
         });
 
@@ -77,83 +48,12 @@ export default function AuthPage() {
     }
   };
 
-  const handleCreateAccount = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    
-    // Validate inputs
-    if (!email || !password || !confirmPassword || !name.trim()) {
-      setError('Please fill in all fields');
-      return;
-    }
-    
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-    
-    if (selectedAssemblies.length === 0) {
-      setError('Please select at least one assembly');
-      return;
-    }
-    
-    setLoading(true);
-    
-    try {
-      // Create the user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      const newUserRole: string = 'zonal-incharge'; // Default role as specified
-      
-      // Create a document in the admin-users collection
-      await setDoc(doc(db, 'admin-users', user.uid), {
-        id: user.uid,
-        email: user.email,
-        name: name.trim(),
-        assemblies: selectedAssemblies,
-        role: newUserRole,
-        parentVertical: 'none',
-        createdAt: serverTimestamp()
-      });
-      
-      if (userCredential.user) {
-        // Set auth token in cookie for middleware
-        await userCredential.user.getIdToken().then(token => {
-          document.cookie = `auth-token=${token}; path=/; max-age=3600`;
-        });
-
-        // Redirect to home - middleware will handle role-based routing
-        router.push('/home');
-      }
-    } catch (error: any) {
-      console.error('Create account error:', error);
-      setError(error.message || 'Failed to create account. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAssemblyChange = (assembly: string) => {
-    setSelectedAssemblies(prev => {
-      if (prev.includes(assembly)) {
-        return prev.filter(a => a !== assembly);
-      } else {
-        return [...prev, assembly];
-      }
-    });
-  };
-
-  // Filter assemblies based on search input
-  const filteredAssemblies = assemblies.filter(assembly =>
-    assembly.toLowerCase().includes(assemblySearch.toLowerCase())
-  );
-
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <AuthHeader />
         <h2 className="mt-6 text-center text-2xl font-semibold text-gray-700">
-          {view === 'signIn' ? 'Sign in to your account' : 'Create a new account'}
+          Sign in to your account
         </h2>
       </div>
 
@@ -165,203 +65,53 @@ export default function AuthPage() {
             </div>
           )}
 
-          {view === 'signIn' ? (
-            <>
-              <form className="space-y-6" onSubmit={handleSignIn}>
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                    Email address
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      id="email"
-                      name="email"
-                      type="email"
-                      autoComplete="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                    Password
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      id="password"
-                      name="password"
-                      type="password"
-                      autoComplete="current-password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <button
-                    type="submit"
-                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    disabled={loading}
-                  >
-                    {loading ? 'Signing in...' : 'Sign In'}
-                  </button>
-                </div>
-              </form>
-
-              <div className="mt-6">
-                <div className="text-center">
-                  <button
-                    onClick={() => setView('createAccount')}
-                    className="font-medium text-indigo-600 hover:text-indigo-500"
-                  >
-                    Create Account
-                  </button>
-                </div>
+          <form className="space-y-6" onSubmit={handleSignIn}>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email address
+              </label>
+              <div className="mt-1">
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                />
               </div>
-            </>
-          ) : (
-            <form className="space-y-6" onSubmit={handleCreateAccount}>
-              <div>
-                <label htmlFor="create-email" className="block text-sm font-medium text-gray-700">
-                  Email address
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="create-email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  />
-                </div>
-              </div>
+            </div>
 
-              <div>
-                <label htmlFor="create-password" className="block text-sm font-medium text-gray-700">
-                  Password
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="create-password"
-                    name="password"
-                    type="password"
-                    autoComplete="new-password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  />
-                </div>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <div className="mt-1">
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                />
               </div>
+            </div>
 
-              <div>
-                <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
-                  Confirm Password
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="confirm-password"
-                    name="confirmPassword"
-                    type="password"
-                    autoComplete="new-password"
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="create-name" className="block text-sm font-medium text-gray-700">
-                  Name
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="create-name"
-                    name="name"
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="assemblies" className="block text-sm font-medium text-gray-700">
-                  Select Assemblies
-                </label>
-                <div className="mt-1">
-                  <input
-                    type="text"
-                    placeholder="Search assemblies..."
-                    value={assemblySearch}
-                    onChange={(e) => setAssemblySearch(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm mb-2"
-                  />
-                </div>
-                <div className="max-h-60 overflow-y-auto border border-gray-300 rounded-md p-2">
-                  {filteredAssemblies.length > 0 ? (
-                    filteredAssemblies.map((assembly) => (
-                      <div key={assembly} className="flex items-start my-1">
-                        <div className="flex items-center h-5">
-                          <input
-                            id={`assembly-${assembly}`}
-                            name={`assembly-${assembly}`}
-                            type="checkbox"
-                            checked={selectedAssemblies.includes(assembly)}
-                            onChange={() => handleAssemblyChange(assembly)}
-                            className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                          />
-                        </div>
-                        <div className="ml-3 text-sm">
-                          <label htmlFor={`assembly-${assembly}`} className="font-medium text-gray-700">
-                            {assembly}
-                          </label>
-                        </div>
-                      </div>
-                    ))
-                  ) : assemblies.length === 0 ? (
-                    <p className="text-sm text-gray-500">Loading assemblies...</p>
-                  ) : (
-                    <p className="text-sm text-gray-500">No assemblies found matching &quot;{assemblySearch}&quot;</p>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <button
-                  type="submit"
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  disabled={loading}
-                >
-                  {loading ? 'Creating Account...' : 'Create Account'}
-                </button>
-              </div>
-
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={() => setView('signIn')}
-                  className="font-medium text-indigo-600 hover:text-indigo-500"
-                >
-                  Back to Sign In
-                </button>
-              </div>
-            </form>
-          )}
+            <div>
+              <button
+                type="submit"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                disabled={loading}
+              >
+                {loading ? 'Signing in...' : 'Sign In'}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
