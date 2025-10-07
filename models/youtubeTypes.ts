@@ -23,6 +23,8 @@ export interface YoutubeInfluencerDoc {
   workingStatus: YoutubeInfluencerWorkingStatus;
   remark?: string;
   assembly?: string; // Optional, display "--" when missing
+  lastVideoId?: string; // Last fetched video ID for incremental fetching
+  lastFetchedAt?: number; // Timestamp of last video fetch (epoch milliseconds)
 }
 
 // Video metrics interface (platform-agnostic)
@@ -144,4 +146,41 @@ export interface YoutubeFilterOptions {
   endDate?: number;
   activeOnly?: boolean;
   pastOnly?: boolean;
+}
+
+// Channel video interfaces for new feature
+export interface ChannelVideoData {
+  videoId: string;
+  title: string;
+  description: string;
+  publishedAt: string; // ISO 8601 date string
+  thumbnailUrl: string;
+  duration: string; // ISO 8601 duration format (PT1M30S)
+  durationSeconds: number; // Duration in seconds
+  videoUrl: string;
+  views: number;
+  likes: number;
+  videoType: 'Long' | 'Short'; // Determined by URL or duration
+}
+
+export interface InfluencerVideosData {
+  influencerId: string;
+  influencerName: string;
+  channelName: string;
+  channelLink: string;
+  videos: ChannelVideoData[];
+  error?: string; // Error message if fetch failed
+}
+
+export interface ChannelFetchProgress {
+  current: number;
+  total: number;
+  currentInfluencer?: string;
+}
+
+export interface ChannelFetchError {
+  influencerId: string;
+  influencerName: string;
+  error: string;
+  type: 'private' | 'deleted' | 'invalid' | 'quota' | 'network' | 'unknown';
 }

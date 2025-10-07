@@ -1448,6 +1448,328 @@ YouTube influencer and campaign analytics module with independent Firebase insta
 - Requires `NEXT_PUBLIC_YOUTUBE_API_KEY` environment variable
 - Batches up to 50 video IDs per request
 - Concurrency throttling (default: 3 parallel requests)
+
+### Channel Videos Report Feature
+**New Feature**: Fetch and analyze videos from influencer YouTube channels with date-based filtering and Excel reporting.
+
+#### **Purpose**
+Generate comprehensive reports of YouTube videos published by influencers within specific date ranges, with support for:
+- Client-side date filtering
+- Video removal from report
+- Excel export with detailed metrics
+- Smart pagination (fetch until date range covered)
+- **Note**: Fetches ALL videos in date range on every request (no incremental caching)
+
+#### **Architecture**
+
+**Files Created**:
+1. `app/utils/youtubeChannelApi.ts` - YouTube Channel API integration
+2. `app/utils/excelReportGenerator.ts` - Excel report generation
+3. `components/youtube/ChannelVideosFetcher.tsx` - Main UI component
+4. `app/wtm-youtube/channel-videos/page.tsx` - Dedicated route page
+5. `models/youtubeTypes.ts` - Extended with channel video interfaces
+
+**Files Modified**:
+1. `app/utils/fetchYoutubeData.ts` - Added `updateInfluencerLastVideo()` function
+2. `app/wtm-youtube/page.tsx` - Added navigation card to access feature
+
+#### **Data Model Extensions**
+
+**YoutubeInfluencerDoc** (updated):
+```typescript
+interface YoutubeInfluencerDoc {
+  // ... existing fields
+  lastVideoId?: string;      // [UNUSED] Legacy field from removed incremental fetch
+  lastFetchedAt?: number;    // [UNUSED] Legacy field from removed incremental fetch
+}
+```
+
+**New Interfaces**:
+```typescript
+interface ChannelVideoData {
+  videoId: string;
+  title: string;
+  description: string;
+  publishedAt: string;       // ISO 8601 date string
+  thumbnailUrl: string;
+  duration: string;          // ISO 8601 duration (PT1M30S)
+  durationSeconds: number;
+  videoUrl: string;
+  views: number;
+  likes: number;
+  videoType: 'Long' | 'Short'; // Based on duration <= 60s or URL
+}
+
+interface InfluencerVideosData {
+  influencerId: string;
+  influencerName: string;
+  channelName: string;
+  channelLink: string;
+  videos: ChannelVideoData[];
+  error?: string;
+}
+
+interface ChannelFetchError {
+  influencerId: string;
+  influencerName: string;
+  error: string;
+  type: 'private' | 'deleted' | 'invalid' | 'quota' | 'network' | 'unknown';
+}
+```
+
+#### **Core Functions**
+
+**1. Channel Video Fetching** (`app/utils/youtubeChannelApi.ts`)
+
+- **extractChannelId(channelLink)**: Extracts channel ID from various YouTube URL formats
+  - Supports: `/channel/UC...`, `/@username`, `/user/username`, `/c/channelname`
+  - Returns channel identifier for API calls
+
+- **getChannelUploadsPlaylistId(channelId, apiKey)**: Gets uploads playlist ID for channel
+  - Queries YouTube Data API v3 `channels.list` endpoint
+  - Extracts `contentDetails.relatedPlaylists.uploads` playlist ID
+  - Handles username, handle, and channel ID formats
+
+- **fetchPlaylistVideoIds(playlistId, apiKey, maxResults, pageToken)**: Fetches video IDs from playlist
+  - Uses `playlistItems.list` endpoint
+  - Returns video IDs and pagination token
+  - Configurable result limit (default: 10)
+
+- **fetchVideoDetails(videoIds, apiKey)**: Batch fetches video metadata
+  - Uses `videos.list` endpoint with parts: snippet, contentDetails, statistics
+  - Batches up to 50 video IDs per request
+  - Returns enriched ChannelVideoData objects
+  - Determines video type based on duration
+
+- **fetchInfluencerChannelVideos()**: Main orchestrator with smart pagination
+  - **Input**: influencer data, date range
+  - **Smart Fetching Logic**:
+    1. Fetch initial 10 videos
+    2. Check if 10th video is before date range start
+    3. If yes, fetch 5 more videos iteratively
+    4. Stop when: date range covered or no more videos
+  - **Client-side Filtering**: Filters videos by publishedAt within date range
+  - Returns: filtered videos array
+
+**Helper Functions**:
+- **parseDuration(isoDuration)**: Converts ISO 8601 duration to seconds
+- **formatDuration(seconds)**: Formats seconds to HH:MM:SS or MM:SS
+- **determineVideoType(videoId, duration)**: Returns 'Short' if <= 60s, else 'Long'
+
+**2. Firestore Updates** (`app/utils/fetchYoutubeData.ts`)
+
+- **updateInfluencerLastVideo()**: [DEPRECATED - NOT USED]
+  - Legacy function from removed incremental fetch feature
+  - Kept for backward compatibility but not called
+
+**3. Excel Report Generation** (`app/utils/excelReportGenerator.ts`)
+
+- **generateChannelVideosReport(influencersData, dateRange)**:
+  - Uses `xlsx` library (SheetJS)
+  - **Columns**: Influencer Name, Channel Name, Channel Link, Video URL, Video Title, Video Type, Views, Likes, Duration, Date Uploaded
+  - **Styling**: Header formatting, column widths, clickable URLs
+  - **Filename**: `Youtube_Channel_Videos_{startDate}_to_{endDate}.xlsx`
+  - Triggers browser download
+
+- **generateReportSummary(influencersData)**:
+  - Calculates aggregate statistics for display
+  - Returns: totalInfluencers, totalVideos, totalViews, totalLikes, shortVideos, longVideos
+
+#### **UI Component** (`components/youtube/ChannelVideosFetcher.tsx`)
+
+**Features**:
+1. **Date Range Selection**: Mandatory start and end date inputs
+2. **Fetch Videos Button**: Initiates fetching for all influencers
+3. **Progress Indicator**: Real-time progress bar showing current influencer and X/Y count
+4. **Summary Statistics**: 6 metric cards (Influencers, Total Videos, Long/Short split, Views, Likes)
+5. **Error Display**: Collapsible error list with specific error messages per influencer
+6. **Quota Warning**: Special alert banner when YouTube API quota is exceeded
+7. **Video Display**:
+   - Grouped by influencer with gradient header
+   - Video thumbnail (clickable to YouTube)
+   - Video type badge (Long/Short)
+   - Metrics: Views, Likes, Duration, Upload Date
+   - Remove button per video (client-side filtering)
+8. **Report Actions**:
+   - Download Excel Report (excludes removed videos)
+   - Clear All (reset state)
+9. **Empty State**: Friendly message when no data
+
+**State Management**:
+- `influencersData`: Array of InfluencerVideosData
+- `removedVideoIds`: Set of video IDs excluded from report
+- `errors`: Array of ChannelFetchError objects
+- `progress`: Current fetch progress
+- `quotaExceeded`: Boolean flag for quota exhaustion
+
+**Error Handling**:
+- **Invalid Channel Link**: "Invalid channel link format"
+- **Private Channel**: "Unable to access channel uploads" or "Playlist not found or private"
+- **Deleted Channel**: "Channel not found or deleted"
+- **API Quota**: "API quota exceeded" with user-friendly message
+- **Network Errors**: Generic error message with retry suggestion
+
+#### **Route Page** (`app/wtm-youtube/channel-videos/page.tsx`)
+
+**Features**:
+- Authentication check with Firebase Auth
+- Back to dashboard navigation
+- API key validation (checks NEXT_PUBLIC_YOUTUBE_API_KEY)
+- Warning banner if API key not configured
+- Integrates ChannelVideosFetcher component
+
+**Access Control**:
+- Requires authenticated user
+- Redirects to `/auth` if not logged in
+- Accessible from main YouTube dashboard via navigation card
+
+#### **Navigation Integration** (`app/wtm-youtube/page.tsx`)
+
+**Quick Actions Section**:
+- Added prominent card between filters and tabs
+- Gradient background with icon
+- "Open Report" button navigates to `/wtm-youtube/channel-videos`
+- Clear description of feature purpose
+
+#### **Usage Flow**
+
+1. **User Access**: Navigate to YouTube dashboard → Click "Open Report" card
+2. **Select Date Range**: Choose start and end dates (mandatory)
+3. **Fetch Videos**: Click "Fetch Videos" button
+4. **Processing**: System fetches all influencers, then videos for each
+   - Progress bar shows real-time status
+   - Errors displayed per influencer
+   - Stops on quota exhaustion
+5. **Review Results**: 
+   - View summary statistics
+   - Browse videos by influencer
+   - Remove unwanted videos from report
+6. **Generate Report**: Click "Download Excel Report"
+
+#### **Smart Pagination Logic**
+
+**Problem**: Efficiently fetch only videos within date range without over-fetching
+
+**Solution**:
+```
+Initial fetch: 10 videos
+While (last video date >= start date AND more pages exist):
+  Fetch 5 more videos
+  Check last video date
+Filter all fetched videos by date range
+Return filtered results
+```
+
+**Fetching Behavior**:
+- Every fetch retrieves ALL videos within the date range
+- No incremental caching between requests
+- Ensures complete data set on every report generation
+
+#### **API Quota Management**
+
+**YouTube API Limits**:
+- Default quota: 10,000 units/day
+- `channels.list`: 1 unit
+- `playlistItems.list`: 1 unit
+- `videos.list`: 1 unit
+
+**Optimization Strategies**:
+1. **Batch Requests**: Fetches up to 50 video details per API call
+2. **Early Termination**: Stops fetching when date range covered
+3. **Graceful Degradation**: Shows quota exceeded warning, saves partial progress
+4. **Rate Limiting**: 100ms delay between influencer fetches
+5. **Smart Pagination**: 10 initial videos, then 5-5 until range covered
+
+**Estimated Quota Usage** (per influencer with 10 new videos):
+- Get channel info: 1 unit
+- Fetch playlist items: 1 unit (initial) + 0-2 units (pagination)
+- Fetch video details: 1 unit (batch of 10)
+- **Total**: ~3-4 units per influencer
+- **Max influencers/day**: ~2,500 (conservative estimate)
+
+#### **Excel Report Format**
+
+**Columns**:
+1. **Influencer Name**: Name from Firestore document
+2. **Channel Name**: YouTube channel name
+3. **Channel Link**: Full YouTube channel URL (clickable)
+4. **Video URL**: Full YouTube video/short URL (clickable)
+5. **Video Title**: Video title from YouTube
+6. **Video Type**: "Long" or "Short"
+7. **Views**: View count (formatted with commas)
+8. **Likes**: Like count (formatted with commas)
+9. **Duration**: Formatted as MM:SS or HH:MM:SS
+10. **Date Uploaded**: YYYY-MM-DD format
+
+**Styling**:
+- Bold headers with background color
+- Auto-adjusted column widths
+- Frozen header row
+- Clickable URLs
+
+#### **Edge Cases Handled**
+
+1. **No Channel Link**: Skip influencer, log error "No channel link provided"
+2. **Invalid Channel URL**: Error "Invalid channel link format"
+3. **Private/Deleted Channel**: Error with specific type (private/deleted)
+4. **No Videos in Range**: Return empty array, no error
+5. **API Quota Exceeded**: Stop processing, show warning, save partial results
+6. **Network Errors**: Catch and log, continue with next influencer
+7. **Missing Video Stats**: Default to 0 views/likes
+8. **All Videos Removed**: Alert user, prevent empty report generation
+9. **Invalid Date Range**: Disable fetch button, show validation message
+10. **Multiple URL Formats**: Handle @username, /c/, /user/, /channel/ formats
+
+#### **Dependencies**
+
+**New**:
+- `xlsx` (^0.18.5): Excel file generation
+
+**Existing** (used by feature):
+- `firebase/firestore`: Firestore operations
+- `react`: UI framework
+- YouTube Data API v3: Video data fetching
+
+#### **Environment Variables**
+
+**Required**:
+- `NEXT_PUBLIC_YOUTUBE_API_KEY`: YouTube Data API v3 key
+  - Get from: https://console.cloud.google.com/apis/credentials
+  - Enable YouTube Data API v3
+  - Create API key with HTTP referrer restrictions
+
+#### **Testing Considerations**
+
+**Test Cases**:
+1. Single influencer with 5 videos in range
+2. Multiple influencers with varying video counts
+3. Date range with no matching videos
+4. Invalid channel links
+5. Private/deleted channels
+6. API quota exhaustion
+7. Video removal and report generation
+8. Re-fetching same date range shows all videos
+9. Edge date boundaries (same day start/end)
+10. Long video titles and descriptions
+
+**Performance**:
+- Typical fetch time: 2-5 seconds per influencer (10 videos)
+- Excel generation: < 1 second for 100 videos
+- UI remains responsive during fetch (async operations)
+
+#### **Future Enhancements**
+
+**Potential Improvements**:
+1. Filters: Assembly, status, working status
+2. Sort options: Views, likes, date
+3. Pagination for large result sets
+4. Video preview modal
+5. Bulk operations: Select multiple videos to remove
+6. Scheduled reports: Email delivery
+7. Historical tracking: Compare video performance over time
+8. Advanced analytics: Engagement rate, growth trends
+9. CSV export option
+10. Optional incremental fetching mode (as feature flag)
 - Falls back to stored metrics if API unavailable
 - Handles various URL formats (watch?v=, youtu.be, shorts)
 
