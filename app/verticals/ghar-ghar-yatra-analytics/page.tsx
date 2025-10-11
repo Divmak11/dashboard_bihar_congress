@@ -8,8 +8,7 @@ import { getCurrentAdminUser } from '../../utils/fetchFirebaseData';
 import DateRangeFilter from '../../../components/DateRangeFilter';
 import MetricsCards from '../../../components/ghar-ghar-yatra/MetricsCards';
 import AnalyticsCharts from '../../../components/ghar-ghar-yatra/AnalyticsCharts';
-import IndividualSLPView from '../../../components/ghar-ghar-yatra/IndividualSLPView';
-import UnidentifiedEntriesView from '../../../components/ghar-ghar-yatra/UnidentifiedEntriesView';
+import D2DMembersList from '../../../components/ghar-ghar-yatra/D2DMembersList';
 import { 
   fetchOverviewSourceData,
   generateAggregatedMetricsFromSource,
@@ -24,7 +23,7 @@ export default function GharGharYatraAnalyticsPage() {
   const [role, setRole] = useState<string>('');
 
   // State management
-  const [selectedTab, setSelectedTab] = useState<'overview' | 'individual-slp' | 'unidentified-entries'>('overview');
+  const [selectedTab, setSelectedTab] = useState<'overview' | 'd2d-members'>('overview');
   const [dateOption, setDateOption] = useState<string>('lastWeek');
   const [customDateRange, setCustomDateRange] = useState<DateRange | null>(null);
   const [generatingPDF, setGeneratingPDF] = useState<boolean>(false);
@@ -326,24 +325,14 @@ export default function GharGharYatraAnalyticsPage() {
               Overview
             </button>
             <button
-              onClick={() => setSelectedTab('individual-slp')}
+              onClick={() => setSelectedTab('d2d-members')}
               className={`pb-3 px-1 text-sm font-medium transition-colors ${
-                selectedTab === 'individual-slp'
+                selectedTab === 'd2d-members'
                   ? 'border-b-2 border-blue-500 text-blue-600'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              Individual SLP View
-            </button>
-            <button
-              onClick={() => setSelectedTab('unidentified-entries')}
-              className={`pb-3 px-1 text-sm font-medium transition-colors ${
-                selectedTab === 'unidentified-entries'
-                  ? 'border-b-2 border-blue-500 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Unidentified Entries
+              D2D Members List
             </button>
           </div>
         </div>
@@ -389,17 +378,12 @@ export default function GharGharYatraAnalyticsPage() {
                 loading={overviewData.loading}
               />
             </>
-          ) : selectedTab === 'individual-slp' ? (
+          ) : selectedTab === 'd2d-members' ? (
             <>
-              {/* Individual SLP View */}
-              <IndividualSLPView />
+              {/* D2D Members List */}
+              <D2DMembersList />
             </>
-          ) : (
-            <>
-              {/* Unidentified Entries View */}
-              <UnidentifiedEntriesView />
-            </>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

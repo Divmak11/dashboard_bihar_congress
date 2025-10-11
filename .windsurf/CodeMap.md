@@ -422,6 +422,23 @@ CACHE_KEYS = {
 **Composite Index Required**: `(handler_id, created_at)`
 **Note**: Collection name is 'attendence' (not 'attendance')
 
+### 8. **d2d_members** Collection (for D2D Members List)
+```typescript
+{
+  id: string,              // Document ID (not displayed in UI)
+  name: string,
+  phoneNumber: string,
+  assembly: string,
+  handler_id: string,      // Not displayed; used for joins when needed
+  role: 'AC' | 'SLP' | 'Saathi',
+  status: string,          // e.g., 'Active'
+  createdAt: number        // Epoch ms; used for date-range filtering (UTC day boundaries)
+}
+```
+**Query Pattern**: `where('createdAt','>=', startMs), where('createdAt','<=', endMs), orderBy('createdAt')` with cursor pagination.
+**Display Rule**: Hide `id`, `handler_id`, and `createdAt` in UI; show `name`, `phoneNumber`, `assembly`, `role`, `status`.
+**Ordering**: Role precedence `AC > SLP > Saathi`, then name.
+
 ---
 
 ## Report Generation with Attendance Logic
