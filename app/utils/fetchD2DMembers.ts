@@ -133,12 +133,18 @@ export async function attachGgyMetricsToMembers(
     const phoneKey = normalizePhone(mem.phoneNumber);
     let metrics: D2DMemberMetrics | undefined;
 
-    if (phoneKey && byPhone.has(phoneKey)) {
+    // Prefer stable identifiers first: handler_id (primary), then member.id; phone is last-resort
+    const idCandidates = [mem.handler_id, mem.id].filter(Boolean) as string[];
+    for (const id of idCandidates) {
+      if (bySlpId.has(id)) {
+        metrics = bySlpId.get(id);
+        break;
+      }
+    }
+
+    // Fallback to phone if neither handler_id nor id matched
+    if (!metrics && phoneKey && byPhone.has(phoneKey)) {
       metrics = byPhone.get(phoneKey);
-    } else if (mem.id && bySlpId.has(mem.id)) {
-      metrics = bySlpId.get(mem.id);
-    } else if (mem.handler_id && bySlpId.has(mem.handler_id)) {
-      metrics = bySlpId.get(mem.handler_id);
     }
 
     return { ...mem, metrics: metrics ?? zeros };

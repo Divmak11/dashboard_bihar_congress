@@ -127,7 +127,9 @@ export async function fetchAllSLPDataForDates(
       const date = chunk[snapIdx];
       snap.forEach(d => {
         const data = d.data() as SLPDataDocument;
-        results.push({ ...data, date });
+        // Ensure slpId is present and stable; fallback to document ID if field missing
+        const slpId = (data as any).slpId ?? d.id;
+        results.push({ ...data, slpId, date });
       });
     });
   }
@@ -214,7 +216,9 @@ export async function fetchAllSLPDataInRange(
     subCollectionSnapshots.forEach(snapshot => {
       snapshot.forEach(doc => {
         const data = doc.data() as SLPDataDocument;
-        allSLPData.push(data);
+        // Ensure slpId fallback to doc.id for robustness across data eras
+        const slpId = (data as any).slpId ?? doc.id;
+        allSLPData.push({ ...data, slpId });
       });
     });
     
