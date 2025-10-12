@@ -15,6 +15,9 @@ import {
   generateChartDataFromSource
 } from '../../utils/fetchGharGharYatraData';
 import { generateGharGharYatraPDF } from '../../utils/generateGharGharYatraPDF';
+import ReportOptionsModal, { GGYReportSplitType } from '../../../components/report/ReportOptionsModal';
+import { buildGGYReportData } from '../../utils/fetchGharGharYatraData';
+import { generateGgySplitReportPDF } from '../../utils/generateGgySplitReportPDF';
 import { OverviewData, DateRange } from '../../../models/gharGharYatraTypes';
 
 export default function GharGharYatraAnalyticsPage() {
@@ -27,6 +30,7 @@ export default function GharGharYatraAnalyticsPage() {
   const [dateOption, setDateOption] = useState<string>('lastWeek');
   const [customDateRange, setCustomDateRange] = useState<DateRange | null>(null);
   const [generatingPDF, setGeneratingPDF] = useState<boolean>(false);
+  const [showReportOptions, setShowReportOptions] = useState<boolean>(false);
   
   // Initialize startDate and endDate with lastWeek default
   const getInitialDateRange = () => {
@@ -187,25 +191,46 @@ export default function GharGharYatraAnalyticsPage() {
       }
 
       // Single-source fetch then compute metrics and charts without extra reads
-      console.time('[Overview] Source fetch');
-      const source = await fetchOverviewSourceData(startDate, endDate);
-      console.timeEnd('[Overview] Source fetch');
+      // Two-stage load: Stage A (summary-only), then Stage B (member insights)
+      const dateKey = `${startDate}_${endDate}`;
 
-      console.time('[Overview] Compute metrics+charts');
-      const [metrics, charts] = await Promise.all([
-        generateAggregatedMetricsFromSource(source),
-        generateChartDataFromSource(source)
+      // Stage A: summary-only (no slp_data), fast path
+      console.time('[Overview] Source fetch (summary-only)');
+      const sourceA = await fetchOverviewSourceData(startDate, endDate, { includeSlpData: false, useCache: true });
+      console.timeEnd('[Overview] Source fetch (summary-only)');
+
+      console.time('[Overview] Compute metrics+charts (A)');
+      const [metricsA, chartsA] = await Promise.all([
+        generateAggregatedMetricsFromSource(sourceA),
+        generateChartDataFromSource(sourceA)
       ]);
-      console.timeEnd('[Overview] Compute metrics+charts');
+      console.timeEnd('[Overview] Compute metrics+charts (A)');
 
-      setOverviewData({
-        metrics,
-        charts,
-        loading: false,
-        error: null
-      });
+      // Render Stage A immediately
+      setOverviewData({ metrics: metricsA, charts: chartsA, loading: false, error: null });
 
-      console.log('[GharGharYatraAnalytics] Overview data fetched successfully');
+      // Stage B: member insights (slp_data) – run in background
+      console.time('[Overview] Source fetch (member insights)');
+      const sourceB = await fetchOverviewSourceData(startDate, endDate, { includeSlpData: true, useCache: true });
+      console.timeEnd('[Overview] Source fetch (member insights)');
+
+      // If date range changed while we were loading, skip applying results
+      const currentKey = `${startDate}_${endDate}`;
+      if (currentKey !== dateKey) {
+        console.warn('[GharGharYatraAnalytics] Date range changed during load, skipping Stage B apply');
+        return;
+      }
+
+      console.time('[Overview] Compute metrics+charts (B)');
+      const [metricsB, chartsB] = await Promise.all([
+        generateAggregatedMetricsFromSource(sourceB),
+        generateChartDataFromSource(sourceB)
+      ]);
+      console.timeEnd('[Overview] Compute metrics+charts (B)');
+
+      setOverviewData({ metrics: metricsB, charts: chartsB, loading: false, error: null });
+
+      console.log('[GharGharYatraAnalytics] Overview data fetched successfully (two-stage)');
     } catch (error) {
       console.error('[GharGharYatraAnalytics] Error fetching overview data:', error);
       setOverviewData(prev => ({
@@ -239,28 +264,32 @@ export default function GharGharYatraAnalyticsPage() {
   };
 
   const handleGeneratePDF = async () => {
-    if (overviewData.loading || overviewData.error) {
-      return;
-    }
+    if (overviewData.loading || overviewData.error) return;
+    // Open options modal to select range + split type
+    setShowReportOptions(true);
+  };
 
-    console.log('[GharGharYatraAnalytics] Generating PDF report');
+  const handleConfirmReport = async ({ startDate: s, endDate: e, split }: { startDate: string; endDate: string; split: GGYReportSplitType }) => {
+    setShowReportOptions(false);
     setGeneratingPDF(true);
-
     try {
-      // Use custom date range if available, otherwise use current state
-      const startDatePDF = customDateRange ? customDateRange.startDate : startDate;
-      const endDatePDF = customDateRange ? customDateRange.endDate : endDate;
-      
-      await generateGharGharYatraPDF(
-        { startDate: startDatePDF, endDate: endDatePDF },
-        overviewData.metrics,
-        overviewData.charts
-      );
-      
-      console.log('[GharGharYatraAnalytics] PDF generated successfully');
+      // Build report data and generate PDF
+      const report = await buildGGYReportData({ startDate: s, endDate: e, split });
+      await generateGgySplitReportPDF(report);
+      console.log('[GharGharYatraAnalytics] Split report PDF generated successfully');
     } catch (error) {
-      console.error('[GharGharYatraAnalytics] Error generating PDF:', error);
-      alert('Failed to generate PDF report. Please try again.');
+      console.error('[GharGharYatraAnalytics] Error generating split PDF:', error);
+      // Fallback to legacy generator (cumulative overview)
+      try {
+        await generateGharGharYatraPDF(
+          { startDate: s, endDate: e },
+          overviewData.metrics,
+          overviewData.charts
+        );
+      } catch (e2) {
+        console.error('[GharGharYatraAnalytics] Legacy PDF fallback also failed:', e2);
+        alert('Failed to generate PDF report. Please try again.');
+      }
     } finally {
       setGeneratingPDF(false);
     }
@@ -336,6 +365,15 @@ export default function GharGharYatraAnalyticsPage() {
             </button>
           </div>
         </div>
+
+        {/* Report Options Modal */}
+        <ReportOptionsModal
+          isOpen={showReportOptions}
+          initialStartDate={customDateRange ? customDateRange.startDate : startDate}
+          initialEndDate={customDateRange ? customDateRange.endDate : endDate}
+          onClose={() => setShowReportOptions(false)}
+          onConfirm={handleConfirmReport}
+        />
 
         {/* Date Range Filter - Only for Overview Tab */}
         {selectedTab === 'overview' && (
