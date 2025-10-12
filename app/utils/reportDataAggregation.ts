@@ -379,6 +379,8 @@ export async function aggregateReportData(
               videos: 0,
               shaktiVideos: 0,
               acVideos: 0,
+              nukkadAc: 0,
+              nukkadSlp: 0,
               chaupals: 0,
               shaktiBaithaks: 0,
               centralWaGroups: 0,
@@ -424,6 +426,8 @@ export async function aggregateReportData(
                 videos: 0,
                 shaktiVideos: 0,
                 acVideos: 0,
+                nukkadAc: 0,
+                nukkadSlp: 0,
                 chaupals: 0,
                 shaktiBaithaks: 0,
                 centralWaGroups: 0,
@@ -760,6 +764,8 @@ export async function aggregateReportData(
             videos: 0,
             shaktiVideos: 0,
             acVideos: 0,
+            nukkadAc: 0,
+            nukkadSlp: 0,
             chaupals: 0,
             shaktiBaithaks: 0,
             centralWaGroups: 0,
@@ -847,6 +853,8 @@ export async function aggregateReportData(
             acVideos: 0,
             chaupals: 0,
             shaktiBaithaks: 0,
+            nukkadAc: 0,
+            nukkadSlp: 0,
             assemblyWaGroups: 0,
             centralWaGroups: 0,
             shaktiAssemblyWaGroups: 0
@@ -1241,7 +1249,9 @@ export async function aggregateReportData(
               shaktiSaathi: 0,
               shaktiClubs: 0,
               shaktiForms: 0,
-              shaktiVideos: 0
+              shaktiVideos: 0,
+              nukkadAc: 0,
+              nukkadSlp: 0
             }
           };
           zoneDataMap.set(zoneInfo.zoneId, newZone);
@@ -1296,7 +1306,9 @@ export async function aggregateReportData(
               shaktiSaathi: 0,
               shaktiClubs: 0,
               shaktiForms: 0,
-              shaktiVideos: 0
+              shaktiVideos: 0,
+              nukkadAc: 0,
+              nukkadSlp: 0
             }
           };
           zoneDataMap.set('unassigned', unassignedZone);
@@ -1357,6 +1369,8 @@ export async function aggregateReportData(
       videos: 0,
       shaktiVideos: 0,
       acVideos: 0,
+      nukkadAc: 0,
+      nukkadSlp: 0,
       chaupals: 0,
       shaktiBaithaks: 0,
       centralWaGroups: 0,

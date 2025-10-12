@@ -42,6 +42,8 @@ export type MetricKey =
   | 'shaktiForms'
   | 'videos'
   | 'acVideos'
+  | 'nukkadAc'
+  | 'nukkadSlp'
   | 'chaupals'
   | 'centralWaGroups'
   | 'assemblyWaGroups'
@@ -65,6 +67,8 @@ export interface CumulativeMetrics extends MetricRecord {
   videos: number | string;
   shaktiVideos: number | string;
   acVideos: number | string;
+  nukkadAc: number | string;
+  nukkadSlp: number | string;
   chaupals: number | string;
   shaktiBaithaks: number | string;
   centralWaGroups: number | string;

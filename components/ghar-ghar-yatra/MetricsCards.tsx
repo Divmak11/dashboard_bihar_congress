@@ -58,10 +58,10 @@ const MetricsCards: React.FC<MetricsCardsProps> = ({ metrics, loading }) => {
         </div>
       </div>
 
-      {/* Card 2: SLP Performance */}
+      {/* Card 2: Members Performance */}
       <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-gray-600 uppercase">SLP Performance</h3>
+          <h3 className="text-sm font-semibold text-gray-600 uppercase">Members Performance</h3>
           <div className="p-2 bg-green-100 rounded-lg">
             <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -71,7 +71,7 @@ const MetricsCards: React.FC<MetricsCardsProps> = ({ metrics, loading }) => {
         <div className="space-y-3">
           <div>
             <p className="text-2xl font-bold text-gray-900">{metrics.avgPunchesPerSlpPerDay.toFixed(1)}</p>
-            <p className="text-xs text-gray-500">Avg Punches/SLP/Day</p>
+            <p className="text-xs text-gray-500">Avg Punches/Member/Day</p>
           </div>
           <div className="pt-3 border-t border-gray-100">
             <div className="flex items-center justify-between mb-2">
@@ -115,7 +115,7 @@ const MetricsCards: React.FC<MetricsCardsProps> = ({ metrics, loading }) => {
               <p className="text-sm font-semibold text-green-600">{metrics.totalMatched.toLocaleString()}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-600 mb-1">Unidentifiable</p>
+              <p className="text-xs text-gray-600 mb-1">Unidentifiable (&lt;3 digits)</p>
               <p className="text-sm font-semibold text-yellow-600">{metrics.totalUnidentifiable.toLocaleString()}</p>
             </div>
             <div>
@@ -123,7 +123,7 @@ const MetricsCards: React.FC<MetricsCardsProps> = ({ metrics, loading }) => {
               <p className="text-sm font-semibold text-orange-600">{metrics.totalIncorrect.toLocaleString()}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-600 mb-1">No Match</p>
+              <p className="text-xs text-gray-600 mb-1">Unmatched</p>
               <p className="text-sm font-semibold text-red-600">{metrics.totalNoMatch.toLocaleString()}</p>
             </div>
           </div>
@@ -148,11 +148,11 @@ const MetricsCards: React.FC<MetricsCardsProps> = ({ metrics, loading }) => {
           <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
             <div>
               <p className="text-sm font-semibold text-gray-900">{metrics.totalUniqueSLPs}</p>
-              <p className="text-xs text-gray-500">Unique SLPs</p>
+              <p className="text-xs text-gray-500">Unique Members</p>
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-900">{metrics.avgSLPsPerDay.toFixed(1)}</p>
-              <p className="text-xs text-gray-500">Avg SLPs/Day</p>
+              <p className="text-xs text-gray-500">Avg Members/Day</p>
             </div>
           </div>
         </div>

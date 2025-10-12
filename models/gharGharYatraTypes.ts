@@ -18,6 +18,18 @@ export interface GharGharYatraSummary {
   total_double_entries?: number;
   total_triple_and_more_entries?: number;
   numbers_without_param2?: number;
+
+  // Extended fields per new Summary schema (optional to support mixed-era docs)
+  less_than_equal_3_digits_count?: number;
+  matched_double_entries?: number;
+  matched_total_punches?: number;
+  matched_triple_and_more_entries?: number;
+  matched_unique_entries?: number;
+  members_over_15_punches?: number;
+  members_under_5_punches?: number;
+  total_incorrect_entries?: number;
+  total_unmatched?: number; // same semantics as no_match_count
+  unmatched_total_punches?: number;
 }
 
 /**
@@ -41,6 +53,8 @@ export interface SLPDataDocument {
   tripleEntries: number;
   slpId: string;
   slpPhoneNumber: string;
+  // New in latest schema: assembly of the member for this slp_data record
+  assembly?: string;
 }
 
 /**

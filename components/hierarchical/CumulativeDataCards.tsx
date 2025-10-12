@@ -42,6 +42,8 @@ const CumulativeDataCards: React.FC<Props> = ({
     { id: 'shaktiVideos', label: 'Shakti Local Issue Videos', value: metrics.shaktiVideos, color: 'amber' },
     { id: 'videos', label: 'Local Issue Videos', value: metrics.videos, color: 'yellow' },
     { id: 'acVideos', label: 'AC Videos', value: metrics.acVideos, color: 'rose' },
+    { id: 'nukkadAc', label: 'Nukkad Meetings (AC)', value: (metrics as any).nukkadAc, color: 'teal' },
+    { id: 'nukkadSlp', label: 'Nukkad Meetings (SLP)', value: (metrics as any).nukkadSlp, color: 'sky' },
     { id: 'chaupals', label: 'Samvidhan Chaupals', value: metrics.chaupals, color: 'gray' },
     { id: 'shaktiBaithaks', label: 'Shakti Baithaks', value: metrics.shaktiBaithaks, color: 'amber' },
     { id: 'centralWaGroups', label: 'Central WA Groups', value: metrics.centralWaGroups, color: 'teal' },
@@ -51,12 +53,17 @@ const CumulativeDataCards: React.FC<Props> = ({
 
   const cardData = allCards.filter(card => {
     if (selectedVertical === 'shakti-abhiyaan') {
-      // Show only Shakti-specific cards
-      return ['shaktiLeaders', 'shaktiSaathi', 'shaktiClubs', 'shaktiForms', 'shaktiBaithaks', 'shaktiVideos'].includes(card.id);
+      // Shakti view: include shakti cards and Nukkad (AC)
+      return (
+        ['shaktiLeaders', 'shaktiSaathi', 'shaktiClubs', 'shaktiForms', 'shaktiBaithaks', 'shaktiVideos', 'nukkadAc']
+          .includes(card.id)
+      );
     } else {
-      // WTM - exclude Shakti-specific cards
+      // WTM view: include non-shakti cards, plus Nukkad (AC & SLP)
       // NOTE: intentionally allowing 'shaktiAssemblyWaGroups' to show alongside 'assemblyWaGroups'
-      return !['shaktiLeaders', 'shaktiSaathi', 'shaktiClubs', 'shaktiForms', 'shaktiBaithaks', 'shaktiVideos'].includes(card.id);
+      return ![
+        'shaktiLeaders', 'shaktiSaathi', 'shaktiClubs', 'shaktiForms', 'shaktiBaithaks', 'shaktiVideos'
+      ].includes(card.id);
     }
   });
 

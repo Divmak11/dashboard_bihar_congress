@@ -81,9 +81,9 @@ const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ charts, loading }) =>
         )}
       </div>
 
-      {/* Chart 2: Top 10 SLPs */}
+      {/* Chart 2: Top 10 Members */}
       <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Top 10 SLPs by Total Punches</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Top 10 Members by Total Punches</h3>
         {charts.topSLPs.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
             <BarChart 

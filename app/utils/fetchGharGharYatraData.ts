@@ -4,6 +4,7 @@
  */
 
 import { db } from './firebase';
+import { ggyCache, makeGGYRangeKey } from './cacheUtils';
 import { 
   collection, 
   doc, 
@@ -38,6 +39,15 @@ import {
   OtherDataDocument,
   PaginationState
 } from '../../models/gharGharYatraTypes';
+import {
+  GGYAssemblyGroup,
+  GGYAssemblyMemberAgg,
+  GGYReportData,
+  GGYReportOptions,
+  GGYReportSegment,
+  GGYSegmentData,
+  ReportSummary,
+} from '../../models/ggyReportTypes';
 
 /**
  * Generate array of dates between start and end (inclusive)
@@ -55,7 +65,315 @@ function generateDateRange(startDate: string, endDate: string): string[] {
     dates.push(`${year}-${month}-${day}`);
     current.setDate(current.getDate() + 1);
   }
+
   return dates;
+}
+
+/**
+ * === GGY Split Report Aggregation Helpers ===
+ * Note: Per-user clarification, there is no other_data collection now for report purposes.
+ * Invalid totals are derived from summaries only (incorrect_count), no value-wise breakdown.
+ */
+
+/**
+ * Split a date range into segments based on split type
+ */
+export function splitGGYDateRange(options: GGYReportOptions): GGYReportSegment[] {
+  const { startDate, endDate, split } = options;
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const segments: GGYReportSegment[] = [];
+
+  const fmt = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  if (split === 'cumulative') {
+    segments.push({ label: `${startDate} to ${endDate}`.trim(), startDate, endDate });
+    return segments;
+  }
+
+  if (split === 'day') {
+    const cur = new Date(start);
+    while (cur <= end) {
+      const s = fmt(cur);
+      const e = fmt(cur);
+      segments.push({ label: s, startDate: s, endDate: e });
+      cur.setDate(cur.getDate() + 1);
+    }
+    return segments;
+  }
+
+  // month-wise
+  const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+  const last = new Date(end.getFullYear(), end.getMonth(), 1);
+  while (cur <= last) {
+    const sDate = new Date(cur.getFullYear(), cur.getMonth(), 1);
+    const eDate = new Date(cur.getFullYear(), cur.getMonth() + 1, 0);
+    // clip to provided boundaries
+    const s = fmt(new Date(Math.max(sDate.getTime(), new Date(startDate).getTime())));
+    const e = fmt(new Date(Math.min(eDate.getTime(), new Date(endDate).getTime())));
+    const monthLabel = sDate.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+    segments.push({ label: monthLabel, startDate: s, endDate: e });
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return segments;
+}
+
+/**
+ * Build assembly-wise member aggregation from slpData
+ * - Aggregates strictly by slpId across the provided range
+ * - Determines the assembly from slp_data.assembly (most frequent if multiple)
+ * - Resolves member name/phone from d2d_members by the same document ID (slpId)
+ */
+async function buildAssemblyGroupsFromSlpData(slpData: SLPDataWithDate[]): Promise<GGYAssemblyGroup[]> {
+  type AggVals = {
+    total: number;
+    unique: number;
+    double: number;
+    triple: number;
+    assemblyCounts: Map<string, number>;
+  };
+
+  // Aggregate per SLP
+  const perSlp = new Map<string, AggVals>();
+  slpData.forEach(r => {
+    const v = perSlp.get(r.slpId) || { total: 0, unique: 0, double: 0, triple: 0, assemblyCounts: new Map<string, number>() };
+    v.total += r.totalPunches;
+    v.unique += r.uniquePunches;
+    v.double += r.doubleEntries;
+    v.triple += r.tripleEntries;
+    if (r.assembly) {
+      v.assemblyCounts.set(r.assembly, (v.assemblyCounts.get(r.assembly) || 0) + 1);
+    }
+    perSlp.set(r.slpId, v);
+  });
+
+  const slpIds = Array.from(perSlp.keys());
+  const meta = await fetchSLPMetadataMap(slpIds); // now backed by d2d_members
+
+  const byAssembly = new Map<string, GGYAssemblyMemberAgg[]>();
+  perSlp.forEach((vals, slpId) => {
+    // Determine assembly from slp_data dominance
+    let assembly = 'Unknown Assembly';
+    if (vals.assemblyCounts.size > 0) {
+      assembly = Array.from(vals.assemblyCounts.entries()).sort((a, b) => b[1] - a[1])[0][0];
+    }
+
+    const m = meta.get(slpId) || { name: `Member-${slpId.slice(0, 6)}`, assembly: assembly, phoneNumber: 'N/A' };
+    const row: GGYAssemblyMemberAgg = {
+      slpId,
+      slpName: m.name,
+      phoneNumber: m.phoneNumber,
+      assembly, // strictly from slp_data aggregation
+      totalPunches: vals.total,
+      uniquePunches: vals.unique,
+      doubleEntries: vals.double,
+      tripleEntries: vals.triple
+    };
+    const arr = byAssembly.get(row.assembly) || [];
+    arr.push(row);
+    byAssembly.set(row.assembly, arr);
+  });
+
+  // Sort members within assembly by totalPunches desc
+  const groups: GGYAssemblyGroup[] = Array.from(byAssembly.entries()).map(([assembly, members]) => ({
+    assembly,
+    members: members.sort((a, b) => b.totalPunches - a.totalPunches)
+  }));
+
+  // Sort assemblies alphabetically
+  groups.sort((a, b) => a.assembly.localeCompare(b.assembly));
+  return groups;
+}
+
+/**
+ * Build a single segment's data from source functions
+ */
+export async function buildGGYSegmentData(startDate: string, endDate: string, segmentLabel: string): Promise<GGYSegmentData> {
+  // Fetch source once with slp_data included to support assembly-wise listing
+  const source = await fetchOverviewSourceData(startDate, endDate, { includeSlpData: true, useCache: true });
+  const metrics = await generateAggregatedMetricsFromSource(source);
+  const assemblyGroups = await buildAssemblyGroupsFromSlpData(source.slpData);
+  // Build report summary from summaries map (authoritative)
+  const reportSummary = buildReportSummaryFromSummaries(source.dateDocuments);
+  const invalidCount = reportSummary.incorrect_count; // keep aligned with 'Incorrect Format'
+
+  return {
+    segmentLabel,
+    startDate,
+    endDate,
+    metrics,
+    invalidCount,
+    assemblyGroups,
+    reportSummary,
+  };
+}
+
+/**
+ * Build ReportSummary by summing daily summaries across the provided map
+ */
+function buildReportSummaryFromSummaries(
+  dateDocuments: Map<string, GharGharYatraDocument>
+): ReportSummary {
+  const summaries = Array.from(dateDocuments.values()).map((d) => d.summary);
+
+  let total_param2_values = 0;
+  let matched_count = 0;
+  let unidentifiable_count = 0;
+  let incorrect_count = 0;
+  let no_match_count = 0;
+
+  let less_than_equal_3_digits_count = 0;
+
+  let total_punches = 0;
+  let total_unique_entries = 0;
+  let total_double_entries = 0;
+  let total_triple_and_more_entries = 0;
+
+  let matched_total_punches = 0;
+  let matched_unique_entries = 0;
+  let matched_double_entries = 0;
+  let matched_triple_and_more_entries = 0;
+
+  let unmatched_total_punches = 0;
+  let members_over_15_punches = 0;
+  let members_under_5_punches = 0;
+  let total_unmatched = 0;
+  let total_incorrect_entries = 0;
+
+  let blank_param2_total_punches: number | undefined = undefined;
+  let blank_param2_unique_count: number | undefined = undefined;
+
+  for (const s of summaries) {
+    total_param2_values += s.total_param2_values ?? 0;
+    matched_count += s.matched_count ?? 0;
+    unidentifiable_count += s.unidentifiable_count ?? s.less_than_equal_3_digits_count ?? 0;
+    incorrect_count += s.incorrect_count ?? 0;
+    no_match_count += s.no_match_count ?? 0;
+
+    // Prefer explicit combined metric if present; otherwise approximate with unidentifiable_count
+    less_than_equal_3_digits_count +=
+      s.less_than_equal_3_digits_count ?? (s.unidentifiable_count ?? 0);
+
+    total_punches += s.total_punches ?? 0;
+    total_unique_entries += s.total_unique_entries ?? 0;
+    total_double_entries += s.total_double_entries ?? 0;
+    total_triple_and_more_entries += s.total_triple_and_more_entries ?? 0;
+
+    matched_total_punches += s.matched_total_punches ?? 0;
+    matched_unique_entries += s.matched_unique_entries ?? 0;
+    matched_double_entries += s.matched_double_entries ?? 0;
+    matched_triple_and_more_entries += s.matched_triple_and_more_entries ?? 0;
+
+    unmatched_total_punches += s.unmatched_total_punches ?? 0;
+    members_over_15_punches += s.members_over_15_punches ?? 0;
+    members_under_5_punches += s.members_under_5_punches ?? 0;
+    total_unmatched += s.total_unmatched ?? 0;
+    total_incorrect_entries += s.total_incorrect_entries ?? 0;
+
+    // Capture optional blank counts
+    if ((s as any).blank_param2_total_punches !== undefined) {
+      blank_param2_total_punches = (blank_param2_total_punches ?? 0) + ((s as any).blank_param2_total_punches || 0);
+    }
+    if ((s as any).blank_param2_unique_count !== undefined) {
+      blank_param2_unique_count = (blank_param2_unique_count ?? 0) + ((s as any).blank_param2_unique_count || 0);
+    }
+  }
+
+  const duplicate_calls = (total_double_entries ?? 0) + (total_triple_and_more_entries ?? 0);
+  const total_calls_from_parts = (total_unique_entries ?? 0) + duplicate_calls;
+  const matched_percentage = total_param2_values > 0 ? (matched_count / total_param2_values) * 100 : 0;
+
+  const missing_fields: string[] = [];
+  if (blank_param2_total_punches === undefined) missing_fields.push('blank_param2_total_punches');
+  // less_than_equal_3_digits_count fallback note if we had to approximate
+  if (!summaries.some((s) => s.less_than_equal_3_digits_count !== undefined)) {
+    missing_fields.push('less_than_equal_3_digits_count');
+  }
+
+  if (total_punches !== total_calls_from_parts) {
+    console.warn('[GGY] total_punches != unique+duplicate; using parts sum for Total Calls row', {
+      total_punches,
+      fromParts: total_calls_from_parts,
+    });
+  }
+
+  return {
+    total_param2_values,
+    matched_count,
+    unidentifiable_count,
+    incorrect_count,
+    no_match_count,
+
+    less_than_equal_3_digits_count,
+
+    total_punches,
+    total_unique_entries,
+    total_double_entries,
+    total_triple_and_more_entries,
+
+    matched_total_punches,
+    matched_unique_entries,
+    matched_double_entries,
+    matched_triple_and_more_entries,
+
+    unmatched_total_punches,
+    members_over_15_punches,
+    members_under_5_punches,
+    total_unmatched,
+    total_incorrect_entries,
+
+    blank_param2_total_punches,
+    blank_param2_unique_count,
+
+    // Derived
+    matched_percentage: Math.round(matched_percentage * 10) / 10,
+    duplicate_calls,
+    total_calls_from_parts,
+    missing_fields: missing_fields.length ? missing_fields : undefined,
+  } as ReportSummary;
+}
+
+/**
+ * Build complete GGY report data including overall and optional segments
+ */
+export async function buildGGYReportData(options: GGYReportOptions): Promise<GGYReportData> {
+  const { startDate, endDate, split } = options;
+
+  const now = new Date();
+  const generatedAt = now.toLocaleString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+
+  // Overall (consolidated) first
+  const overall = await buildGGYSegmentData(startDate, endDate, `${startDate} to ${endDate}`);
+
+  const report: GGYReportData = {
+    header: {
+      title: 'Ghar-Ghar Yatra Enhanced Report',
+      generatedAt,
+      dateRange: { startDate, endDate },
+      split
+    },
+    overall
+  };
+
+  if (split === 'cumulative') {
+    return report;
+  }
+
+  // Build per-segment data
+  const segments = splitGGYDateRange(options);
+  const segData: GGYSegmentData[] = [];
+  for (const seg of segments) {
+    segData.push(await buildGGYSegmentData(seg.startDate, seg.endDate, seg.label));
+  }
+
+  return { ...report, segments: segData };
 }
 
 /**
@@ -127,7 +445,9 @@ export async function fetchAllSLPDataForDates(
       const date = chunk[snapIdx];
       snap.forEach(d => {
         const data = d.data() as SLPDataDocument;
-        results.push({ ...data, date });
+        // Ensure slpId is present and stable; fallback to document ID if field missing
+        const slpId = (data as any).slpId ?? d.id;
+        results.push({ ...data, slpId, date });
       });
     });
   }
@@ -139,18 +459,58 @@ export async function fetchAllSLPDataForDates(
  */
 export async function fetchOverviewSourceData(
   startDate: string,
-  endDate: string
+  endDate: string,
+  options?: { includeSlpData?: boolean; useCache?: boolean }
 ): Promise<{ dateDocuments: Map<string, GharGharYatraDocument>; slpData: SLPDataWithDate[]; existingDates: string[] }> {
+  const includeSlpData = options?.includeSlpData ?? true;
+  const useCache = options?.useCache ?? true;
+
+  const sumKey = makeGGYRangeKey('sum', startDate, endDate);
+  const slpKey = makeGGYRangeKey('slp', startDate, endDate);
+
   console.time('[Overview] fetchOverviewSourceData');
+  // Try cached summary-only first
+  if (useCache) {
+    const cachedSum = ggyCache.get<{ entries: [string, GharGharYatraDocument][]; dates: string[] }>(sumKey);
+    if (cachedSum && (!includeSlpData || (includeSlpData && ggyCache.get<SLPDataWithDate[]>(slpKey)))) {
+      const map = new Map<string, GharGharYatraDocument>(cachedSum.entries);
+      const slpData = includeSlpData ? (ggyCache.get<SLPDataWithDate[]>(slpKey) || []) : [];
+      console.timeEnd('[Overview] fetchOverviewSourceData');
+      return { dateDocuments: map, slpData, existingDates: cachedSum.dates };
+    }
+  }
+
+  // Not cached or partial cache – fetch fresh
   const existingDates = await listExistingDatesInRange(startDate, endDate);
   if (existingDates.length === 0) {
     console.timeEnd('[Overview] fetchOverviewSourceData');
     return { dateDocuments: new Map(), slpData: [], existingDates: [] };
   }
-  const [dateDocuments, slpData] = await Promise.all([
-    fetchDateDocumentsForDates(existingDates),
-    fetchAllSLPDataForDates(existingDates)
-  ]);
+
+  // Always fetch summaries when cache missing
+  const dateDocuments = await fetchDateDocumentsForDates(existingDates);
+
+  if (useCache) {
+    const entries = Array.from(dateDocuments.entries());
+    ggyCache.set(sumKey, { entries, dates: existingDates });
+  }
+
+  let slpData: SLPDataWithDate[] = [];
+  if (includeSlpData) {
+    // Try cache for slpData
+    if (useCache) {
+      const cachedSlp = ggyCache.get<SLPDataWithDate[]>(slpKey);
+      if (cachedSlp) {
+        slpData = cachedSlp;
+      } else {
+        slpData = await fetchAllSLPDataForDates(existingDates);
+        ggyCache.set(slpKey, slpData);
+      }
+    } else {
+      slpData = await fetchAllSLPDataForDates(existingDates);
+    }
+  }
+
   console.timeEnd('[Overview] fetchOverviewSourceData');
   return { dateDocuments, slpData, existingDates };
 }
@@ -214,7 +574,9 @@ export async function fetchAllSLPDataInRange(
     subCollectionSnapshots.forEach(snapshot => {
       snapshot.forEach(doc => {
         const data = doc.data() as SLPDataDocument;
-        allSLPData.push(data);
+        // Ensure slpId fallback to doc.id for robustness across data eras
+        const slpId = (data as any).slpId ?? doc.id;
+        allSLPData.push({ ...data, slpId });
       });
     });
     
@@ -227,50 +589,41 @@ export async function fetchAllSLPDataInRange(
 }
 
 /**
- * Fetch SLP metadata from wtm-slp collection by document IDs
+ * Fetch member metadata from d2d_members collection by document IDs
+ * Kept the function name for compatibility across existing call-sites
  */
 export async function fetchSLPMetadataMap(slpIds: string[]): Promise<Map<string, SLPMetadata>> {
-  console.log(`[fetchSLPMetadataMap] Fetching metadata for ${slpIds.length} SLPs`);
-  
+  console.log(`[fetchSLPMetadataMap] (d2d_members) Fetching metadata for ${slpIds.length} members`);
+
   const metadataMap = new Map<string, SLPMetadata>();
-  
-  if (slpIds.length === 0) {
-    return metadataMap;
-  }
-  
+  if (slpIds.length === 0) return metadataMap;
+
   try {
-    // Direct document fetch by ID - NO chunking needed
-    const slpPromises = slpIds.map(slpId => 
-      getDoc(doc(db, 'wtm-slp', slpId))
-    );
-    
-    const slpDocs = await Promise.all(slpPromises);
-    
-    slpDocs.forEach((slpDoc, index) => {
-      const slpId = slpIds[index];
-      
-      if (slpDoc.exists()) {
-        const data = slpDoc.data();
-        metadataMap.set(slpId, {
-          name: data.name || `SLP-${slpId.substring(0, 8)}`,
+    const promises = slpIds.map((id) => getDoc(doc(db, 'd2d_members', id)));
+    const docs = await Promise.all(promises);
+    docs.forEach((snap, idx) => {
+      const id = slpIds[idx];
+      if (snap.exists()) {
+        const data = snap.data() as any;
+        metadataMap.set(id, {
+          name: data.name || `Member-${id.substring(0, 8)}`,
           assembly: data.assembly || 'Unknown Assembly',
-          phoneNumber: data.phoneNumber || data.mobileNumber || 'N/A'
+          phoneNumber: data.phoneNumber || 'N/A',
         });
       } else {
-        // Fallback for missing SLP
-        metadataMap.set(slpId, {
-          name: `Unknown SLP (${slpId.substring(0, 8)})`,
+        metadataMap.set(id, {
+          name: `Member-${id.substring(0, 8)}`,
           assembly: 'Unknown Assembly',
-          phoneNumber: 'N/A'
+          phoneNumber: 'N/A',
         });
       }
     });
-    
-    console.log(`[fetchSLPMetadataMap] Resolved ${metadataMap.size} SLP metadata entries`);
+
+    console.log(`[fetchSLPMetadataMap] (d2d_members) Resolved ${metadataMap.size} member metadata entries`);
     return metadataMap;
   } catch (error) {
-    console.error('[fetchSLPMetadataMap] Error fetching SLP metadata:', error);
-    throw new Error('Failed to fetch SLP metadata');
+    console.error('[fetchSLPMetadataMap] Error fetching member metadata from d2d_members:', error);
+    throw new Error('Failed to fetch member metadata');
   }
 }
 
@@ -398,19 +751,26 @@ export function calculateDataQualityMetrics(
   totalNoMatch: number;
   matchRatePercentage: number;
 } {
+  // Prefer new summary fields where available, fallback to legacy keys
   const totals = summaries.reduce(
-    (acc, summary) => ({
-      matched: acc.matched + summary.matched_count,
-      unidentifiable: acc.unidentifiable + summary.unidentifiable_count,
-      incorrect: acc.incorrect + summary.incorrect_count,
-      noMatch: acc.noMatch + summary.no_match_count
-    }),
+    (acc, s) => {
+      const matched = (s.matched_count ?? 0);
+      const unidentifiable = (s.unidentifiable_count ?? s.less_than_equal_3_digits_count ?? 0);
+      const incorrect = (s.incorrect_count ?? 0);
+      const unmatched = (s.total_unmatched ?? s.no_match_count ?? 0);
+      return {
+        matched: acc.matched + matched,
+        unidentifiable: acc.unidentifiable + unidentifiable,
+        incorrect: acc.incorrect + incorrect,
+        noMatch: acc.noMatch + unmatched
+      };
+    },
     { matched: 0, unidentifiable: 0, incorrect: 0, noMatch: 0 }
   );
-  
+
   const totalRecords = totals.matched + totals.unidentifiable + totals.incorrect + totals.noMatch;
   const matchRatePercentage = totalRecords > 0 ? (totals.matched / totalRecords) * 100 : 0;
-  
+
   return {
     totalMatched: totals.matched,
     totalUnidentifiable: totals.unidentifiable,
@@ -621,38 +981,35 @@ export async function generateAggregatedMetricsFromSource(
 ): Promise<AggregatedMetrics> {
   const { dateDocuments, slpData } = source;
 
-  const summaries = Array.from(dateDocuments.values()).map(doc => doc.summary);
+  const summaries = Array.from(dateDocuments.entries()).map(([date, doc]) => ({ date, s: doc.summary }));
 
-  // Prefer pre-calculated summary fields (new data model), fallback to aggregation (old data)
+  // Hybrid aggregation: per day, prefer summary totals when present; otherwise aggregate from slpData for that date
   let totalPunches = 0;
   let totalUniquePunches = 0;
   let totalDoubleEntries = 0;
   let totalTripleEntries = 0;
-  let usedPreCalculated = false;
 
-  // Check if all summaries have the new fields
-  const allHaveNewFields = summaries.every(s => 
-    s.total_punches !== undefined && 
-    s.total_unique_entries !== undefined && 
-    s.total_double_entries !== undefined && 
-    s.total_triple_and_more_entries !== undefined
-  );
+  const slpByDate = new Map<string, SLPDataWithDate[]>();
+  for (const r of slpData) {
+    const arr = slpByDate.get(r.date) || [];
+    arr.push(r);
+    slpByDate.set(r.date, arr);
+  }
 
-  if (allHaveNewFields && summaries.length > 0) {
-    // Use pre-calculated totals from summary (fast path)
-    totalPunches = summaries.reduce((sum, s) => sum + (s.total_punches || 0), 0);
-    totalUniquePunches = summaries.reduce((sum, s) => sum + (s.total_unique_entries || 0), 0);
-    totalDoubleEntries = summaries.reduce((sum, s) => sum + (s.total_double_entries || 0), 0);
-    totalTripleEntries = summaries.reduce((sum, s) => sum + (s.total_triple_and_more_entries || 0), 0);
-    usedPreCalculated = true;
-    console.log('[Metrics] Using pre-calculated summary fields (optimized)');
-  } else {
-    // Fallback to aggregating from slpData (backward compatibility)
-    totalPunches = slpData.reduce((sum, r) => sum + r.totalPunches, 0);
-    totalUniquePunches = slpData.reduce((sum, r) => sum + r.uniquePunches, 0);
-    totalDoubleEntries = slpData.reduce((sum, r) => sum + r.doubleEntries, 0);
-    totalTripleEntries = slpData.reduce((sum, r) => sum + r.tripleEntries, 0);
-    console.log('[Metrics] Using aggregated slpData (backward compatibility fallback)');
+  for (const { date, s } of summaries) {
+    const hasNew = s.total_punches !== undefined && s.total_unique_entries !== undefined && s.total_double_entries !== undefined && s.total_triple_and_more_entries !== undefined;
+    if (hasNew) {
+      totalPunches += s.total_punches || 0;
+      totalUniquePunches += s.total_unique_entries || 0;
+      totalDoubleEntries += s.total_double_entries || 0;
+      totalTripleEntries += s.total_triple_and_more_entries || 0;
+    } else {
+      const rows = slpByDate.get(date) || [];
+      totalPunches += rows.reduce((sum, r) => sum + r.totalPunches, 0);
+      totalUniquePunches += rows.reduce((sum, r) => sum + r.uniquePunches, 0);
+      totalDoubleEntries += rows.reduce((sum, r) => sum + r.doubleEntries, 0);
+      totalTripleEntries += rows.reduce((sum, r) => sum + r.tripleEntries, 0);
+    }
   }
 
   const perSlp = new Map<string, { punches: number; dates: Set<string> }>();
@@ -669,7 +1026,9 @@ export async function generateAggregatedMetricsFromSource(
   });
   const lowPerformersCount = perSlp.size - highPerformersCount;
 
-  const qualityMetrics = calculateDataQualityMetrics(summaries);
+  // Data Quality: reduce over summaries only (not the wrapper objects)
+  const summariesOnly = summaries.map(({ s }) => s);
+  const qualityMetrics = calculateDataQualityMetrics(summariesOnly);
 
   const totalDatesWithData = dateDocuments.size;
   const totalUniqueSLPs = perSlp.size;
@@ -762,9 +1121,9 @@ export async function generateChartDataFromSource(
   const totalRecords = qm.totalMatched + qm.totalUnidentifiable + qm.totalIncorrect + qm.totalNoMatch;
   const dataQuality: DataQualityDataPoint[] = [
     { name: 'Matched', value: qm.totalMatched, percentage: totalRecords ? (qm.totalMatched / totalRecords) * 100 : 0, color: '#10b981' },
-    { name: 'Unidentifiable', value: qm.totalUnidentifiable, percentage: totalRecords ? (qm.totalUnidentifiable / totalRecords) * 100 : 0, color: '#f59e0b' },
+    { name: 'Unidentifiable (<3 digits)', value: qm.totalUnidentifiable, percentage: totalRecords ? (qm.totalUnidentifiable / totalRecords) * 100 : 0, color: '#f59e0b' },
     { name: 'Incorrect', value: qm.totalIncorrect, percentage: totalRecords ? (qm.totalIncorrect / totalRecords) * 100 : 0, color: '#f97316' },
-    { name: 'No Match', value: qm.totalNoMatch, percentage: totalRecords ? (qm.totalNoMatch / totalRecords) * 100 : 0, color: '#ef4444' }
+    { name: 'Unmatched', value: qm.totalNoMatch, percentage: totalRecords ? (qm.totalNoMatch / totalRecords) * 100 : 0, color: '#ef4444' }
   ];
 
   // Calling patterns per date

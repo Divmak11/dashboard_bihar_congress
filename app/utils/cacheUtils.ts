@@ -228,6 +228,16 @@ export const CACHE_KEYS = {
   YOUTUBE_SUMMARY: 'youtube_summary'
 } as const;
 
+// GGY cache instance and helpers (for Analytics)
+export const ggyCache = new DataCache({
+  keyPrefix: 'ggy_',
+  ttl: 10 * 60 * 1000 // 10 minutes default TTL
+});
+
+export function makeGGYRangeKey(prefix: 'sum' | 'slp', startDate: string, endDate: string): string {
+  return `${prefix}_${startDate}_${endDate}`;
+}
+
 /**
  * Utility function to create user-specific cache keys
  * Ensures different users have separate cached data

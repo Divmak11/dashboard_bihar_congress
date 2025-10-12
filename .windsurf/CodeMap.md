@@ -1,3 +1,59 @@
+### Updated Summary Mapping (Oct 2025)
+The analytics now prefer the new per-day `summary` fields from `ghar_ghar_yatra/{YYYY-MM-DD}` for totals and data quality, with graceful fallbacks for mixed-era docs.
+
+**Totals (per range, sum over days):**
+- `total_punches`, `total_unique_entries`, `total_double_entries`, `total_triple_and_more_entries`
+- Fallback for older docs: aggregate from `slp_data` for those specific dates only.
+
+**Data Quality (per range, sum over days):**
+- Matched: `matched_count`
+- Unmatched: `total_unmatched` (fallback `no_match_count`)
+- Unidentifiable (<3 digits): `unidentifiable_count` (fallback `less_than_equal_3_digits_count`)
+- Incorrect: `incorrect_count`
+
+Labels in UI updated:
+- “No Match” → “Unmatched”
+- “Unidentifiable” → “Unidentifiable (<3 digits)”
+- “SLP Performance” → “Members Performance”
+- “Top 10 SLPs” → “Top 10 Members”
+- Coverage labels: “Unique Members”, “Avg Members/Day”
+
+**Member-centric analytics (performance, top-10):**
+- Source: `ghar_ghar_yatra/{date}/slp_data/{memberId}` aggregated by `slpId` (sub-doc ID), not phone
+- Metadata enrichment prefers `d2d_members` (future), current fallback: `wtm-slp`
+
+**Implementation files:**
+- `app/utils/fetchGharGharYatraData.ts`
+  - `fetchOverviewSourceData()` → single-source orchestration
+  - `generateAggregatedMetricsFromSource()` → Hybrid per-day aggregation (summary preferred; slp_data fallback)
+  - `calculateDataQualityMetrics()` → New field preferences + label changes
+  - `generateChartDataFromSource()` → Daily trend and calling patterns from summary totals, fallback to `slp_data`
+- GGY Split Report (NEW)
+  - `models/ggyReportTypes.ts` → Types for GGY split report: `GGYReportOptions`, `GGYReportSegment`, `GGYSegmentData`, `GGYReportData`
+  - `components/report/ReportOptionsModal.tsx` → Modal to choose date range and split type (cumulative/day/month) with gating rules
+  - `app/utils/fetchGharGharYatraData.ts` → Helpers for split report
+    - `splitGGYDateRange(options)` → Build segments for cumulative/day-wise/month-wise
+    - `buildGGYSegmentData(startDate, endDate, label)` → Builds metrics, assembly-wise members, and invalid count using summaries and slp_data
+    - `buildGGYReportData(options)` → Builds overall and per-segment report data structure
+  - `app/utils/generateGgySplitReportPDF.tsx` → PDF generator rendering Summary (table), Assembly-wise Matched Members, and Invalid section per segment
+  - `app/verticals/ghar-ghar-yatra-analytics/page.tsx` → Integrated new modal and split report generation; legacy generator kept as fallback
+  - Summary Mapping (Updated):
+    - Introduced `ReportSummary` in `models/ggyReportTypes.ts` carried via `GGYSegmentData.reportSummary`.
+    - Built from daily summaries in `buildReportSummaryFromSummaries()` inside `app/utils/fetchGharGharYatraData.ts`.
+    - Summary table rows now use exact fields:
+      - Total Samvidhan Saathi → `total_param2_values`
+      - Matched Numbers → `matched_count` with `matched_percentage` (matched_count / total_param2_values)
+      - No Match Found → `no_match_count`
+      - Less Than 3 Digit Punches → `less_than_equal_3_digits_count` (fallback: `unidentifiable_count` if missing)
+      - Incorrect Format → `incorrect_count`
+      - Blank Entries → `blank_param2_total_punches` (fallback: `blank_param2_unique_count`)
+      - Unique Calling Numbers → `total_unique_entries`
+      - Duplicate Calling Numbers → `duplicate_calls` (`total_double_entries + total_triple_and_more_entries`)
+      - Total Calls → `"Unique + Duplicate = total_calls_from_parts"`
+    - Invalid Section shows Incorrect Format count and Blank punches; adds a note when using fallback unique count.
+    - Assembly-wise table uses row chunking with header repetition to prevent page crumbling.
+- `components/ghar-ghar-yatra/MetricsCards.tsx` → Labels updated to “Members” + new Data Quality labels
+- `components/ghar-ghar-yatra/AnalyticsCharts.tsx` → “Top 10 Members” title + Data Quality labels
 # Code Map - Bihar Congress Dashboard
 
 ## Table of Contents
@@ -167,6 +223,24 @@ my-dashboard/
 - **pdfConfig**: Centralized PDF styling configuration (fonts, colors, styles)
 - **ReportGenerator Component**: Presentational component with modal UI
 - **pdfGenerator**: Core PDF generation logic using @react-pdf/renderer
+  
+### GGY Split Report (NEW)
+- UI Flow:
+  1. User clicks `Generate PDF` in `app/verticals/ghar-ghar-yatra-analytics/page.tsx`
+  2. `components/report/ReportOptionsModal.tsx` opens to select date range and Split Type
+  3. On confirm, `buildGGYReportData()` constructs overall and optional segment data
+  4. `generateGgySplitReportPDF.tsx` renders:
+     - Summary table (from aggregated metrics)
+     - Assembly-wise matched members (grouped by assembly; slp metadata via `wtm-slp`)
+     - Invalid section (cumulative invalid count using `incorrect_count` from summaries; no value-wise breakdown)
+- Split Rules:
+  - Cumulative: one block using full range
+  - Day-wise: one block per date in range (>1 day to enable)
+  - Month-wise: one block per month segment (enabled for ranges ≥ 31 days)
+- Data Sources:
+  - Summaries: `ghar_ghar_yatra/{date}.summary` (preferred)
+  - Members: `ghar_ghar_yatra/{date}/slp_data` aggregated by `slpId`, enriched via `wtm-slp`
+  - Invalid: from summaries `incorrect_count` only (no `other_data` dependency per latest clarification)
 
 **Data Flow:**
 1. User triggers report via ReportGenerator component
@@ -375,6 +449,33 @@ CACHE_KEYS = {
 
 **Critical Note:** All slp-activity queries for shakti metrics must include both `form_type` filter AND `parentVertical='shakti-abhiyaan'` filter.
 
+#### Nukkad Meetings (NEW)
+
+- AC-level (WTM & Shakti): collection `wtm-slp`, `form_type: 'nukkad_meeting'`
+  - WTM card: exclude `parentVertical === 'shakti-abhiyaan'` (treat missing as WTM)
+  - Shakti card: include only `parentVertical === 'shakti-abhiyaan'` (explicit Firestore filter)
+  - Date filter: `createdAt` epoch ms (fallback: `created_at` epoch ms), UTC day boundaries
+  - Assembly chunking for `where('assembly','in', chunk)`
+  - Optional `handler_id` filter for AC-level
+
+- SLP-level (WTM only): collection `slp-activity`, `form_type: 'nukkad_meeting'`
+  - Exclude `parentVertical === 'shakti-abhiyaan'`
+  - Date filter: `createdAt` epoch ms (fallback: `created_at` epoch ms)
+  - Assembly chunking supported
+  - `handler_id` for regular SLPs is document ID; Shakti SLPs excluded by parentVertical rule
+
+UI & Data Flow:
+- Cards: `nukkadAc` (both verticals), `nukkadSlp` (WTM only)
+- Detailed view: `NukkadMeetingsList.tsx`
+- Photos: Nukkad detailed list shows a "View Photos" action. Images are normalized to `image_links` from any of: `image_links`, `imageLinks`, `photoUrls`, `photo_urls`, `photos`, `images`.
+- Coordinator names:
+  - AC Nukkad: resolved via `users` collection (existing behavior)
+  - SLP Nukkad: resolved ONLY via `wtm-slp` using SLP document IDs (no `users` lookup)
+- Fetchers:
+  - AC: `getHierarchicalNukkadAc()` + `fetchDetailedNukkadAc()`
+  - SLP: `getHierarchicalNukkadSlp()` + `fetchDetailedNukkadSlp()`
+- Summary wiring: `fetchCumulativeMetrics()` adds `nukkadAc`, `nukkadSlp` (AC metric is 0 at SLP level)
+
 ### 5. **shakti-abhiyaan** Collection
 ```typescript
 {
@@ -421,6 +522,23 @@ CACHE_KEYS = {
 **Query Pattern**: `where('handler_id', 'in', acIds), where('created_at', '>=', start), where('created_at', '<=', end)`
 **Composite Index Required**: `(handler_id, created_at)`
 **Note**: Collection name is 'attendence' (not 'attendance')
+
+### 8. **d2d_members** Collection (for D2D Members List)
+```typescript
+{
+  id: string,              // Document ID (not displayed in UI)
+  name: string,
+  phoneNumber: string,
+  assembly: string,
+  handler_id: string,      // Not displayed; used for joins when needed
+  role: 'AC' | 'SLP' | 'Saathi',
+  status: string,          // e.g., 'Active'
+  createdAt: number        // Epoch ms; used for date-range filtering (UTC day boundaries)
+}
+```
+**Query Pattern**: `where('createdAt','>=', startMs), where('createdAt','<=', endMs), orderBy('createdAt')` with cursor pagination.
+**Display Rule**: Hide `id`, `handler_id`, and `createdAt` in UI; show `name`, `phoneNumber`, `assembly`, `role`, `status`.
+**Ordering**: Role precedence `AC > SLP > Saathi`, then name.
 
 ---
 

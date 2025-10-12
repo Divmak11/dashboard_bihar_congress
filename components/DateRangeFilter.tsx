@@ -114,14 +114,14 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ label, startDate, end
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-4 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+    <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 p-2 bg-gray-50 dark:bg-gray-700 rounded-lg w-full">
       <label className="font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap">{label}:</label>
-      
+
       {/* Date Filter Dropdown */}
       <select
         value={selectedOption}
         onChange={(e) => handleDateOptionChange(e.target.value)}
-        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-48"
       >
         {DATE_FILTERS.map((filter) => (
           <option key={filter.value} value={filter.value}>
@@ -132,35 +132,35 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ label, startDate, end
 
       {/* Custom Date Range Inputs */}
       {selectedOption === "custom" && (
-        <div className="flex flex-col sm:flex-row items-center gap-2">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2 w-full">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <label className="text-sm text-gray-600 dark:text-gray-300">From:</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => handleCustomDateChange(e.target.value, endDate)}
-              className={`px-2 py-1 border rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 ${
-                hasDateError 
-                  ? 'border-red-500 focus:ring-red-500' 
+              className={`px-2 py-1 border rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 w-full sm:w-44 ${
+                hasDateError
+                  ? 'border-red-500 focus:ring-red-500'
                   : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
               }`}
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <label className="text-sm text-gray-600 dark:text-gray-300">To:</label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => handleCustomDateChange(startDate, e.target.value)}
-              className={`px-2 py-1 border rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 ${
-                hasDateError 
-                  ? 'border-red-500 focus:ring-red-500' 
+              className={`px-2 py-1 border rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 w-full sm:w-44 ${
+                hasDateError
+                  ? 'border-red-500 focus:ring-red-500'
                   : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
               }`}
             />
           </div>
           {hasDateError && (
-            <div className="text-red-500 text-xs mt-1">
+            <div className="text-red-500 text-xs mt-1 w-full">
               Start date must be before end date
             </div>
           )}
