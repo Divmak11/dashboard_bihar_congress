@@ -34,6 +34,8 @@ const emptyMetrics: CumulativeMetrics = {
   shaktiForms: '-',
   videos: '-',
   acVideos: '-',
+  nukkadAc: '-',
+  nukkadSlp: '-',
   chaupals: '-',
   shaktiVideos: '-',
   shaktiBaithaks: '-',
@@ -347,7 +349,8 @@ const HierarchicalDashboardPage: React.FC = () => {
         const fetchedMetrics = await fetchCumulativeMetrics({
           ...options,
           adminUser: adminUser,
-          isLastDayFilter: isLastDayFilter
+          isLastDayFilter: isLastDayFilter,
+          vertical: selectedVertical,
         });
         setMetrics(fetchedMetrics);
       } catch (error) {
@@ -506,6 +509,7 @@ const HierarchicalDashboardPage: React.FC = () => {
               selectedAssembly={selectedAssembly}
               selectedAcId={selectedAcId}
               selectedSlpId={selectedSlpId}
+              selectedVertical={selectedVertical}
               zones={zones}
               acs={acs}
               dateRange={startDate && endDate ? { startDate, endDate } : undefined}

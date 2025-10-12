@@ -449,6 +449,33 @@ CACHE_KEYS = {
 
 **Critical Note:** All slp-activity queries for shakti metrics must include both `form_type` filter AND `parentVertical='shakti-abhiyaan'` filter.
 
+#### Nukkad Meetings (NEW)
+
+- AC-level (WTM & Shakti): collection `wtm-slp`, `form_type: 'nukkad_meeting'`
+  - WTM card: exclude `parentVertical === 'shakti-abhiyaan'` (treat missing as WTM)
+  - Shakti card: include only `parentVertical === 'shakti-abhiyaan'` (explicit Firestore filter)
+  - Date filter: `createdAt` epoch ms (fallback: `created_at` epoch ms), UTC day boundaries
+  - Assembly chunking for `where('assembly','in', chunk)`
+  - Optional `handler_id` filter for AC-level
+
+- SLP-level (WTM only): collection `slp-activity`, `form_type: 'nukkad_meeting'`
+  - Exclude `parentVertical === 'shakti-abhiyaan'`
+  - Date filter: `createdAt` epoch ms (fallback: `created_at` epoch ms)
+  - Assembly chunking supported
+  - `handler_id` for regular SLPs is document ID; Shakti SLPs excluded by parentVertical rule
+
+UI & Data Flow:
+- Cards: `nukkadAc` (both verticals), `nukkadSlp` (WTM only)
+- Detailed view: `NukkadMeetingsList.tsx`
+- Photos: Nukkad detailed list shows a "View Photos" action. Images are normalized to `image_links` from any of: `image_links`, `imageLinks`, `photoUrls`, `photo_urls`, `photos`, `images`.
+- Coordinator names:
+  - AC Nukkad: resolved via `users` collection (existing behavior)
+  - SLP Nukkad: resolved ONLY via `wtm-slp` using SLP document IDs (no `users` lookup)
+- Fetchers:
+  - AC: `getHierarchicalNukkadAc()` + `fetchDetailedNukkadAc()`
+  - SLP: `getHierarchicalNukkadSlp()` + `fetchDetailedNukkadSlp()`
+- Summary wiring: `fetchCumulativeMetrics()` adds `nukkadAc`, `nukkadSlp` (AC metric is 0 at SLP level)
+
 ### 5. **shakti-abhiyaan** Collection
 ```typescript
 {

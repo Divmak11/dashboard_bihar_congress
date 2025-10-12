@@ -21,11 +21,235 @@ export interface FetchMetricsOptions {
   assemblies?: string[];
   dateRange?: { startDate: string; endDate: string };
   handler_id?: string;
-  level: 'zone' | 'assembly' | 'ac' | 'slp';
+  level: 'zone' | 'assembly' | 'ac' | 'slp' | 'vertical';
   slp?: { uid: string; handler_id?: string; isShaktiSLP?: boolean; shaktiId?: string };
   adminUser?: AdminUser | null;
   isLastDayFilter?: boolean;
+  vertical?: 'wtm' | 'shakti-abhiyaan';
 }
+
+/**
+ * Fetch Nukkad Meetings (AC) from wtm-slp collection.
+ * Rules:
+ * - form_type == 'nukkad_meeting'
+ * - When vertical === 'shakti-abhiyaan' include only parentVertical === 'shakti-abhiyaan'
+ * - When vertical !== 'shakti-abhiyaan' exclude parentVertical === 'shakti-abhiyaan' (client-side)
+ * - Date filter on createdAt (epoch ms) with created_at (epoch ms) fallback
+ * - Assembly chunking and optional handler_id filter
+ */
+const getHierarchicalNukkadAc = async (
+  assemblies?: string[],
+  dateRange?: { startDate: string; endDate: string },
+  handler_id?: string,
+  vertical?: 'wtm' | 'shakti-abhiyaan'
+): Promise<any[]> => {
+  try {
+    const col = collection(db, 'wtm-slp');
+    // Base query without date/assembly constraints
+    let base = query(col, where('form_type', '==', 'nukkad_meeting'));
+    if (handler_id) {
+      base = query(base, where('handler_id', '==', handler_id));
+    }
+    if (vertical === 'shakti-abhiyaan') {
+      // Index-friendly include for Shakti
+      base = query(base, where('parentVertical', '==', 'shakti-abhiyaan'));
+    }
+
+    // Date boundaries
+    let baseCreatedAt = base;
+    let baseCreated_at = base;
+    if (dateRange) {
+      const start = new Date(dateRange.startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(dateRange.endDate);
+      end.setHours(23, 59, 59, 999);
+      const startMs = start.getTime();
+      const endMs = end.getTime();
+      baseCreatedAt = query(baseCreatedAt, where('createdAt', '>=', startMs), where('createdAt', '<=', endMs));
+      baseCreated_at = query(baseCreated_at, where('created_at', '>=', startMs), where('created_at', '<=', endMs));
+    }
+
+    // Execute queries with assembly chunking
+    const execWithAssemblies = async (qBase: any) => {
+      if (assemblies && assemblies.length > 0) {
+        const uniqueAssemblies = [...new Set(assemblies)];
+        if (uniqueAssemblies.length <= 10) {
+          const q = query(qBase, where('assembly', 'in', uniqueAssemblies));
+          const s = await getDocs(q);
+          return [s];
+        } else {
+          const chunks: string[][] = [];
+          for (let i = 0; i < uniqueAssemblies.length; i += 10) {
+            chunks.push(uniqueAssemblies.slice(i, i + 10));
+          }
+          const promises = chunks.map(chunk => getDocs(query(qBase, where('assembly', 'in', chunk))));
+          return await Promise.all(promises);
+        }
+      } else {
+        const s = await getDocs(qBase);
+        return [s];
+      }
+    };
+
+    const [snapsCA, snapsCA2] = await Promise.all([
+      execWithAssemblies(baseCreatedAt),
+      execWithAssemblies(baseCreated_at)
+    ]);
+
+    const map = new Map<string, any>();
+    const addSnaps = (arr: any[]) => {
+      arr.forEach((snap) => {
+        snap.forEach((d: any) => {
+          if (!map.has(d.id)) {
+            map.set(d.id, { ...d.data(), id: d.id });
+          }
+        });
+      });
+    };
+    addSnaps(snapsCA);
+    addSnaps(snapsCA2);
+
+    let result = Array.from(map.values());
+    if (vertical !== 'shakti-abhiyaan') {
+      result = result.filter((doc: any) => doc?.parentVertical !== 'shakti-abhiyaan');
+    }
+    return result;
+  } catch (error) {
+    console.error('[getHierarchicalNukkadAc] Error:', error);
+    return [];
+  }
+};
+
+/**
+ * Fetch Nukkad Meetings (SLP) from slp-activity collection for WTM only.
+ * - form_type == 'nukkad_meeting'
+ * - Exclude parentVertical === 'shakti-abhiyaan'
+ * - Date filter on createdAt (epoch ms) with created_at (epoch ms) fallback
+ */
+const getHierarchicalNukkadSlp = async (
+  assemblies?: string[],
+  dateRange?: { startDate: string; endDate: string },
+  handler_id?: string,
+): Promise<any[]> => {
+  try {
+    const col = collection(db, 'slp-activity');
+    let base = query(col, where('form_type', '==', 'nukkad_meeting'));
+    if (handler_id) {
+      base = query(base, where('handler_id', '==', handler_id));
+    }
+
+    let baseCreatedAt = base;
+    let baseCreated_at = base;
+    if (dateRange) {
+      const start = new Date(dateRange.startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(dateRange.endDate);
+      end.setHours(23, 59, 59, 999);
+      const startMs = start.getTime();
+      const endMs = end.getTime();
+      baseCreatedAt = query(baseCreatedAt, where('createdAt', '>=', startMs), where('createdAt', '<=', endMs));
+      baseCreated_at = query(baseCreated_at, where('created_at', '>=', startMs), where('created_at', '<=', endMs));
+    }
+
+    const execWithAssemblies = async (qBase: any) => {
+      if (assemblies && assemblies.length > 0) {
+        const uniqueAssemblies = [...new Set(assemblies)];
+        if (uniqueAssemblies.length <= 10) {
+          const q = query(qBase, where('assembly', 'in', uniqueAssemblies));
+          const s = await getDocs(q);
+          return [s];
+        } else {
+          const chunks: string[][] = [];
+          for (let i = 0; i < uniqueAssemblies.length; i += 10) {
+            chunks.push(uniqueAssemblies.slice(i, i + 10));
+          }
+          const promises = chunks.map(chunk => getDocs(query(qBase, where('assembly', 'in', chunk))));
+          return await Promise.all(promises);
+        }
+      } else {
+        const s = await getDocs(qBase);
+        return [s];
+      }
+    };
+
+    const [snapsCA, snapsCA2] = await Promise.all([
+      execWithAssemblies(baseCreatedAt),
+      execWithAssemblies(baseCreated_at)
+    ]);
+
+    const map = new Map<string, any>();
+    const addSnaps = (arr: any[]) => {
+      arr.forEach((snap) => {
+        snap.forEach((d: any) => {
+          if (!map.has(d.id)) {
+            map.set(d.id, { ...d.data(), id: d.id });
+          }
+        });
+      });
+    };
+    addSnaps(snapsCA);
+    addSnaps(snapsCA2);
+
+    const result = Array.from(map.values());
+    const filtered = result.filter((doc: any) => doc?.parentVertical !== 'shakti-abhiyaan');
+    return filtered;
+  } catch (error) {
+    console.error('[getHierarchicalNukkadSlp] Error:', error);
+    return [];
+  }
+};
+
+// Detailed fetchers
+export const fetchDetailedNukkadAc = async (options: FetchMetricsOptions): Promise<any[]> => {
+  const list = await getHierarchicalNukkadAc(options.assemblies, options.dateRange, options.handler_id, options.vertical);
+  // Enrich coordinatorName from users
+  const ids = [...new Set(list.map((r: any) => r.handler_id).filter(Boolean))];
+  const names = await resolveUserNamesByIds(ids);
+  const mapped = list.map((doc: any) => {
+    const ms = typeof doc.createdAt === 'number' ? doc.createdAt : (typeof doc.created_at === 'number' ? doc.created_at : undefined);
+    const dateStr = ms ? new Date(ms).toISOString().slice(0,10) : (doc.meetingDate || doc.dateOfVisit || '');
+    const totalMembers = Array.isArray(doc.members) ? doc.members.length : (doc.totalMembers || doc.membersCount || 0);
+    // Normalize images/photos into a single array for UI consumption
+    const rawImages = doc?.image_links ?? doc?.imageLinks ?? doc?.photoUrls ?? doc?.photo_urls ?? doc?.photos ?? doc?.images;
+    const image_links = Array.isArray(rawImages)
+      ? rawImages.filter((u: any) => typeof u === 'string' && u.trim())
+      : (typeof rawImages === 'string' && rawImages.trim() ? [rawImages] : []);
+    return {
+      ...doc,
+      dateOfVisit: dateStr,
+      coordinatorName: names.get(doc.handler_id) || doc.handler_id || 'Unknown',
+      totalMembers,
+      image_links
+    };
+  });
+  return mapped;
+};
+
+export const fetchDetailedNukkadSlp = async (options: FetchMetricsOptions): Promise<any[]> => {
+  const list = await getHierarchicalNukkadSlp(options.assemblies, options.dateRange, options.handler_id);
+  const ids = [...new Set(list.map((r: any) => r.handler_id).filter(Boolean))];
+  // Resolve SLP names from wtm-slp using document IDs only (as per requirement)
+  const names = await resolveSlpNamesFromWtmByIds(ids);
+  const mapped = list.map((doc: any) => {
+    const ms = typeof doc.createdAt === 'number' ? doc.createdAt : (typeof doc.created_at === 'number' ? doc.created_at : undefined);
+    const dateStr = ms ? new Date(ms).toISOString().slice(0,10) : (doc.meetingDate || doc.dateOfVisit || '');
+    const totalMembers = Array.isArray(doc.members) ? doc.members.length : (doc.totalMembers || doc.membersCount || 0);
+    // Normalize images/photos into a single array for UI consumption
+    const rawImages = doc?.image_links ?? doc?.imageLinks ?? doc?.photoUrls ?? doc?.photo_urls ?? doc?.photos ?? doc?.images;
+    const image_links = Array.isArray(rawImages)
+      ? rawImages.filter((u: any) => typeof u === 'string' && u.trim())
+      : (typeof rawImages === 'string' && rawImages.trim() ? [rawImages] : []);
+    return {
+      ...doc,
+      dateOfVisit: dateStr,
+      coordinatorName: names.get(doc.handler_id) || doc.handler_id || 'Unknown',
+      totalMembers,
+      image_links
+    };
+  });
+  return mapped;
+};
+ 
 
 /**
  * Helper function to adjust date range for admin users.
@@ -117,6 +341,34 @@ const resolveUserNamesByIds = async (handlerIds: string[]): Promise<Map<string, 
       });
     } catch (err) {
       console.error('[resolveUserNamesByIds] Error resolving batch:', err);
+    }
+  }
+  return nameMap;
+};
+
+// Helper: Resolve SLP names from 'wtm-slp' collection using document IDs only
+const resolveSlpNamesFromWtmByIds = async (slpIds: string[]): Promise<Map<string, string>> => {
+  const nameMap = new Map<string, string>();
+  const uniqueIds = [...new Set((slpIds || []).filter(Boolean))];
+  if (uniqueIds.length === 0) return nameMap;
+
+  const wtmCol = collection(db, 'wtm-slp');
+  const chunkSize = 10;
+  for (let i = 0; i < uniqueIds.length; i += chunkSize) {
+    const batch = uniqueIds.slice(i, i + chunkSize);
+    try {
+      const qWtm = query(wtmCol, where(documentId(), 'in', batch));
+      const snap = await getDocs(qWtm);
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        // Use 'name' primarily; older docs might have 'recommendedPersonName'
+        const name = (data?.name || data?.recommendedPersonName || '').toString();
+        if (name) {
+          nameMap.set(d.id, name);
+        }
+      });
+    } catch (err) {
+      console.error('[resolveSlpNamesFromWtmByIds] Error resolving batch:', err);
     }
   }
   return nameMap;
@@ -1308,7 +1560,10 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
       shaktiBaithaks,
       centralWaGroups, 
       assemblyWaGroups,
-      shaktiAssemblyWaGroups
+      shaktiAssemblyWaGroups,
+      // Nukkad metrics
+      nukkadAc,
+      nukkadSlp
     ] = await Promise.allSettled([
       getWtmSlpSummary(adjustedDateRange?.startDate, adjustedDateRange?.endDate, options.assemblies, options.handler_id, options.slp),
       getHierarchicalMemberActivity(options.assemblies, adjustedDateRange, options.handler_id),
@@ -1326,6 +1581,9 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
       getHierarchicalCentralWaGroups(options.assemblies, adjustedDateRange, options.handler_id),
       getHierarchicalAssemblyWaGroups(options.assemblies, adjustedDateRange, options.handler_id),
       getHierarchicalShaktiAssemblyWaGroups(options.assemblies, adjustedDateRange, options.handler_id),
+      // New Nukkad metrics
+      getHierarchicalNukkadAc(options.assemblies, adjustedDateRange, options.handler_id, options.vertical),
+      getHierarchicalNukkadSlp(options.assemblies, adjustedDateRange, options.handler_id),
     ]);
 
     const getResultValue = (result: PromiseSettledResult<any>) => {
@@ -1347,6 +1605,8 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
     const isSlpLevel = options.level === 'slp';
     const assemblyWaGroupsCount = isSlpLevel ? 0 : getResultValue(assemblyWaGroups);
     const shaktiAssemblyWaGroupsCount = isSlpLevel ? 0 : getResultValue(shaktiAssemblyWaGroups);
+    const nukkadAcCount = isSlpLevel ? 0 : getResultValue(nukkadAc);
+    const nukkadSlpCount = getResultValue(nukkadSlp);
 
     return {
       meetings: getSummaryValue(wtmSummary, 'totalMeetings'),
@@ -1367,6 +1627,8 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
       centralWaGroups: getResultValue(centralWaGroups),
       assemblyWaGroups: assemblyWaGroupsCount,
       shaktiAssemblyWaGroups: shaktiAssemblyWaGroupsCount,
+      nukkadAc: nukkadAcCount,
+      nukkadSlp: nukkadSlpCount,
     };
   } catch (error) {
     const errorCode = error instanceof Error && error.message.includes('date') 
@@ -2480,6 +2742,12 @@ export const fetchDetailedData = async (metricType: string, options: FetchMetric
       return getHierarchicalAssemblyWaGroups(options.assemblies, options.dateRange, options.handler_id);
     case 'shaktiAssemblyWaGroups':
       return getHierarchicalShaktiAssemblyWaGroups(options.assemblies, options.dateRange, options.handler_id);
+    case 'nukkadAc':
+      // For SLP level, align with summary gating: return empty list
+      if (options.level === 'slp') return [];
+      return fetchDetailedNukkadAc(options);
+    case 'nukkadSlp':
+      return fetchDetailedNukkadSlp(options);
     default:
       console.warn(`[fetchDetailedData] Unknown metric type: ${metricType}`);
       return [];

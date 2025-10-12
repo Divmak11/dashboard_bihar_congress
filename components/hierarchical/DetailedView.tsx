@@ -8,6 +8,7 @@ import VideosList from './VideosList';
 import FormsList from './FormsList';
 import ClubsList from './ClubsList';
 import ChaupalsList from './ChaupalsList';
+import NukkadMeetingsList from './NukkadMeetingsList';
 
 interface Props {
   selectedCard?: string | null;
@@ -19,6 +20,7 @@ interface Props {
   zones?: any[];
   acs?: any[];
   dateRange?: { startDate: string; endDate: string };
+  selectedVertical?: string;
 }
 
 const DetailedView: React.FC<Props> = ({ 
@@ -30,7 +32,8 @@ const DetailedView: React.FC<Props> = ({
   selectedSlpId,
   zones = [],
   acs = [],
-  dateRange
+  dateRange,
+  selectedVertical
 }) => {
   const [detailedData, setDetailedData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -67,6 +70,9 @@ const DetailedView: React.FC<Props> = ({
         if (dateRange && dateRange.startDate && dateRange.endDate) {
           options.dateRange = dateRange;
         }
+        if (selectedVertical) {
+          options.vertical = (selectedVertical as 'wtm' | 'shakti-abhiyaan');
+        }
 
         console.log('[DetailedView] Fetching detailed data with options:', options);
         const data = await fetchDetailedData(selectedCard, options);
@@ -80,7 +86,7 @@ const DetailedView: React.FC<Props> = ({
     };
 
     fetchData();
-  }, [selectedCard, selectedLevel, selectedZoneId, selectedAssembly, selectedAcId, selectedSlpId, zones, acs, dateRange]);
+  }, [selectedCard, selectedLevel, selectedZoneId, selectedAssembly, selectedAcId, selectedSlpId, zones, acs, dateRange, selectedVertical]);
   const getCardTitle = (cardId: string) => {
     const titles: Record<string, string> = {
       meetings: 'Meeting Details',
@@ -95,6 +101,8 @@ const DetailedView: React.FC<Props> = ({
       waGroups: 'WhatsApp Groups',
       chaupals: 'Chaupal Sessions',
       shaktiBaithaks: 'Shakti Baithaks',
+      nukkadAc: 'Nukkad Meetings (AC)',
+      nukkadSlp: 'Nukkad Meetings (SLP)'
     };
     return titles[cardId] || 'Details';
   };
@@ -145,6 +153,10 @@ const DetailedView: React.FC<Props> = ({
 
     if (selectedCard === 'chaupals') {
       return <ChaupalsList data={detailedData} loading={loading} />;
+    }
+
+    if (selectedCard === 'nukkadAc' || selectedCard === 'nukkadSlp') {
+      return <NukkadMeetingsList data={detailedData} loading={loading} />;
     }
 
     // For all other activity types, use ActivitiesList
