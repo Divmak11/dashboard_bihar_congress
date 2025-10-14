@@ -8,6 +8,9 @@ import {
   limit,
   startAfter,
   DocumentSnapshot,
+  QueryConstraint,
+  QueryDocumentSnapshot,
+  DocumentData,
 } from 'firebase/firestore';
 import { DateRange } from '../../models/gharGharYatraTypes';
 import { D2DMember, D2DMemberWithMetrics, D2DMemberMetrics, D2DRole } from '../../models/d2dTypes';
@@ -151,4 +154,55 @@ export async function attachGgyMetricsToMembers(
   });
 
   return merged;
+}
+
+/**
+ * Fetch ALL D2D members within the date range by paging through Firestore results
+ * - Uses createdAt epoch ms with UTC day boundaries
+ * - Orders by createdAt ASC and iterates with cursor until no more docs
+ * - Returns fully aggregated array, sorted by role precedence then name
+ */
+export async function fetchAllD2DMembersInRange(
+  dateRange: DateRange
+): Promise<D2DMember[]> {
+  const startMs = toUtcStartMs(dateRange.startDate);
+  const endMs = toUtcEndMs(dateRange.endDate);
+
+  const PAGE_SIZE = 500; // Larger page size to reduce round-trips
+  let all: D2DMember[] = [];
+  let lastVisible: DocumentSnapshot | null = null;
+
+  while (true) {
+    const constraints: QueryConstraint[] = [
+      where('createdAt', '>=', startMs),
+      where('createdAt', '<=', endMs),
+      orderBy('createdAt', 'asc'),
+    ];
+    if (lastVisible) constraints.push(startAfter(lastVisible));
+    constraints.push(limit(PAGE_SIZE));
+
+    const qRef = query(collection(db, 'd2d_members'), ...constraints);
+    const snap = await getDocs(qRef);
+    const page: D2DMember[] = snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => ({
+      id: d.id,
+      ...(d.data() as Omit<D2DMember, 'id'>),
+    }));
+    all = all.concat(page);
+
+    if (snap.docs.length < PAGE_SIZE) {
+      // No more pages
+      break;
+    }
+    lastVisible = (snap.docs[snap.docs.length - 1] as DocumentSnapshot<DocumentData>) || null;
+    if (!lastVisible) break;
+  }
+
+  // Sort by role precedence then name for stable UI ordering
+  all.sort((a, b) => {
+    const rw = roleWeight(a.role) - roleWeight(b.role);
+    if (rw !== 0) return rw;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  return all;
 }

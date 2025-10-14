@@ -11,6 +11,7 @@ import HierarchicalErrorBoundary from '../../components/hierarchical/Hierarchica
 import { ToastContainer, useToast } from '../../components/Toast';
 import { Zone, AC, SLP } from '../../models/hierarchicalTypes';
 import ReportGenerator from '../../components/ReportGenerator';
+import UsersExplorer from '../../components/users/UsersExplorer';
 import { fetchZones, fetchAssemblies, fetchAssemblyCoordinatorsForWTM, fetchAssemblyCoordinatorsForShakti, fetchSlpsForAc, fetchCumulativeMetrics } from '../utils/fetchHierarchicalData';
 import { CumulativeMetrics } from '../../models/hierarchicalTypes';
 import { AppError } from '../utils/errorUtils';
@@ -90,6 +91,7 @@ const HierarchicalDashboardPage: React.FC = () => {
   // Metrics state
   const [metrics, setMetrics] = useState<CumulativeMetrics>(emptyMetrics);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState<boolean>(false);
+  const [showUsersExplorer, setShowUsersExplorer] = useState<boolean>(false);
 
   // Fetch user data when authenticated
   React.useEffect(() => {
@@ -457,6 +459,12 @@ const HierarchicalDashboardPage: React.FC = () => {
               selectedVertical={selectedVertical}
             />
             <button
+              onClick={() => setShowUsersExplorer(true)}
+              className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md"
+            >
+              All Users
+            </button>
+            <button
               onClick={handleLogout}
               className="px-3 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md"
             >
@@ -520,6 +528,14 @@ const HierarchicalDashboardPage: React.FC = () => {
       
       {/* Toast notifications */}
       <ToastContainer toasts={toasts} onClose={removeToast} />
+      {showUsersExplorer && (
+        <UsersExplorer 
+          selectedVertical={selectedVertical === 'shakti-abhiyaan' ? 'shakti-abhiyaan' : 'wtm'} 
+          adminUser={adminUser}
+          currentDateOption={dateOption}
+          onClose={() => setShowUsersExplorer(false)} 
+        />
+      )}
     </>
   );
 };
