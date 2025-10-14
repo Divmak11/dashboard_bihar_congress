@@ -88,6 +88,7 @@ Labels in UI updated:
 - Hierarchical Navigation (Zone → Assembly → AC → SLP)
 - Activity Tracking & Reporting
 - Role-based Auto-redirection System
+- Users Explorer & User Reports (All Users)
 
 ## Authentication & Role-based Redirection
 
@@ -224,6 +225,35 @@ my-dashboard/
 - **ReportGenerator Component**: Presentational component with modal UI
 - **pdfGenerator**: Core PDF generation logic using @react-pdf/renderer
   
+### All Users Explorer & User Reports (NEW)
+
+Location & Files:
+- UI:
+  - `components/users/UsersExplorer.tsx` → Wide overlay with search, role filter, separate date filter, paginated table with multi-select, right-side profile + work summary panel, and report generation entry.
+  - `components/report/UserReportOptionsModal.tsx` → Split options for user-specific report (cumulative / day-wise / month-wise) with gating (day-wise > 1 day, month-wise ≥ 31 days).
+- Utilities:
+  - `app/utils/fetchUsersData.ts` → Fetch and format users (paged), resolve zonal assemblies with priority on `admin-users.assemblies`, and fetch per-user `CumulativeMetrics` by role using `fetchCumulativeMetrics`.
+  - `app/utils/generateUserReportPDF.tsx` → Builds segments (cumulative/day/month), fetches metrics per user per segment, renders PDF via `@react-pdf/renderer`.
+- Integration:
+  - `app/wtm-slp-new/page.tsx` → Adds "All Users" button beside "Generate Report" to open the overlay. Passes current `selectedVertical` (supports both `wtm` and `shakti-abhiyaan`).
+  
+UI Redesign Updates:
+- New: `components/users/UserDetailsModal.tsx` → Dedicated polished overlay for per-user profile and work summary; replaces the earlier right-side panel.
+- `components/users/UsersExplorer.tsx` → Updated header (gradient), improved filters (search with icon + segmented role control), sticky table header, zebra striping, clickable rows open `UserDetailsModal`, skeleton loaders and empty state; report generation continues to work from toolbar.
+
+Behavior & Data Rules:
+- Users are listed from `users` collection (no vertical filter), with show-only whitelist fields: name, phone, email, role, assembly, assemblies, district, block, village, state, vertical, createdAt/updatedAt (formatted). Hide internal identifiers and ratings.
+- Supported roles for work data: "Assembly Coordinator" and "Zonal Incharge".
+  - AC metrics call: `fetchCumulativeMetrics({ level: 'ac', handler_id: user.uid, assemblies: [assembly|assemblies], dateRange, vertical })`.
+  - Zonal metrics call: `fetchCumulativeMetrics({ level: 'zone', assemblies: getZonalAssembliesForUser(uid, vertical), dateRange, vertical })`.
+- Zonal assemblies resolution priority: `admin-users.assemblies` → `users.assemblies` → `zones` where `zonalIncharge == uid` and `parentVertical` matches.
+- Overlay has its own date filter independent from dashboard global filter.
+- Report generation: Select one or multiple supported users and choose split (cumulative/day/month). PDF lists basic user properties and the fetched `CumulativeMetrics` per segment.
+
+Notes:
+- `fetchAllUsersPaged` prefers `orderBy('name')` + cursor; falls back to simple `where(limit)` if index/order unavailable.
+- For Shakti vertical, the same explorer works; metrics are scoped by passing `vertical: 'shakti-abhiyaan'` into `fetchCumulativeMetrics`.
+
 ### GGY Split Report (NEW)
 - UI Flow:
   1. User clicks `Generate PDF` in `app/verticals/ghar-ghar-yatra-analytics/page.tsx`
@@ -539,6 +569,18 @@ UI & Data Flow:
 **Query Pattern**: `where('createdAt','>=', startMs), where('createdAt','<=', endMs), orderBy('createdAt')` with cursor pagination.
 **Display Rule**: Hide `id`, `handler_id`, and `createdAt` in UI; show `name`, `phoneNumber`, `assembly`, `role`, `status`.
 **Ordering**: Role precedence `AC > SLP > Saathi`, then name.
+
+#### D2D Members List UI Behavior (Show-all Mode)
+- Loader: `components/ghar-ghar-yatra/D2DMembersList.tsx`
+- Fetcher: `app/utils/fetchD2DMembers.ts`
+- Behavior:
+  - Uses `fetchAllD2DMembersInRange(dateRange)` to page through Firestore until the full set in range is loaded (cursor on `createdAt` ASC, page size 500).
+  - Metrics are attached once via `attachGgyMetricsToMembers()` using `fetchOverviewSourceData()` (summary-first source) for efficient per-member aggregations.
+  - Search is fully in-memory (name, assembly, phone substring; phone digits normalized). Sorting is client-side with role precedence, then selected column.
+  - Pagination UI is removed. The table represents the entire result set for the selected date range.
+- Performance notes:
+  - Default date range remains “lastWeek” to keep loads bounded; selecting very wide ranges may increase load time and memory.
+  - Consider using narrower ranges for best UX. Future enhancement could add server-side tokenized search if needed.
 
 ---
 

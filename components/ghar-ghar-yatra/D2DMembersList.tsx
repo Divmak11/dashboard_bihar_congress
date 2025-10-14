@@ -4,9 +4,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import DateRangeFilter from '../DateRangeFilter';
 import { DateRange } from '../../models/gharGharYatraTypes';
 import { D2DMemberWithMetrics } from '../../models/d2dTypes';
-import { fetchD2DMembersInRange, attachGgyMetricsToMembers, roleWeight } from '../../app/utils/fetchD2DMembers';
+import { fetchAllD2DMembersInRange, attachGgyMetricsToMembers, roleWeight } from '../../app/utils/fetchD2DMembers';
 
-const DEFAULT_PAGE_SIZE = 50;
+// In 'show all' mode we do not paginate; full dataset is loaded once per date range
 
 type SortKey = keyof Pick<D2DMemberWithMetrics, 'name' | 'phoneNumber' | 'assembly' | 'role' | 'status'> | 'totalPunches' | 'uniquePunches' | 'doubleEntries' | 'tripleEntries';
 
@@ -22,13 +22,12 @@ const D2DMembersList: React.FC = () => {
   const [endDate, setEndDate] = useState<string>(toStr(yesterday));
 
   const [members, setMembers] = useState<D2DMemberWithMetrics[]>([]);
+  const [allMembers, setAllMembers] = useState<D2DMemberWithMetrics[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState<string>('');
-  const [lastDoc, setLastDoc] = useState<any>(null);
-  const [hasMore, setHasMore] = useState<boolean>(false);
-  const [totalFetched, setTotalFetched] = useState<number>(0);
+  // Pagination removed in 'show all' mode
 
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -39,57 +38,41 @@ const D2DMembersList: React.FC = () => {
     setDateOption(option);
     setStartDate(start);
     setEndDate(end);
-    // Reset pagination and fetch fresh
-    setLastDoc(null);
+    // Reset current view and fetch fresh
     setMembers([]);
   };
 
-  const loadPage = async (append = false) => {
+  const loadAll = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const { members: d2d, pagination } = await fetchD2DMembersInRange(dateRange, {
-        search: search.trim() || undefined,
-        pageSize: DEFAULT_PAGE_SIZE,
-        lastDoc: append ? lastDoc : null,
-      });
+      // Fetch ALL members for the range, then attach metrics once
+      console.time('[D2DMembersList] Fetch all members');
+      const d2dAll = await fetchAllD2DMembersInRange(dateRange);
+      console.timeEnd('[D2DMembersList] Fetch all members');
 
-      const withMetrics = await attachGgyMetricsToMembers(d2d, dateRange);
+      console.time('[D2DMembersList] Attach metrics');
+      const withMetrics = await attachGgyMetricsToMembers(d2dAll, dateRange);
+      console.timeEnd('[D2DMembersList] Attach metrics');
 
-      if (append) {
-        setMembers(prev => [...prev, ...withMetrics]);
-      } else {
-        setMembers(withMetrics);
-      }
-
-      setHasMore(pagination.hasMore && !search.trim()); // disable pagination when searching
-      setLastDoc(pagination.lastVisible);
-      setTotalFetched(prev => append ? prev + withMetrics.length : withMetrics.length);
+      setAllMembers(withMetrics);
+      setMembers(withMetrics); // initial display equals full set; search filters in-memory
     } catch (err) {
       console.error('[D2DMembersList] Error loading members:', err);
       setError(err instanceof Error ? err.message : 'Failed to load members');
-      if (!append) {
-        setMembers([]);
-        setHasMore(false);
-        setLastDoc(null);
-        setTotalFetched(0);
-      }
+      setAllMembers([]);
+      setMembers([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    // Fetch on initial mount and whenever date range or search changes
-    loadPage(false);
+    // Fetch all on initial mount and whenever date range changes
+    loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate, endDate, dateOption, search]);
-
-  const handleLoadMore = () => {
-    if (loading || !hasMore) return;
-    loadPage(true);
-  };
+  }, [startDate, endDate, dateOption]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -100,8 +83,27 @@ const D2DMembersList: React.FC = () => {
     }
   };
 
+  // Apply in-memory search over the full loaded dataset
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return allMembers;
+    const digits = term.replace(/\D/g, '');
+    return allMembers.filter((m) => {
+      const name = m.name?.toLowerCase() || '';
+      const assembly = m.assembly?.toLowerCase() || '';
+      const phone = (m.phoneNumber || '').toLowerCase();
+      const phoneDigits = (m.phoneNumber || '').replace(/\D/g, '');
+      return (
+        name.includes(term) ||
+        assembly.includes(term) ||
+        phone.includes(term) ||
+        (digits && phoneDigits.includes(digits))
+      );
+    });
+  }, [allMembers, search]);
+
   const sorted = useMemo(() => {
-    const arr = [...members];
+    const arr = [...filtered];
 
     arr.sort((a, b) => {
       // Default precedence: role weight first, then name (unless user sorted by a specific key)
@@ -127,7 +129,7 @@ const D2DMembersList: React.FC = () => {
     });
 
     return arr;
-  }, [members, sortKey, sortDir]);
+  }, [filtered, sortKey, sortDir]);
 
   const paged = sorted; // Full table with virtual pagination (we load server pages as needed)
 
@@ -191,7 +193,6 @@ const D2DMembersList: React.FC = () => {
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
-                  setLastDoc(null);
                 }}
                 className="w-64 px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
@@ -201,7 +202,7 @@ const D2DMembersList: React.FC = () => {
             </div>
             <button
               onClick={exportCSV}
-              disabled={loading || members.length === 0}
+              disabled={loading || sorted.length === 0}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0120 9.414V19a2 2 0 01-2 2z" /></svg>
@@ -213,7 +214,7 @@ const D2DMembersList: React.FC = () => {
         {/* Stats */}
         {!loading && (
           <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between text-sm text-gray-600">
-            <span>Showing {members.length} members</span>
+            <span>Showing {sorted.length} members</span>
             {search && <span>Filtered by search</span>}
           </div>
         )}
@@ -291,24 +292,12 @@ const D2DMembersList: React.FC = () => {
             </table>
           </div>
 
-          {/* Pagination */}
-          {hasMore && (
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-              <button
-                onClick={handleLoadMore}
-                disabled={loading}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Loading...' : 'Load More'}
-              </button>
-              <p className="text-center text-sm text-gray-600 mt-2">Loaded {totalFetched} members</p>
-            </div>
-          )}
+          {/* Pagination removed in 'show all' mode */}
         </div>
       )}
 
       {/* Empty State */}
-      {!loading && !error && members.length === 0 && (
+      {!loading && !error && sorted.length === 0 && (
         <div className="bg-white rounded-lg shadow p-12">
           <div className="text-center text-gray-500">
             <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0120 9.414V19a2 2 0 01-2 2z" /></svg>
