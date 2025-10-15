@@ -238,21 +238,75 @@ Location & Files:
   - `app/wtm-slp-new/page.tsx` → Adds "All Users" button beside "Generate Report" to open the overlay. Passes current `selectedVertical` (supports both `wtm` and `shakti-abhiyaan`).
   
 UI Redesign Updates:
-- New: `components/users/UserDetailsModal.tsx` → Dedicated polished overlay for per-user profile and work summary; replaces the earlier right-side panel.
-- `components/users/UsersExplorer.tsx` → Updated header (gradient), improved filters (search with icon + segmented role control), sticky table header, zebra striping, clickable rows open `UserDetailsModal`, skeleton loaders and empty state; report generation continues to work from toolbar.
-
-Behavior & Data Rules:
-- Users are listed from `users` collection (no vertical filter), with show-only whitelist fields: name, phone, email, role, assembly, assemblies, district, block, village, state, vertical, createdAt/updatedAt (formatted). Hide internal identifiers and ratings.
-- Supported roles for work data: "Assembly Coordinator" and "Zonal Incharge".
-  - AC metrics call: `fetchCumulativeMetrics({ level: 'ac', handler_id: user.uid, assemblies: [assembly|assemblies], dateRange, vertical })`.
-  - Zonal metrics call: `fetchCumulativeMetrics({ level: 'zone', assemblies: getZonalAssembliesForUser(uid, vertical), dateRange, vertical })`.
-- Zonal assemblies resolution priority: `admin-users.assemblies` → `users.assemblies` → `zones` where `zonalIncharge == uid` and `parentVertical` matches.
-- Overlay has its own date filter independent from dashboard global filter.
-- Report generation: Select one or multiple supported users and choose split (cumulative/day/month). PDF lists basic user properties and the fetched `CumulativeMetrics` per segment.
+- New: `components/users/UserDetailsModal.tsx` → Dedicated polished overlay for per-user profile and work summary; replaces the earlier right-side panel in UsersExplorer.
 
 Notes:
 - `fetchAllUsersPaged` prefers `orderBy('name')` + cursor; falls back to simple `where(limit)` if index/order unavailable.
 - For Shakti vertical, the same explorer works; metrics are scoped by passing `vertical: 'shakti-abhiyaan'` into `fetchCumulativeMetrics`.
+
+### XLSX Exporters
+
+**Shared Utilities** (`app/utils/exporters/common.ts`):
+- `normalizeDate(row, keys[])`: Normalizes dates from epoch ms, Firestore Timestamps, or ISO strings to locale date string
+- `normalizeLinks(input)`: Converts string | string[] | null to array of valid link strings
+- `joinLinks(links, delimiter)`: Joins links with delimiter (default: newline for Excel multi-line cells)
+- `buildExportFilename(metric, context?, dateRange?)`: Generates consistent filenames like `Metric_Context_DateRange.xlsx`
+- `formatLocalDateForFilename(date)`: Returns YYYY-MM-DD string avoiding UTC conversion
+
+**Meetings** (`app/utils/exporters/meetingsXlsx.ts`):
+- Columns: Date, Coordinator Name, Assembly, Participant Name, Position, Status, Village, Block, Profession, Level of Influence, Mobile
+- Mobile numbers exported unmasked as strings
+- Triggered from `MeetingsList.tsx` via Export XLSX button
+- Exports filtered dataset (column filter applied; DataTable search not included)
+
+**Saathi/Members** (`app/utils/exporters/saathiXlsx.ts`):
+- Columns: Date, Coordinator Name, Assembly, Member Name, Village, Block, Profession, Level of Influence, Gender, Mobile
+- Date prefers `dateOfVisit`, fallback to `createdAt`
+- Mobile numbers exported unmasked as strings
+- Triggered from `ActivitiesList.tsx` when `activityType === 'saathi' || 'members'`
+- Exports filteredData (includes column-value filters)
+
+**Videos** (`app/utils/exporters/videosXlsx.ts`):
+- Columns: Date Submitted, Assembly, Description, Video Link, Image Links, Late Entry, Handler ID
+- Image links joined with newline (multiple images appear on separate lines in Excel)
+- Triggered from `VideosList.tsx` (covers both 'videos' and 'acVideos' metrics)
+- Normalizes from `video_link`, `videoLink`, `image_links`, `imageLinks`
+
+**Clubs/WA Groups** (`app/utils/exporters/clubsXlsx.ts`):
+- Columns: Created, Assembly, Panchayat, Group Name, Members, Status, Link
+- Members prefers `members` field, fallback to `membersCount`
+- Triggered from `ClubsList.tsx` (covers clubs, centralWaGroups, assemblyWaGroups, shaktiClubs, shaktiAssemblyWaGroups)
+- Link field exports chat/group URL
+
+**Forms** (`app/utils/exporters/formsXlsx.ts`):
+- Columns: Date, Assembly, Forms Distributed, Forms Collected, Completion Rate, Late Entry, Handler ID, Created
+- Completion Rate computed inline: `(distributed / collected) * 100`
+- Triggered from `FormsList.tsx` (Mai-Bahin Yojna forms)
+
+**Chaupals** (`app/utils/exporters/chaupalsXlsx.ts`):
+- Columns: Date, Assembly, Location, Topic/Notes, Total Members, Training ID, Audio Link, Video Link, Photo Links
+- Audio, video, and photo links exported as URLs
+- Photo links joined with newline for multiple photos
+- Triggered from `ChaupalsList.tsx` (covers chaupals and shaktiBaithaks)
+
+**Nukkad Meetings** (`app/utils/exporters/nukkadXlsx.ts`):
+- Columns: Date, Coordinator Name, Assembly, Panchayat, Village, Total Members, Notes, Video Link, Photo Links
+- Photo links normalized from multiple possible field names: `image_links`, `photoUrls`, `photo_urls`, `photos`, `imageLinks`, `images`
+- Total members computed from `totalMembers`, `members.length`, or `membersCount`
+- Triggered from `NukkadMeetingsList.tsx` (covers both nukkadAc and nukkadSlp)
+
+**Volunteers/SLPs** (reuses `meetingsXlsx.ts`):
+- Same columns as Meetings exporter
+- Triggered from `ActivitiesList.tsx` when `activityType === 'volunteers' || 'slps'`
+- Exports filteredData with column-value filters applied
+
+**Export Behavior Notes**:
+- All exports operate on in-memory data (no new Firebase queries, no composite indexes needed)
+- Column/value filters are included in exports when applied
+- DataTable free-text search is NOT included in exports
+- Large datasets may cause brief UI freeze during export
+- Links (video, photo, chat) exported as plain URLs for Excel compatibility
+- Multiple links joined with newline delimiter (\n) for multi-line Excel cells
 
 ### GGY Split Report (NEW)
 - UI Flow:
