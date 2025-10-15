@@ -22,6 +22,7 @@
 import React from 'react';
 import ColumnValueFilter, { ColumnOption } from './ColumnValueFilter';
 import DataTable from './DataTable';
+import { exportSaathiToXlsx } from '@/app/utils/exporters/saathiXlsx';
 
 interface ActivitiesListProps {
   data: any[];
@@ -424,8 +425,18 @@ const ActivitiesList: React.FC<ActivitiesListProps> = ({ data, loading = false, 
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h4 className="text-lg font-medium text-gray-900">{getTitle()}</h4>
-        <div className="text-sm text-gray-500">
-          Total records: {data.length}
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-gray-500">Total records: {data.length}</div>
+          {(activityType === 'saathi' || activityType === 'members') && (
+            <button
+              type="button"
+              onClick={() => exportSaathiToXlsx(filteredData)}
+              disabled={loading || !data?.length}
+              className="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700"
+            >
+              Export XLSX
+            </button>
+          )}
         </div>
       </div>
       
