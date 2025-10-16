@@ -16,6 +16,10 @@ interface DataTableProps {
   emptyMessage?: string;
   searchable?: boolean;
   pageSize?: number;
+  // When false, the table will not paginate client-side; caller controls paging
+  clientPaginate?: boolean;
+  // Optional footer slot (e.g., Load More button)
+  footer?: React.ReactNode;
 }
 
 const DataTable: React.FC<DataTableProps> = ({
@@ -24,7 +28,9 @@ const DataTable: React.FC<DataTableProps> = ({
   loading = false,
   emptyMessage = "No data available",
   searchable = true,
-  pageSize = 10
+  pageSize = 10,
+  clientPaginate = true,
+  footer
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
@@ -72,13 +78,14 @@ const DataTable: React.FC<DataTableProps> = ({
     });
   }, [filteredData, sortConfig]);
 
-  // Paginate data
+  // Paginate data (only when clientPaginate=true)
   const paginatedData = useMemo(() => {
+    if (!clientPaginate) return sortedData;
     const startIndex = (currentPage - 1) * pageSize;
     return sortedData.slice(startIndex, startIndex + pageSize);
-  }, [sortedData, currentPage, pageSize]);
+  }, [sortedData, currentPage, pageSize, clientPaginate]);
 
-  const totalPages = Math.ceil(sortedData.length / pageSize);
+  const totalPages = clientPaginate ? Math.ceil(sortedData.length / pageSize) : 1;
 
   const handleSort = (key: string) => {
     const column = columns.find(col => col.key === key);
@@ -198,7 +205,7 @@ const DataTable: React.FC<DataTableProps> = ({
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {clientPaginate && totalPages > 1 && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-gray-700">
             Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, sortedData.length)} of {sortedData.length} results
@@ -222,6 +229,13 @@ const DataTable: React.FC<DataTableProps> = ({
               Next
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Optional footer */}
+      {footer && (
+        <div className="mt-4">
+          {footer}
         </div>
       )}
     </div>

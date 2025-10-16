@@ -22,17 +22,16 @@
 import React from 'react';
 import ColumnValueFilter, { ColumnOption } from './ColumnValueFilter';
 import DataTable from './DataTable';
-import { exportSaathiToXlsx } from '@/app/utils/exporters/saathiXlsx';
-import { exportMeetingsToXlsx } from '@/app/utils/exporters/meetingsXlsx';
 
 interface ActivitiesListProps {
   data: any[];
   loading?: boolean;
   activityType: string;
   showColumnFilter?: boolean; // Opt-in flag for column/value filtering
+  footer?: React.ReactNode; // External footer (e.g., Load More)
 }
 
-const ActivitiesList: React.FC<ActivitiesListProps> = ({ data, loading = false, activityType, showColumnFilter = false }) => {
+const ActivitiesList: React.FC<ActivitiesListProps> = ({ data, loading = false, activityType, showColumnFilter = false, footer }) => {
   // FILTER CONFIGURATION: Only initialize filter state/logic when showColumnFilter is true
   // This prevents unwanted filter UI from appearing on metric cards that don't support these columns
   // 
@@ -426,30 +425,8 @@ const ActivitiesList: React.FC<ActivitiesListProps> = ({ data, loading = false, 
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h4 className="text-lg font-medium text-gray-900">{getTitle()}</h4>
-        <div className="flex items-center gap-3">
-          <div className="text-sm text-gray-500">Total records: {data.length}</div>
-          {/* Export button for Saathi and Members */}
-          {(activityType === 'saathi' || activityType === 'members') && (
-            <button
-              type="button"
-              onClick={() => exportSaathiToXlsx(filteredData)}
-              disabled={loading || !data?.length}
-              className="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700"
-            >
-              Export XLSX
-            </button>
-          )}
-          {/* Export button for Volunteers and SLPs - use meetings exporter (same columns) */}
-          {(activityType === 'volunteers' || activityType === 'slps') && (
-            <button
-              type="button"
-              onClick={() => exportMeetingsToXlsx(filteredData)}
-              disabled={loading || !data?.length}
-              className="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700"
-            >
-              Export XLSX
-            </button>
-          )}
+        <div className="text-sm text-gray-500">
+          Total records: {data.length}
         </div>
       </div>
       
@@ -473,8 +450,9 @@ const ActivitiesList: React.FC<ActivitiesListProps> = ({ data, loading = false, 
         columns={getColumns()}
         loading={loading}
         emptyMessage={`No ${activityType} found for the selected criteria`}
-        searchable={true}
-        pageSize={10}
+        searchable={false}
+        clientPaginate={false}
+        footer={footer}
       />
     </div>
   );

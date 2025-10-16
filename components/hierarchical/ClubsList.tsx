@@ -2,7 +2,6 @@
 // Specialized component for Samvidhan (Panchayat WA) Clubs
 import React from 'react';
 import DataTable from './DataTable';
-import { exportClubsToXlsx } from '@/app/utils/exporters/clubsXlsx';
 
 interface Club {
   id: string;
@@ -20,9 +19,10 @@ interface ClubsListProps {
   data: Club[];
   loading?: boolean;
   activityType?: string;
+  footer?: React.ReactNode;
 }
 
-const ClubsList: React.FC<ClubsListProps> = ({ data, loading = false, activityType = 'clubs' }) => {
+const ClubsList: React.FC<ClubsListProps> = ({ data, loading = false, activityType = 'clubs', footer }) => {
   const columns = [
     {
       key: 'createdAt',
@@ -100,37 +100,30 @@ const ClubsList: React.FC<ClubsListProps> = ({ data, loading = false, activityTy
     }
   ];
 
-  const getTitle = () => {
-    if (activityType === 'assemblyWaGroups') return 'Assembly WA Groups';
-    if (activityType === 'shaktiAssemblyWaGroups') return 'Shakti Assembly WA Groups';
-    if (activityType === 'centralWaGroups') return 'Central WA Groups';
-    if (activityType === 'shaktiClubs') return 'Shakti Clubs';
-    return 'Samvidhan Clubs';
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h4 className="text-lg font-medium text-gray-900">{getTitle()}</h4>
-        <div className="flex items-center gap-3">
-          <div className="text-sm text-gray-500">Total clubs: {data.length}</div>
-          <button
-            type="button"
-            onClick={() => exportClubsToXlsx(data, { metric: getTitle() })}
-            disabled={loading || !data?.length}
-            className="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700"
-          >
-            Export XLSX
-          </button>
-        </div>
+        <h4 className="text-lg font-medium text-gray-900">
+          {activityType === 'assemblyWaGroups'
+            ? 'Assembly WA Groups'
+            : activityType === 'shaktiAssemblyWaGroups'
+            ? 'Shakti Assembly WA Groups'
+            : activityType === 'centralWaGroups'
+            ? 'Central WA Groups'
+            : activityType === 'shaktiClubs'
+            ? 'Shakti Clubs'
+            : 'Samvidhan Clubs'}
+        </h4>
+        <div className="text-sm text-gray-500">Total clubs: {data.length}</div>
       </div>
       <DataTable
         data={data}
         columns={columns}
         loading={loading}
         emptyMessage="No clubs found for the selected criteria"
-        searchable={true}
-        pageSize={10}
+        searchable={false}
+        clientPaginate={false}
+        footer={footer}
       />
     </div>
   );

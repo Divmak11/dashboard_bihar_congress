@@ -6,12 +6,13 @@ import DataTable from './DataTable';
 interface MeetingsListProps {
   data: any[];
   loading?: boolean;
+  footer?: React.ReactNode;
 }
 
 import ColumnValueFilter, { ColumnOption } from './ColumnValueFilter';
 import { exportMeetingsToXlsx } from '@/app/utils/exporters/meetingsXlsx';
 
-const MeetingsList: React.FC<MeetingsListProps> = ({ data, loading = false }) => {
+const MeetingsList: React.FC<MeetingsListProps> = ({ data, loading = false, footer }) => {
   // Columns eligible for filtering
   const filterableColumns: ColumnOption[] = [
     { key: 'assembly', label: 'Assembly' },
@@ -168,8 +169,9 @@ const MeetingsList: React.FC<MeetingsListProps> = ({ data, loading = false }) =>
         columns={columns}
         loading={loading}
         emptyMessage="No meetings found for the selected criteria"
-        searchable={true}
-        pageSize={10}
+        searchable={false}
+        clientPaginate={false}
+        footer={footer}
       />
     </div>
   );
