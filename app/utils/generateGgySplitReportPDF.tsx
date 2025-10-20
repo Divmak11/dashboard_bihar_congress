@@ -64,9 +64,12 @@ const AssemblyGroupsSection: React.FC<{ seg: GGYSegmentData }> = ({ seg }) => {
       ) : (
         seg.assemblyGroups.map((g) => {
           const chunks = chunk(g.members, CHUNK_SIZE);
+          // Calculate cumulative punches for this assembly
+          const assemblyTotal = g.members.reduce((sum, m) => sum + m.totalPunches, 0);
           return (
             <View key={g.assembly} style={styles.assemblySection}>
               <Text style={styles.assemblyHeader}>{g.assembly} ({g.members.length} members)</Text>
+              <Text style={[styles.text, { marginTop: 2, fontSize: 9, color: '#4b5563' }]}>Cumulative Punches: {assemblyTotal.toLocaleString()}</Text>
               {chunks.map((rows, cidx) => (
                 <View key={`${g.assembly}-chunk-${cidx}`} style={styles.table} wrap={false}>
                   <View style={styles.tableHeader}>

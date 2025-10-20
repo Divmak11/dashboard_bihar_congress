@@ -35,7 +35,7 @@ Labels in UI updated:
     - `splitGGYDateRange(options)` → Build segments for cumulative/day-wise/month-wise
     - `buildGGYSegmentData(startDate, endDate, label)` → Builds metrics, assembly-wise members, and invalid count using summaries and slp_data
     - `buildGGYReportData(options)` → Builds overall and per-segment report data structure
-  - `app/utils/generateGgySplitReportPDF.tsx` → PDF generator rendering Summary (table), Assembly-wise Matched Members, and Invalid section per segment
+  - `app/utils/generateGgySplitReportPDF.tsx` → PDF generator rendering Summary (table), Assembly-wise Matched Members (with cumulative punches per assembly), and Invalid section per segment
   - `app/verticals/ghar-ghar-yatra-analytics/page.tsx` → Integrated new modal and split report generation; legacy generator kept as fallback
   - Summary Mapping (Updated):
     - Introduced `ReportSummary` in `models/ggyReportTypes.ts` carried via `GGYSegmentData.reportSummary`.
@@ -52,6 +52,7 @@ Labels in UI updated:
       - Total Calls → `"Unique + Duplicate = total_calls_from_parts"`
     - Invalid Section shows Incorrect Format count and Blank punches; adds a note when using fallback unique count.
     - Assembly-wise table uses row chunking with header repetition to prevent page crumbling.
+    - Assembly-wise section displays cumulative punches per assembly (sum of totalPunches across all members) on a second line below the assembly header with formatted number (thousands separator).
 - `components/ghar-ghar-yatra/MetricsCards.tsx` → Labels updated to “Members” + new Data Quality labels
 - `components/ghar-ghar-yatra/AnalyticsCharts.tsx` → “Top 10 Members” title + Data Quality labels
 # Code Map - Bihar Congress Dashboard
