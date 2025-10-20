@@ -1114,6 +1114,9 @@ The Generate Report module provides comprehensive PDF report generation for the 
 - **Purpose**: Fetch zones specifically for WTM vertical
 - **Query**: Filters by `role='zonal-incharge'` AND `parentVertical='wtm'`
 - **Collection**: admin-users
+- **Zone Display Format**: `"Zone - {zoneName}"` (uses admin-users.zoneName property)
+- **Structured Fields**: Returns zoneName and inchargeName as separate fields for data-driven access
+- **Note**: Replaced counter-based naming ("Zone 1 - Name") with direct zoneName property usage
 - **Returns**: Zone[] with filtered zones for WTM
 
 ##### **fetchAssemblyCoordinatorsForWTM** (`app/utils/fetchHierarchicalData.ts`)

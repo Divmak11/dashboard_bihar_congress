@@ -1654,23 +1654,22 @@ import { Zone, AC, SLP } from '../../models/hierarchicalTypes';
 
 /**
  * Fetch list of zones.
- * Assumes users collection stores Zonal Incharges with `role` === 'Zonal Incharge' and has `zoneId` & `zoneName` fields.
+ * Reads zoneName from admin-users.zoneName property and formats display as "Zone - {zoneName}".
  */
 export const fetchZones = async (): Promise<Zone[]> => {
   try {
     const q = query(collection(db, 'admin-users'), where('role', '==', 'zonal-incharge'));
     const snap = await getDocs(q);
     const zones: Zone[] = [];
-    let counter = 0;
     snap.forEach((d: QueryDocumentSnapshot) => {
-      counter += 1;
       const data = d.data() as any;
       const id = d.id;
       const assemblies: string[] = data.assemblies || [];
-      const zonalName: string = data.name ? String(data.name) : 'Unknown';
-      const name = `Zone ${counter} - ${zonalName}`;
+      const zoneName: string = data.zoneName ? String(data.zoneName) : 'Unknown';
+      const inchargeName: string = data.name ? String(data.name) : 'Unknown';
+      const name = `Zone - ${zoneName}`;
       const parentVertical: string = data.parentVertical || 'wtm';
-      zones.push({ id, name, assemblies, parentVertical });
+      zones.push({ id, name, assemblies, parentVertical, zoneName, inchargeName });
     });
     // Sort alphabetically
     zones.sort((a, b) => a.name.localeCompare(b.name));
@@ -1684,6 +1683,7 @@ export const fetchZones = async (): Promise<Zone[]> => {
 /**
  * Fetch list of zones specifically for WTM vertical.
  * Filters by parentVertical='wtm' AND role='zonal-incharge' from admin-users collection.
+ * Reads zoneName from admin-users.zoneName property and formats display as "Zone - {zoneName}".
  */
 export const fetchZonesForWTM = async (): Promise<Zone[]> => {
   try {
@@ -1694,16 +1694,15 @@ export const fetchZonesForWTM = async (): Promise<Zone[]> => {
     );
     const snap = await getDocs(q);
     const zones: Zone[] = [];
-    let counter = 0;
     snap.forEach((d: QueryDocumentSnapshot) => {
-      counter += 1;
       const data = d.data() as any;
       const id = d.id;
       const assemblies: string[] = data.assemblies || [];
-      const zonalName: string = data.name ? String(data.name) : 'Unknown';
-      const name = `Zone ${counter} - ${zonalName}`;
+      const zoneName: string = data.zoneName ? String(data.zoneName) : 'Unknown';
+      const inchargeName: string = data.name ? String(data.name) : 'Unknown';
+      const name = `Zone - ${zoneName}`;
       const parentVertical: string = 'wtm'; // Always WTM for this function
-      zones.push({ id, name, assemblies, parentVertical });
+      zones.push({ id, name, assemblies, parentVertical, zoneName, inchargeName });
     });
     // Sort alphabetically
     zones.sort((a, b) => a.name.localeCompare(b.name));

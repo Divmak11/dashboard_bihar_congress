@@ -290,11 +290,12 @@ export async function aggregateReportData(
     // Create assembly-to-zone mapping early for reference
     const assemblyToZoneMap = new Map<string, { zoneId: string; zoneName: string; inchargeName: string }>();
     verticalZones.forEach(zone => {
-      const inchargeName = zone.name.split(' - ')[1] || 'Unknown'; // Extract incharge name from "Zone X - Name" format
+      const inchargeName = zone.inchargeName || 'Unknown'; // Use dedicated inchargeName field
+      const zoneName = zone.zoneName || zone.name; // Prefer zoneName field, fallback to display name
       zone.assemblies.forEach(assembly => {
         assemblyToZoneMap.set(assembly, {
           zoneId: zone.id,
-          zoneName: zone.name,
+          zoneName: zoneName,
           inchargeName
         });
       });

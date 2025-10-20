@@ -4,10 +4,14 @@
 
 export interface Zone {
   id: string;
-  name: string; // "Zone 1", "Zone 2", etc.
+  name: string; // Display name: "Zone - {zoneName}"
   assemblies: string[];
   /** Vertical this zone belongs to (e.g., 'wtm' or 'shakti-abhiyaan'). */
   parentVertical?: string;
+  /** Raw zone name from admin-users.zoneName */
+  zoneName?: string;
+  /** Zonal incharge name from admin-users.name */
+  inchargeName?: string;
 }
 
 export interface AC {
