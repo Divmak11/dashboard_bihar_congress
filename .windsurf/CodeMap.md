@@ -1053,6 +1053,16 @@ The Generate Report module provides comprehensive PDF report generation for the 
   - Enhanced font sizes for better readability
   - Metric value highlighting (bold for >0, dimmed for 0)
   - **Dual Format Support**: Conditionally renders AC-wise or Zone-wise layouts
+  - **Stability Fixes (Oct 2025)**:
+    - Ensured unique React keys for AC lists by using composite keys (`acId-index`) to avoid duplicate key warnings for placeholder entries like `no-ac-assigned`.
+    - Sanitized React-PDF `<Text>` children to avoid boolean/null nodes by using precomputed strings and ternary rendering, preventing `xCoordinate` TypeErrors during layout.
+    - Added defensive guards for optional arrays/objects (e.g., `summary.keyMetrics`, `performanceSummary`) and conditional sections to return `null` instead of boolean.
+    - Stage-5 (Zone-wise Performance) hardening:
+      - Introduced text sanitizers `safeText()` with extended normalization (NBSP, non-breaking hyphen, smart quotes, zero-width chars, BOM) and `safeNumber()` for numeric coercion.
+      - Applied sanitization across `ZoneWisePerformanceSection`, `ZoneACPerformanceSection`, `ACWithAssembliesComponent`, and `ACAssemblyRowComponent`.
+      - Added analyzer `analyzeTextForWeirdChars(label, value)` to log suspicious Unicode codepoints in Stage 5 text (NBSP, ZWSP, etc.).
+      - Added progressive debug sub-gating via `PDF_DEBUG` (`stage5MaxACPerBucket`, `stage5MaxRowsPerAC`) to binary-search a failing AC/row.
+      - Applied Helvetica fallback font on Stage 5 `<Text>` nodes to mitigate font coverage gaps that can surface as `xCoordinate` errors.
 - **PDF Structure**:
   1. Report header with title and date range
   2. Executive summary with overall metrics
