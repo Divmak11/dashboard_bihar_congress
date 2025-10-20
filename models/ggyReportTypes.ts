@@ -29,6 +29,7 @@ export interface GGYAssemblyMemberAgg {
 export interface GGYAssemblyGroup {
   assembly: string;
   members: GGYAssemblyMemberAgg[];
+  totalPunches?: number; // Optional: sum of all member totalPunches for this assembly
 }
 
 export interface ReportSummary {
@@ -66,6 +67,14 @@ export interface ReportSummary {
   missing_fields?: string[]; // list any missing optional fields we expected
 }
 
+export interface GGYZoneGroup {
+  zoneId: string;
+  zoneName: string;
+  assembliesPerforming: GGYAssemblyGroup[]; // totalPunches >= threshold
+  assembliesUnderperforming: GGYAssemblyGroup[]; // totalPunches < threshold
+  threshold: number; // Default 10
+}
+
 export interface GGYSegmentData {
   segmentLabel: string;
   startDate: string;
@@ -74,6 +83,7 @@ export interface GGYSegmentData {
   invalidCount: number; // from summaries (incorrect_count)
   assemblyGroups: GGYAssemblyGroup[];
   reportSummary: ReportSummary;
+  zoneGroups?: GGYZoneGroup[]; // Optional: zone-wise grouping with performing/underperforming splits
 }
 
 export interface GGYReportData {

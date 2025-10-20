@@ -29,13 +29,18 @@ Labels in UI updated:
   - `calculateDataQualityMetrics()` → New field preferences + label changes
   - `generateChartDataFromSource()` → Daily trend and calling patterns from summary totals, fallback to `slp_data`
 - GGY Split Report (NEW)
-  - `models/ggyReportTypes.ts` → Types for GGY split report: `GGYReportOptions`, `GGYReportSegment`, `GGYSegmentData`, `GGYReportData`
+  - `models/ggyReportTypes.ts` → Types for GGY split report: `GGYReportOptions`, `GGYReportSegment`, `GGYSegmentData`, `GGYReportData`, `GGYZoneGroup` (zone-wise grouping)
   - `components/report/ReportOptionsModal.tsx` → Modal to choose date range and split type (cumulative/day/month) with gating rules
   - `app/utils/fetchGharGharYatraData.ts` → Helpers for split report
     - `splitGGYDateRange(options)` → Build segments for cumulative/day-wise/month-wise
-    - `buildGGYSegmentData(startDate, endDate, label)` → Builds metrics, assembly-wise members, and invalid count using summaries and slp_data
+    - `buildGGYSegmentData(startDate, endDate, label)` → Builds metrics, assembly-wise members, zone groupings, and invalid count using summaries and slp_data
+    - `buildZoneGroupsFromAssemblies(assemblyGroups, threshold)` → Groups assemblies by zone with performing (≥10) / underperforming (<10) splits using fetchZonesForWTM()
     - `buildGGYReportData(options)` → Builds overall and per-segment report data structure
-  - `app/utils/generateGgySplitReportPDF.tsx` → PDF generator rendering Summary (table), Assembly-wise Matched Members (with cumulative punches per assembly), and Invalid section per segment
+  - `app/utils/generateGgySplitReportPDF.tsx` → PDF generator with conditional zone-wise or flat assembly rendering
+    - `AssemblyTable` → Reusable component for rendering assembly member tables with chunking
+    - `ZoneGroupsSection` → Zone-wise view with "Performing Assemblies" and "Under Performing (data < 10)" subsections per zone
+    - `AssemblyGroupsSection` → Fallback flat assembly-wise view when zoneGroups not available
+    - Renders Summary (table), Zone-wise or Assembly-wise Matched Members (with cumulative punches), and Invalid section per segment
   - `app/verticals/ghar-ghar-yatra-analytics/page.tsx` → Integrated new modal and split report generation; legacy generator kept as fallback
   - Summary Mapping (Updated):
     - Introduced `ReportSummary` in `models/ggyReportTypes.ts` carried via `GGYSegmentData.reportSummary`.
@@ -53,6 +58,15 @@ Labels in UI updated:
     - Invalid Section shows Incorrect Format count and Blank punches; adds a note when using fallback unique count.
     - Assembly-wise table uses row chunking with header repetition to prevent page crumbling.
     - Assembly-wise section displays cumulative punches per assembly (sum of totalPunches across all members) on a second line below the assembly header with formatted number (thousands separator).
+    - Zone-wise grouping (NEW):
+      - Assemblies grouped by zone using `fetchZonesForWTM()` from `fetchHierarchicalData.ts`
+      - Each zone split into "Performing Assemblies" (totalPunches ≥ 10) and "Under Performing" (totalPunches < 10)
+      - Threshold configurable (default: 10 total punches per assembly per segment)
+      - Assemblies within each subsection sorted by totalPunches descending
+      - Zones sorted alphabetically (consistent with zone fetcher)
+      - Unmapped assemblies grouped under "Unmapped Zone"
+      - Applies to cumulative, day-wise, and month-wise reports
+      - Fallback to flat assembly-wise view if zoneGroups absent or empty
 - `components/ghar-ghar-yatra/MetricsCards.tsx` → Labels updated to “Members” + new Data Quality labels
 - `components/ghar-ghar-yatra/AnalyticsCharts.tsx` → “Top 10 Members” title + Data Quality labels
 # Code Map - Bihar Congress Dashboard
