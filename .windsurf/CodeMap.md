@@ -539,6 +539,19 @@ UI & Data Flow:
   - SLP: `getHierarchicalNukkadSlp()` + `fetchDetailedNukkadSlp()`
 - Summary wiring: `fetchCumulativeMetrics()` adds `nukkadAc`, `nukkadSlp` (AC metric is 0 at SLP level)
 
+Report Generation (WTM) — Total Nukkads (Display-only):
+- Location: `app/utils/reportDataAggregation.ts`
+- Policy: Do NOT attribute SLP Nukkads to ACs. Instead, per AC row show a derived "Total Nukkads" = `nukkadAc` (per-AC) + `nukkadSlp` (assembly-level total for that assembly and date range).
+- Implementation:
+  - Conditionally fetch detailed `nukkadAc` and `nukkadSlp` (WTM-only by passing `vertical: 'wtm'`).
+  - Increment `nukkadAc` in per-AC metrics via `addActivityToAssemblyAc(...,'nukkadAc')`.
+  - Aggregate `nukkadSlp` by assembly only, and inject into each `assemblyData.metrics.nukkadSlp`.
+  - Annotate each AC’s metrics with `assemblyNukkadSlp` for display-only derivation.
+  - In performance generators, set `ACAssemblyRow.totalNukkads = nukkadAc + assemblyNukkadSlp`.
+- Types: `models/reportTypes.ts` extended `ACAssemblyRow` with optional `totalNukkads`.
+- PDF: `app/utils/pdfGenerator.tsx` adds a "Total Nukkads" column in both the main AC table and the AC-with-assemblies tables; values are derived and not used in rollups.
+- Totals: Executive Summary and Zone/Assembly totals continue to use properly scoped metrics (`nukkadAc` + `nukkadSlp`) and never sum per-AC `totalNukkads`.
+
 ### 5. **shakti-abhiyaan** Collection
 ```typescript
 {

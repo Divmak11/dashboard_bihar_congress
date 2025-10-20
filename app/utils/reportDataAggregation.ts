@@ -375,7 +375,7 @@ export async function aggregateReportData(
             zoneName: zoneInfo?.zoneName ?? 'Unknown Zone',
             zoneIncharge: zoneInfo?.inchargeName ?? 'Unknown',
             zoneIndex: zoneInfo?.zoneIndex ?? 999,
-            activities: {
+            activities: ({
               meetings: [],
               members: [],
               volunteers: [],
@@ -384,8 +384,9 @@ export async function aggregateReportData(
               acVideos: [],
               forms: [],
               clubs: [],
-              waGroups: []
-            },
+              waGroups: [],
+              nukkadAc: []
+            } as any),
             metrics: {
               meetings: 0,
               volunteers: 0,
@@ -426,7 +427,7 @@ export async function aggregateReportData(
               zoneName: zoneInfo?.zoneName ?? 'Unknown Zone',
               zoneIncharge: zoneInfo?.inchargeName ?? 'Unknown',
               zoneIndex: zoneInfo?.zoneIndex ?? 999,
-              activities: {
+              activities: ({
                 meetings: [],
                 members: [],
                 volunteers: [],
@@ -435,8 +436,9 @@ export async function aggregateReportData(
                 acVideos: [],
                 forms: [],
                 clubs: [],
-                waGroups: []
-              },
+                waGroups: [],
+                nukkadAc: []
+              } as any),
               metrics: {
                 meetings: 0,
                 volunteers: 0,
@@ -491,6 +493,9 @@ export async function aggregateReportData(
       clubs: [],
       waGroups: []
     };
+    // Nukkad detailed lists (declared outside try to be available for later processing)
+    let nukkadAcActivities: any[] = [];
+    let nukkadSlpActivities: any[] = [];
     
     console.log('[aggregateReportData] Detailed data structure initialized:', {
       meetingsIsArray: Array.isArray(detailedData.meetings),
@@ -563,6 +568,17 @@ export async function aggregateReportData(
         fetchTypes.push('centralWaGroups');
       }
 
+      // Nukkad metrics (WTM only): AC-level and SLP-level
+      const nukkadFetchOptions = { ...fetchOptions, vertical: 'wtm' as const };
+      if (Number(summaryMetrics.nukkadAc) > 0) {
+        fetchPromises.push(fetchDetailedData('nukkadAc', nukkadFetchOptions));
+        fetchTypes.push('nukkadAc');
+      }
+      if (Number(summaryMetrics.nukkadSlp) > 0) {
+        fetchPromises.push(fetchDetailedData('nukkadSlp', nukkadFetchOptions));
+        fetchTypes.push('nukkadSlp');
+      }
+
       console.log(`[aggregateReportData] Fetching detailed data for: ${fetchTypes.join(', ')}`);
       
       // Step 3: Execute only necessary fetches
@@ -594,6 +610,7 @@ export async function aggregateReportData(
       let clubs: any[] = [];
       let assemblyWaGroups: any[] = [];
       let centralWaGroups: any[] = [];
+      // nukkadAcActivities & nukkadSlpActivities are defined above
       
       // Map conditional results based on what was fetched
       if (Number(summaryMetrics.volunteers) > 0 || Number(summaryMetrics.slps) > 0) {
@@ -627,6 +644,13 @@ export async function aggregateReportData(
       if (Number(summaryMetrics.centralWaGroups) > 0) {
         centralWaGroups = results[resultIndex++];
       }
+
+      if (Number(summaryMetrics.nukkadAc) > 0) {
+        nukkadAcActivities = results[resultIndex++] || [];
+      }
+      if (Number(summaryMetrics.nukkadSlp) > 0) {
+        nukkadSlpActivities = results[resultIndex++] || [];
+      }
       
       // Filter meetings locally for volunteers/leaders (only if meetings were fetched)
       const volunteers = meetings.filter(m => (m.onboardingStatus || '').toLowerCase() === 'onboarded');
@@ -656,7 +680,9 @@ export async function aggregateReportData(
         forms: forms.length,
         clubs: clubs.length,
         assemblyWaGroups: assemblyWaGroups.length,
-        centralWaGroups: centralWaGroups.length
+        centralWaGroups: centralWaGroups.length,
+        nukkadAc: nukkadAcActivities.length,
+        nukkadSlp: nukkadSlpActivities.length
       });
       
       // VALIDATE DATA INTEGRITY BEFORE ASSIGNMENT
@@ -770,7 +796,7 @@ export async function aggregateReportData(
           zoneName: zoneInfo?.zoneName ?? 'Unknown Zone',
           zoneIncharge: zoneInfo?.inchargeName ?? 'Unknown',
           zoneIndex: zoneInfo?.zoneIndex ?? 999,
-          activities: {
+          activities: ({
             meetings: [],
             members: [],
             volunteers: [],
@@ -779,8 +805,9 @@ export async function aggregateReportData(
             acVideos: [],
             forms: [],
             clubs: [],
-            waGroups: []
-          },
+            waGroups: [],
+            nukkadAc: []
+          } as any),
           metrics: {
             meetings: 0,
             volunteers: 0,
@@ -813,6 +840,11 @@ export async function aggregateReportData(
       }
       
       const acData = assemblyAcMap.get(key)!;
+      // Defensive: ensure activity bucket exists before push
+      const bucket = (acData.activities as any)[activityType];
+      if (!bucket) {
+        (acData.activities as any)[activityType] = [];
+      }
       (acData.activities as any)[activityType].push(item);
       
       // Update metrics count - ASSEMBLY-SCOPED
@@ -829,6 +861,7 @@ export async function aggregateReportData(
       else if (activityType === 'acVideos') acData.metrics.acVideos = Number(acData.metrics.acVideos) + 1;
       else if (activityType === 'forms') acData.metrics.forms = Number(acData.metrics.forms) + 1;
       else if (activityType === 'clubs') acData.metrics.clubs = Number(acData.metrics.clubs) + 1;
+      else if (activityType === 'nukkadAc') acData.metrics.nukkadAc = Number(acData.metrics.nukkadAc || 0) + 1;
     };
 
     // Process all detailed data with assembly-scoped aggregation
@@ -841,7 +874,9 @@ export async function aggregateReportData(
       ...detailedData.videos.map(item => addActivityToAssemblyAc(item, 'videos')),
       ...((detailedData as any).acVideos || []).map((item: any) => addActivityToAssemblyAc(item, 'acVideos')),
       ...detailedData.forms.map(item => addActivityToAssemblyAc(item, 'forms')),
-      ...detailedData.clubs.map(item => addActivityToAssemblyAc(item, 'clubs'))
+      ...detailedData.clubs.map((item: any) => addActivityToAssemblyAc(item, 'clubs')),
+      // Nukkad (AC) increments per-AC only; do NOT attribute SLP Nukkads to ACs
+      ...nukkadAcActivities.map((item: any) => addActivityToAssemblyAc(item, 'nukkadAc'))
     ]);
     // Process WA Groups separately as they have different handling
     await Promise.all(detailedData.waGroups.map(async item => {
@@ -921,6 +956,19 @@ export async function aggregateReportData(
         acData.metrics.centralWaGroups = (Number(acData.metrics.centralWaGroups) || 0) + 1;
       }
     }));
+
+    // Aggregate Nukkad (SLP) counts at assembly level only (no AC attribution)
+    const nukkadSlpByAssembly = new Map<string, number>();
+    try {
+      (nukkadSlpActivities || []).forEach((item: any) => {
+        const asm = item.assembly || item.assemblyName || 'Unknown Assembly';
+        const prev = nukkadSlpByAssembly.get(asm) || 0;
+        nukkadSlpByAssembly.set(asm, prev + 1);
+      });
+      console.log('[aggregateReportData] Aggregated nukkadSlp by assembly:', Array.from(nukkadSlpByAssembly.entries()).slice(0, 5));
+    } catch (e) {
+      console.error('[aggregateReportData] Error aggregating nukkadSlp by assembly:', e);
+    }
     
     // Step 3.5: Resolve remaining AC names from users collection
     // Only fetch for ACs not already in cache
@@ -1138,6 +1186,8 @@ export async function aggregateReportData(
             videos: 0,
             shaktiVideos: 0,
             acVideos: 0,
+            nukkadAc: 0,
+            nukkadSlp: 0,
             chaupals: 0,
             shaktiBaithaks: 0,
             centralWaGroups: 0,
@@ -1236,6 +1286,26 @@ export async function aggregateReportData(
     }
     
     console.log(`[aggregateReportData] Final assembly count after ensuring all assemblies: ${assemblyMap.size} assemblies`);
+
+    // Inject assembly-level Nukkad (SLP) counts into assembly metrics
+    try {
+      assemblyMap.forEach((assemblyData, asm) => {
+        const slpCount = nukkadSlpByAssembly.get(asm) || 0;
+        (assemblyData.metrics as any).nukkadSlp = Number((assemblyData.metrics as any).nukkadSlp || 0) + slpCount;
+      });
+    } catch (e) {
+      console.error('[aggregateReportData] Error injecting nukkadSlp into assembly metrics:', e);
+    }
+
+    // Annotate per-AC records with assembly-level Nukkad (SLP) for display-only total calculation
+    try {
+      assemblyAcMap.forEach((acData, key) => {
+        const [asm] = key.split('::');
+        (acData.metrics as any).assemblyNukkadSlp = nukkadSlpByAssembly.get(asm) || 0;
+      });
+    } catch (e) {
+      console.error('[aggregateReportData] Error annotating AC data with assemblyNukkadSlp:', e);
+    }
     
     // Log assembly-AC distribution for verification
     console.log('[aggregateReportData] Assembly-AC distribution:');
@@ -1749,6 +1819,8 @@ function generateACPerformanceSections(assemblyAcMap: Map<string, any>): import(
       forms: Number(acData.metrics.forms) || 0,
       videos: Number(acData.metrics.acVideos) || 0,
       waGroups: (Number(acData.metrics.assemblyWaGroups) || 0) + (Number(acData.metrics.centralWaGroups) || 0),
+      // Derived: per-AC total nukkads = AC's nukkadAc + assembly-level nukkadSlp (annotated earlier)
+      totalNukkads: (Number(acData.metrics.nukkadAc || 0) + Number((acData.metrics as any).assemblyNukkadSlp || 0)),
       includeInColorGrading: (acData as any).includeInColorGrading !== false,
       shouldBeRed: (acData as any).shouldBeRed,
       isUnavailable: (acData as any).isUnavailable,
@@ -1981,6 +2053,8 @@ function generateZoneWisePerformanceSections(assemblyAcMap: Map<string, any>): i
       forms: Number(acData.metrics.forms) || 0,
       videos: Number(acData.metrics.acVideos) || 0,
       waGroups: (Number(acData.metrics.assemblyWaGroups) || 0) + (Number(acData.metrics.centralWaGroups) || 0),
+      // Derived total Nukkads for display
+      totalNukkads: (Number(acData.metrics.nukkadAc || 0) + Number((acData.metrics as any).assemblyNukkadSlp || 0)),
       includeInColorGrading: (acData as any).includeInColorGrading !== false,
       shouldBeRed: (acData as any).shouldBeRed,
       isUnavailable: (acData as any).isUnavailable,
@@ -2216,7 +2290,10 @@ function transformZoneData(zones: ZoneReportData[]): ZoneData[] {
             forms: Number(ac.metrics.forms) || 0,
             chaupals: Number(ac.metrics.chaupals) || 0,
             assemblyWaGroups: Number(ac.metrics.assemblyWaGroups) || 0,
-            centralWaGroups: Number(ac.metrics.centralWaGroups) || 0
+            centralWaGroups: Number(ac.metrics.centralWaGroups) || 0,
+            // Pass-through for PDF table derivation
+            nukkadAc: Number((ac.metrics as any).nukkadAc) || 0,
+            assemblyNukkadSlp: Number((ac.metrics as any).assemblyNukkadSlp) || 0
           },
           // *** CRITICAL: Preserve attendance logic flags for PDF generation ***
           includeInColorGrading: (ac as any).includeInColorGrading,
@@ -2243,7 +2320,10 @@ function transformZoneData(zones: ZoneReportData[]): ZoneData[] {
           clubs: Number(assembly.metrics.clubs) || 0,
           forms: Number(assembly.metrics.forms) || 0,
           assemblyWaGroups: Number(assembly.metrics.assemblyWaGroups) || 0,
-          centralWaGroups: Number(assembly.metrics.centralWaGroups) || 0
+          centralWaGroups: Number(assembly.metrics.centralWaGroups) || 0,
+          // Pass-through assembly-level nukkad metrics for executive summary
+          nukkadAc: Number((assembly.metrics as any).nukkadAc) || 0,
+          nukkadSlp: Number((assembly.metrics as any).nukkadSlp) || 0
         }
       };
     });

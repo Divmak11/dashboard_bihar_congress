@@ -163,6 +163,7 @@ interface FlattenedACData {
   forms: number;
   videos: number;
   waGroups: number;
+  totalNukkads: number;
   performanceLevel?: string;
   // Attendance logic flags
   includeInColorGrading?: boolean;
@@ -185,6 +186,9 @@ const flattenDataForTable = (zones: ZoneData[]): FlattenedACData[] => {
     zone.assemblies.forEach(assembly => {
       assembly.acs.forEach(ac => {
         // Include phantom assemblies (no-ac-assigned) in the table
+        const nAc = Number(((ac as any)?.metrics?.nukkadAc) || 0);
+        const nSlpAsm = Number(((ac as any)?.metrics?.assemblyNukkadSlp) || 0);
+        const totalNukkads = nAc + nSlpAsm;
         tableData.push({
           zoneIndex: zoneIndex + 1, // Store zone index for display
           zone: zone.name,
@@ -198,6 +202,7 @@ const flattenDataForTable = (zones: ZoneData[]): FlattenedACData[] => {
           forms: ac.metrics.forms || 0,
           videos: ac.metrics.videos || 0,
           waGroups: (ac.metrics.assemblyWaGroups || 0) + (ac.metrics.centralWaGroups || 0),
+          totalNukkads,
           performanceLevel: ac.id === 'no-ac-assigned' ? 'poor' : ac.performanceLevel,
           // Preserve attendance logic flags
           includeInColorGrading: (ac as any).includeInColorGrading,
@@ -230,6 +235,7 @@ const TableHeader = () => (
     <Text style={styles.tableHeaderCell}>Forms</Text>
     <Text style={styles.tableHeaderCell}>Videos</Text>
     <Text style={styles.tableHeaderCell}>WA Groups</Text>
+    <Text style={styles.tableHeaderCell}>Total Nukkads</Text>
   </View>
 );
 
@@ -291,6 +297,7 @@ const TableRow = ({ data, index }: { data: FlattenedACData; index: number }) => 
       <Text style={getMetricCellStyle(data.forms)}>{data.forms}</Text>
       <Text style={getMetricCellStyle(data.videos)}>{data.videos}</Text>
       <Text style={getMetricCellStyle(data.waGroups)}>{data.waGroups}</Text>
+      <Text style={getMetricCellStyle(data.totalNukkads)}>{data.totalNukkads}</Text>
     </View>
   );
 };
@@ -419,13 +426,14 @@ const ACWithAssembliesComponent: React.FC<ACWithAssembliesComponentProps> = ({ a
       <View style={styles.acAssemblyTableContainer}>
         {/* Table Header */}
         <View style={{ ...styles.acAssemblyRow, backgroundColor: '#f3f4f6', fontWeight: 'bold' }}>
-          <Text style={{ ...styles.tableCell, width: '24%', fontFamily: FALLBACK_FONT }}>Assembly</Text>
-          <Text style={{ ...styles.tableCell, width: '13%', fontFamily: FALLBACK_FONT }}>Meetings</Text>
-          <Text style={{ ...styles.tableCell, width: '13%', fontFamily: FALLBACK_FONT }}>Onboarded</Text>
-          <Text style={{ ...styles.tableCell, width: '12%', fontFamily: FALLBACK_FONT }}>SLPs</Text>
-          <Text style={{ ...styles.tableCell, width: '12%', fontFamily: FALLBACK_FONT }}>Forms</Text>
-          <Text style={{ ...styles.tableCell, width: '12%', fontFamily: FALLBACK_FONT }}>Videos</Text>
-          <Text style={{ ...styles.tableCell, width: '14%', fontFamily: FALLBACK_FONT }}>WA Groups</Text>
+          <Text style={{ ...styles.tableCell, width: '22%', fontFamily: FALLBACK_FONT }}>Assembly</Text>
+          <Text style={{ ...styles.tableCell, width: '12%', fontFamily: FALLBACK_FONT }}>Meetings</Text>
+          <Text style={{ ...styles.tableCell, width: '12%', fontFamily: FALLBACK_FONT }}>Onboarded</Text>
+          <Text style={{ ...styles.tableCell, width: '10%', fontFamily: FALLBACK_FONT }}>SLPs</Text>
+          <Text style={{ ...styles.tableCell, width: '10%', fontFamily: FALLBACK_FONT }}>Forms</Text>
+          <Text style={{ ...styles.tableCell, width: '10%', fontFamily: FALLBACK_FONT }}>Videos</Text>
+          <Text style={{ ...styles.tableCell, width: '12%', fontFamily: FALLBACK_FONT }}>Total Nukkads</Text>
+          <Text style={{ ...styles.tableCell, width: '12%', fontFamily: FALLBACK_FONT }}>WA Groups</Text>
         </View>
         
         {/* Assembly Rows */}
@@ -488,7 +496,8 @@ const ACAssemblyRowComponent: React.FC<ACAssemblyRowComponentProps> = ({ assembl
       <Text style={{ ...styles.tableCell, width: '12%', fontFamily: FALLBACK_FONT }}>{safeNumber((assembly as any)?.slps)}</Text>
       <Text style={{ ...styles.tableCell, width: '12%', fontFamily: FALLBACK_FONT }}>{safeNumber((assembly as any)?.forms)}</Text>
       <Text style={{ ...styles.tableCell, width: '12%', fontFamily: FALLBACK_FONT }}>{safeNumber((assembly as any)?.videos)}</Text>
-      <Text style={{ ...styles.tableCell, width: '14%', fontFamily: FALLBACK_FONT }}>{safeNumber((assembly as any)?.waGroups)}</Text>
+      <Text style={{ ...styles.tableCell, width: '12%', fontFamily: FALLBACK_FONT }}>{safeNumber((assembly as any)?.totalNukkads)}</Text>
+      <Text style={{ ...styles.tableCell, width: '12%', fontFamily: FALLBACK_FONT }}>{safeNumber((assembly as any)?.waGroups)}</Text>
     </View>
   );
 };
@@ -600,9 +609,15 @@ const SummaryStatistics: React.FC<{ zones: ZoneData[] }> = ({ zones }) => {
   let totalVideos = 0;
   let totalWAGroups = 0;
   let totalACs = 0;
+  // Nukkad totals: AC-level and Assembly-level
+  let totalNukkadAc = 0;
+  let totalNukkadSlp = 0;
   
   zones.forEach(zone => {
     zone.assemblies.forEach(assembly => {
+      // Sum assembly-level Nukkad (SLP)
+      totalNukkadSlp += Number(((assembly.metrics as any)?.nukkadSlp) || 0);
+      
       assembly.acs.forEach(ac => {
         if (ac.id !== 'no-ac-assigned') {
           totalACs++;
@@ -612,10 +627,14 @@ const SummaryStatistics: React.FC<{ zones: ZoneData[] }> = ({ zones }) => {
           totalForms += ac.metrics.forms || 0;
           totalVideos += ac.metrics.videos || 0;
           totalWAGroups += (ac.metrics.assemblyWaGroups || 0) + (ac.metrics.centralWaGroups || 0);
+          // Sum AC-level Nukkad (AC)
+          totalNukkadAc += Number(((ac.metrics as any)?.nukkadAc) || 0);
         }
       });
     });
   });
+
+  const totalNukkads = totalNukkadAc + totalNukkadSlp;
   
   return (
     <View style={styles.summaryBox}>
@@ -644,6 +663,10 @@ const SummaryStatistics: React.FC<{ zones: ZoneData[] }> = ({ zones }) => {
         <View style={styles.metricBox}>
           <Text style={styles.metricLabel}>Total WA Groups</Text>
           <Text style={styles.metricValue}>{totalWAGroups}</Text>
+        </View>
+        <View style={styles.metricBox}>
+          <Text style={styles.metricLabel}>Total Nukkads</Text>
+          <Text style={styles.metricValue}>{totalNukkads}</Text>
         </View>
       </View>
     </View>
