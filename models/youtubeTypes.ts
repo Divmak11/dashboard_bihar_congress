@@ -184,3 +184,32 @@ export interface ChannelFetchError {
   error: string;
   type: 'private' | 'deleted' | 'invalid' | 'quota' | 'network' | 'unknown';
 }
+
+// Subscriber update feature types
+export interface SubscriberUpdateError {
+  influencerId: string;
+  influencerName: string;
+  channelLink: string;
+  error: string;
+  type: 'invalid_link' | 'api_error' | 'firebase_error' | 'channel_not_found' | 'quota_exceeded';
+}
+
+export interface SubscriberUpdateProgress {
+  current: number;
+  total: number;
+  currentInfluencer?: string;
+  phase: 'fetching' | 'updating' | 'completed';
+}
+
+export interface SubscriberUpdateResult {
+  success: number;
+  failed: number;
+  skipped: number;
+  errors: SubscriberUpdateError[];
+  updated: Array<{
+    influencerId: string;
+    influencerName: string;
+    oldCount: number;
+    newCount: number;
+  }>;
+}

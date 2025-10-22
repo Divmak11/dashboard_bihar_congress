@@ -236,3 +236,44 @@ export async function fetchVideoStatsFromLinks(
 
   return linkStats;
 }
+
+// Re-export channel-related functions from youtubeChannelApi for consistency
+import {
+  extractChannelId as extractChannelIdFromChannelApi,
+  fetchChannelSubscriberCounts
+} from './youtubeChannelApi';
+
+// Extract channel ID - delegates to youtubeChannelApi for consistency
+export function extractChannelId(channelLink: string): string | null {
+  return extractChannelIdFromChannelApi(channelLink);
+}
+
+// Check if a link is a valid YouTube channel link (not a video link)
+export function isValidYoutubeChannelLink(link: string): boolean {
+  if (!link) return false;
+  
+  // Must contain youtube.com or youtu.be
+  const hasYoutubeDomain = link.includes('youtube.com') || link.includes('youtu.be');
+  if (!hasYoutubeDomain) return false;
+  
+  // Should NOT be a video link
+  const isVideoLink = link.includes('/watch?v=') || link.includes('/shorts/') || link.includes('/embed/');
+  if (isVideoLink) return false;
+  
+  // Should be a channel, user, or handle link
+  const isChannelLink = link.includes('/channel/') || link.includes('/@') || 
+                        link.includes('/c/') || link.includes('/user/');
+  
+  return isChannelLink;
+}
+
+// Fetch subscriber counts for multiple YouTube channels
+// Now delegates to youtubeChannelApi which uses multi-strategy resolution
+export async function fetchChannelSubscribers(
+  channelLinks: string[],
+  apiKey: string,
+  opts: { concurrency?: number } = {}
+): Promise<Map<string, number>> {
+  console.log(`[fetchChannelSubscribers] Delegating to youtubeChannelApi for ${channelLinks.length} channels`);
+  return fetchChannelSubscriberCounts(channelLinks, apiKey, opts);
+}
