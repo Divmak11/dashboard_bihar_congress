@@ -494,3 +494,180 @@ export async function fetchInfluencerChannelVideos(
     videos: filteredVideos
   };
 }
+
+// Fetch subscriber count for a single channel using multi-strategy resolution
+export async function fetchChannelSubscriberCount(
+  channelLink: string,
+  apiKey: string
+): Promise<{ subscriberCount: number | null; error?: ChannelFetchError }> {
+  console.log(`[fetchChannelSubscriberCount] Fetching subscriber count for: ${channelLink}`);
+
+  // Extract channel ID
+  const channelId = extractChannelId(channelLink);
+  if (!channelId) {
+    return {
+      subscriberCount: null,
+      error: {
+        influencerId: '',
+        influencerName: '',
+        error: 'Invalid channel link format',
+        type: 'invalid'
+      }
+    };
+  }
+
+  try {
+    let response: Response;
+    let data: any;
+    let attemptNumber = 0;
+
+    // Strategy 1: If it looks like a channel ID (UC...), try that first
+    if (channelId.startsWith('UC') && channelId.length === 24) {
+      attemptNumber++;
+      const url = new URL('https://www.googleapis.com/youtube/v3/channels');
+      url.searchParams.append('part', 'statistics');
+      url.searchParams.append('id', channelId);
+      url.searchParams.append('key', apiKey);
+      
+      console.log(`[fetchChannelSubscriberCount] Attempt ${attemptNumber}: Channel ID lookup`);
+      response = await fetch(url.toString());
+      data = await response.json();
+      
+      if (response.ok && data.items && data.items.length > 0) {
+        console.log(`[fetchChannelSubscriberCount] ✓ Success via channel ID`);
+        const subscriberCount = parseInt(data.items[0].statistics?.subscriberCount || '0', 10);
+        console.log(`[fetchChannelSubscriberCount] Found ${subscriberCount} subscribers`);
+        return { subscriberCount };
+      }
+      console.log(`[fetchChannelSubscriberCount] ✗ Channel ID lookup failed:`, data);
+    }
+
+    // Strategy 2: Try as @handle (for @username format)
+    if (channelId.startsWith('@') || !channelId.startsWith('UC')) {
+      attemptNumber++;
+      const handle = channelId.startsWith('@') ? channelId.slice(1) : channelId;
+      const url = new URL('https://www.googleapis.com/youtube/v3/channels');
+      url.searchParams.append('part', 'statistics');
+      url.searchParams.append('forHandle', handle);
+      url.searchParams.append('key', apiKey);
+      
+      console.log(`[fetchChannelSubscriberCount] Attempt ${attemptNumber}: Handle lookup for "${handle}"`);
+      response = await fetch(url.toString());
+      data = await response.json();
+      
+      if (response.ok && data.items && data.items.length > 0) {
+        console.log(`[fetchChannelSubscriberCount] ✓ Success via handle`);
+        const subscriberCount = parseInt(data.items[0].statistics?.subscriberCount || '0', 10);
+        console.log(`[fetchChannelSubscriberCount] Found ${subscriberCount} subscribers`);
+        return { subscriberCount };
+      }
+      console.log(`[fetchChannelSubscriberCount] ✗ Handle lookup failed:`, data);
+    }
+
+    // Strategy 3: Try as legacy username (forUsername)
+    attemptNumber++;
+    const username = channelId.startsWith('@') ? channelId.slice(1) : channelId;
+    const urlUsername = new URL('https://www.googleapis.com/youtube/v3/channels');
+    urlUsername.searchParams.append('part', 'statistics');
+    urlUsername.searchParams.append('forUsername', username);
+    urlUsername.searchParams.append('key', apiKey);
+    
+    console.log(`[fetchChannelSubscriberCount] Attempt ${attemptNumber}: Username lookup for "${username}"`);
+    response = await fetch(urlUsername.toString());
+    data = await response.json();
+    
+    if (response.ok && data.items && data.items.length > 0) {
+      console.log(`[fetchChannelSubscriberCount] ✓ Success via username`);
+      const subscriberCount = parseInt(data.items[0].statistics?.subscriberCount || '0', 10);
+      console.log(`[fetchChannelSubscriberCount] Found ${subscriberCount} subscribers`);
+      return { subscriberCount };
+    }
+    console.log(`[fetchChannelSubscriberCount] ✗ Username lookup failed:`, data);
+
+    // All strategies failed - check for specific error types
+    if (response.status === 403) {
+      console.error(`[fetchChannelSubscriberCount] API quota exceeded`);
+      return {
+        subscriberCount: null,
+        error: {
+          influencerId: '',
+          influencerName: '',
+          error: 'API quota exceeded. Please try again later.',
+          type: 'quota'
+        }
+      };
+    }
+
+    // Generic failure after all attempts
+    console.error(`[fetchChannelSubscriberCount] All lookup strategies failed for: ${channelId}`);
+    console.error(`[fetchChannelSubscriberCount] Final response status: ${response.status}`);
+    console.error(`[fetchChannelSubscriberCount] Final response data:`, data);
+    
+    return {
+      subscriberCount: null,
+      error: {
+        influencerId: '',
+        influencerName: '',
+        error: `Channel not found: "${channelId}". Please verify the channel link is correct and the channel exists.`,
+        type: 'invalid'
+      }
+    };
+  } catch (error) {
+    console.error('[fetchChannelSubscriberCount] Error:', error);
+    return {
+      subscriberCount: null,
+      error: {
+        influencerId: '',
+        influencerName: '',
+        error: error instanceof Error ? error.message : 'Network error',
+        type: 'network'
+      }
+    };
+  }
+}
+
+// Batch fetch subscriber counts for multiple channels
+export async function fetchChannelSubscriberCounts(
+  channelLinks: string[],
+  apiKey: string,
+  opts: { concurrency?: number } = {}
+): Promise<Map<string, number>> {
+  console.log(`[fetchChannelSubscriberCounts] Fetching subscribers for ${channelLinks.length} channels`);
+  
+  const results = new Map<string, number>();
+  
+  if (!apiKey) {
+    console.error('[fetchChannelSubscriberCounts] No API key provided');
+    return results;
+  }
+
+  if (!channelLinks || channelLinks.length === 0) {
+    console.log('[fetchChannelSubscriberCounts] No channel links provided');
+    return results;
+  }
+
+  // Process channels with concurrency control
+  const concurrency = opts.concurrency || 3;
+  
+  for (let i = 0; i < channelLinks.length; i += concurrency) {
+    const batch = channelLinks.slice(i, i + concurrency);
+    
+    const promises = batch.map(async (link) => {
+      const { subscriberCount, error } = await fetchChannelSubscriberCount(link, apiKey);
+      
+      if (subscriberCount !== null) {
+        results.set(link, subscriberCount);
+      } else if (error) {
+        console.warn(`[fetchChannelSubscriberCounts] Failed for ${link}:`, error.error);
+      }
+    });
+    
+    // Wait for current batch to complete
+    await Promise.all(promises);
+    
+    console.log(`[fetchChannelSubscriberCounts] Progress: ${Math.min(i + concurrency, channelLinks.length)}/${channelLinks.length}`);
+  }
+
+  console.log(`[fetchChannelSubscriberCounts] Fetched subscribers for ${results.size} channels`);
+  return results;
+}

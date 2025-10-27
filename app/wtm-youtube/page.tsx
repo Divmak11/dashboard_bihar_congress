@@ -10,17 +10,22 @@ import {
   fetchThemes, 
   fetchYoutubeSummary,
   clearYoutubeCache,
-  computeOverviewAggregates
+  computeOverviewAggregates,
+  updateInfluencerSubscribers
 } from "../utils/fetchYoutubeData";
 import { 
   clearAllVideoStatsCache,
 } from "../utils/videoApi";
 import { fetchVideoStatsFromLinks } from '../utils/videoApi';
+import { fetchChannelSubscribers, isValidYoutubeChannelLink } from '../utils/youtubeApi';
+import { extractChannelId } from '../utils/youtubeChannelApi';
 import {
   YoutubeInfluencerDoc,
   YoutubeCampaignDoc,
   OverviewAggregates,
-  YoutubeDateMode
+  YoutubeDateMode,
+  SubscriberUpdateProgress,
+  SubscriberUpdateResult
 } from "../../models/youtubeTypes";
 import Overview from "../../components/youtube/Overview";
 import ThemesList from "../../components/youtube/ThemesList";
@@ -48,6 +53,12 @@ export default function WtmYoutubePage() {
   const [startDate, setStartDate] = useState<number | undefined>();
   const [endDate, setEndDate] = useState<number | undefined>();
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Subscriber update states
+  const [isUpdatingSubscribers, setIsUpdatingSubscribers] = useState(false);
+  const [subscriberProgress, setSubscriberProgress] = useState<SubscriberUpdateProgress | null>(null);
+  const [subscriberResult, setSubscriberResult] = useState<SubscriberUpdateResult | null>(null);
+  const [showSubscriberModal, setShowSubscriberModal] = useState(false);
 
   // Check authorization
   const checkAuthorization = useCallback(async () => {
@@ -166,6 +177,125 @@ export default function WtmYoutubePage() {
     fetchAllData();
   };
 
+  // Handle subscriber update
+  const handleUpdateSubscribers = async () => {
+    if (isUpdatingSubscribers) return;
+    
+    // Show confirmation dialog
+    if (!window.confirm('Fetch latest subscriber counts for all YouTube channels? This will consume API quota.')) {
+      return;
+    }
+    
+    try {
+      setIsUpdatingSubscribers(true);
+      setShowSubscriberModal(true);
+      setSubscriberProgress({ current: 0, total: influencers.length, phase: 'fetching' });
+      setSubscriberResult(null);
+      
+      const apiKey = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
+      if (!apiKey) {
+        alert('YouTube API key not configured');
+        setIsUpdatingSubscribers(false);
+        setShowSubscriberModal(false);
+        return;
+      }
+      
+      // Filter for YouTube channels only
+      const youtubeInfluencers = influencers.filter(inf => 
+        inf.channelLink && isValidYoutubeChannelLink(inf.channelLink)
+      );
+      
+      console.log(`[handleUpdateSubscribers] Found ${youtubeInfluencers.length} YouTube channels out of ${influencers.length} total`);
+      
+      if (youtubeInfluencers.length === 0) {
+        alert('No valid YouTube channels found');
+        setIsUpdatingSubscribers(false);
+        setShowSubscriberModal(false);
+        return;
+      }
+      
+      setSubscriberProgress({ 
+        current: 0, 
+        total: youtubeInfluencers.length, 
+        phase: 'fetching',
+        currentInfluencer: 'Fetching subscriber counts from YouTube...'
+      });
+      
+      // Fetch subscriber counts from YouTube API
+      const channelLinks = youtubeInfluencers.map(inf => inf.channelLink);
+      const subscriberCounts = await fetchChannelSubscribers(channelLinks, apiKey);
+      
+      console.log(`[handleUpdateSubscribers] Fetched ${subscriberCounts.size} subscriber counts`);
+      
+      // Prepare updates for Firebase
+      const updates: Array<{ id: string; subscribers: number; name: string; channelLink: string; oldSubscribers: number }> = [];
+      const errors: any[] = [];
+      let skipped = 0;
+      
+      for (const influencer of youtubeInfluencers) {
+        const newCount = subscriberCounts.get(influencer.channelLink);
+        
+        if (newCount !== undefined) {
+          updates.push({
+            id: influencer.id,
+            subscribers: newCount,
+            name: influencer.name,
+            channelLink: influencer.channelLink,
+            oldSubscribers: influencer.subscribers || 0
+          });
+        } else {
+          // Channel not found or API error
+          skipped++;
+          errors.push({
+            influencerId: influencer.id,
+            influencerName: influencer.name,
+            channelLink: influencer.channelLink,
+            error: 'Channel not found or API error',
+            type: 'channel_not_found' as const
+          });
+        }
+      }
+      
+      console.log(`[handleUpdateSubscribers] Prepared ${updates.length} updates, ${skipped} skipped`);
+      
+      // Update Firebase
+      setSubscriberProgress({ 
+        current: 0, 
+        total: updates.length, 
+        phase: 'updating',
+        currentInfluencer: 'Updating Firebase documents...'
+      });
+      
+      const result = await updateInfluencerSubscribers(updates);
+      
+      // Add skipped count and errors
+      result.skipped = skipped;
+      result.errors.push(...errors);
+      
+      setSubscriberProgress({ 
+        current: updates.length, 
+        total: updates.length, 
+        phase: 'completed',
+        currentInfluencer: 'Update completed!'
+      });
+      
+      setSubscriberResult(result);
+      
+      // Refresh influencer list to show new counts
+      if (result.success > 0) {
+        await fetchAllData();
+      }
+      
+      console.log('[handleUpdateSubscribers] Complete:', result);
+      
+    } catch (error) {
+      console.error('[handleUpdateSubscribers] Error:', error);
+      alert(`Error updating subscribers: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsUpdatingSubscribers(false);
+    }
+  };
+
   // Loading states
   if (authLoading || isCheckingAuth) {
     return (
@@ -197,6 +327,17 @@ export default function WtmYoutubePage() {
               <h1 className="text-2xl font-bold text-gray-900">WTM-Youtube Analytics</h1>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                onClick={handleUpdateSubscribers}
+                disabled={isUpdatingSubscribers || isLoading}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                title="Fetch latest subscriber counts from YouTube"
+              >
+                <svg className={`w-4 h-4 ${isUpdatingSubscribers ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                {isUpdatingSubscribers ? 'Updating...' : 'Update Subscribers'}
+              </button>
               <button
                 onClick={handleRefresh}
                 disabled={isLoading}
@@ -357,6 +498,145 @@ export default function WtmYoutubePage() {
           </>
         )}
       </div>
+
+      {/* Subscriber Update Modal */}
+      {showSubscriberModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Update Subscriber Counts</h2>
+                  <p className="text-sm text-gray-600 mt-1">Fetching latest data from YouTube API</p>
+                </div>
+                {subscriberResult && (
+                  <button
+                    onClick={() => {
+                      setShowSubscriberModal(false);
+                      setSubscriberProgress(null);
+                      setSubscriberResult(null);
+                    }}
+                    className="text-gray-400 hover:text-gray-600 transition"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              {/* Progress */}
+              {subscriberProgress && (
+                <div className="mb-6">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-700">
+                      {subscriberProgress.phase === 'fetching' && 'Fetching from YouTube API...'}
+                      {subscriberProgress.phase === 'updating' && 'Updating Firebase...'}
+                      {subscriberProgress.phase === 'completed' && 'Update Complete!'}
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      {subscriberProgress.current} / {subscriberProgress.total}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="bg-green-600 h-3 rounded-full transition-all duration-300"
+                      style={{ width: `${(subscriberProgress.current / subscriberProgress.total) * 100}%` }}
+                    />
+                  </div>
+                  {subscriberProgress.currentInfluencer && (
+                    <p className="text-xs text-gray-500 mt-2">{subscriberProgress.currentInfluencer}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Results */}
+              {subscriberResult && (
+                <div className="space-y-4">
+                  {/* Summary Stats */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-green-50 rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-green-900">{subscriberResult.success}</p>
+                      <p className="text-sm text-gray-600">Updated</p>
+                    </div>
+                    <div className="bg-yellow-50 rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-yellow-900">{subscriberResult.skipped}</p>
+                      <p className="text-sm text-gray-600">Skipped</p>
+                    </div>
+                    <div className="bg-red-50 rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-red-900">{subscriberResult.failed}</p>
+                      <p className="text-sm text-gray-600">Failed</p>
+                    </div>
+                  </div>
+
+                  {/* Updated Influencers */}
+                  {subscriberResult.updated.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-3">Updated Channels ({subscriberResult.updated.length})</h3>
+                      <div className="max-h-48 overflow-y-auto space-y-2">
+                        {subscriberResult.updated.slice(0, 10).map((update) => (
+                          <div key={update.influencerId} className="bg-gray-50 rounded p-3 text-sm">
+                            <p className="font-medium text-gray-900">{update.influencerName}</p>
+                            <p className="text-gray-600">
+                              {update.oldCount.toLocaleString()} → <span className="text-green-600 font-semibold">{update.newCount.toLocaleString()}</span>
+                              <span className="text-xs ml-2">
+                                ({update.newCount > update.oldCount ? '+' : ''}{(update.newCount - update.oldCount).toLocaleString()})
+                              </span>
+                            </p>
+                          </div>
+                        ))}
+                        {subscriberResult.updated.length > 10 && (
+                          <p className="text-xs text-gray-500 text-center pt-2">...and {subscriberResult.updated.length - 10} more</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Errors */}
+                  {subscriberResult.errors.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-3">Errors ({subscriberResult.errors.length})</h3>
+                      <div className="max-h-48 overflow-y-auto space-y-2">
+                        {subscriberResult.errors.slice(0, 5).map((error, idx) => (
+                          <div key={idx} className="bg-red-50 rounded p-3 text-sm">
+                            <p className="font-medium text-red-900">{error.influencerName}</p>
+                            <p className="text-red-700 text-xs">{error.error}</p>
+                          </div>
+                        ))}
+                        {subscriberResult.errors.length > 5 && (
+                          <p className="text-xs text-gray-500 text-center pt-2">...and {subscriberResult.errors.length - 5} more errors</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Close Button */}
+                  <div className="flex justify-end pt-4">
+                    <button
+                      onClick={() => {
+                        setShowSubscriberModal(false);
+                        setSubscriberProgress(null);
+                        setSubscriberResult(null);
+                      }}
+                      className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Loading State */}
+              {!subscriberResult && isUpdatingSubscribers && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

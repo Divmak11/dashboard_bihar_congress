@@ -27,7 +27,9 @@ import {
   OverviewAggregates,
   YoutubeVideoType,
   YoutubeDateMode,
-  YoutubeFilterOptions
+  YoutubeFilterOptions,
+  SubscriberUpdateResult,
+  SubscriberUpdateError
 } from '../../models/youtubeTypes';
 import { homePageCache, CACHE_KEYS } from './cacheUtils';
 
@@ -494,4 +496,70 @@ export async function updateInfluencerLastVideo(
       error: error instanceof Error ? error.message : 'Failed to update influencer'
     };
   }
+}
+
+// Update subscriber counts for multiple influencers
+export async function updateInfluencerSubscribers(
+  updates: Array<{ id: string; subscribers: number; name: string; channelLink: string; oldSubscribers: number }>
+): Promise<SubscriberUpdateResult> {
+  console.log(`[updateInfluencerSubscribers] Updating ${updates.length} influencers`);
+  
+  const result: SubscriberUpdateResult = {
+    success: 0,
+    failed: 0,
+    skipped: 0,
+    errors: [],
+    updated: []
+  };
+
+  if (!updates || updates.length === 0) {
+    console.log('[updateInfluencerSubscribers] No updates to process');
+    return result;
+  }
+
+  // Process updates in batches to avoid overwhelming Firestore
+  const batchSize = 10;
+  
+  for (let i = 0; i < updates.length; i += batchSize) {
+    const batch = updates.slice(i, i + batchSize);
+    
+    const updatePromises = batch.map(async (update) => {
+      try {
+        const docRef = doc(db, 'youtube', update.id);
+        await updateDoc(docRef, {
+          subscribers: update.subscribers
+        });
+        
+        result.success++;
+        result.updated.push({
+          influencerId: update.id,
+          influencerName: update.name,
+          oldCount: update.oldSubscribers,
+          newCount: update.subscribers
+        });
+        
+        console.log(`[updateInfluencerSubscribers] ✓ Updated ${update.name}: ${update.oldSubscribers} → ${update.subscribers}`);
+      } catch (error) {
+        result.failed++;
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        result.errors.push({
+          influencerId: update.id,
+          influencerName: update.name,
+          channelLink: update.channelLink,
+          error: errorMessage,
+          type: 'firebase_error'
+        });
+        
+        console.error(`[updateInfluencerSubscribers] ✗ Failed to update ${update.name}:`, error);
+      }
+    });
+    
+    // Wait for current batch to complete
+    await Promise.all(updatePromises);
+    
+    console.log(`[updateInfluencerSubscribers] Progress: ${Math.min(i + batchSize, updates.length)}/${updates.length}`);
+  }
+
+  console.log(`[updateInfluencerSubscribers] Complete - Success: ${result.success}, Failed: ${result.failed}, Skipped: ${result.skipped}`);
+  return result;
 }
