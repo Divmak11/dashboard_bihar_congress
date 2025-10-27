@@ -48,50 +48,97 @@ const SummaryTable: React.FC<{ seg: GGYSegmentData }> = ({ seg }) => {
   );
 };
 
-// Assembly-wise matched members section with chunking to prevent page crumbling
-const AssemblyGroupsSection: React.FC<{ seg: GGYSegmentData }> = ({ seg }) => {
-  const CHUNK_SIZE = 22; // rows per chunk to fit with header on A4
+// Helper to render assembly table with members (reusable for both flat and zone-wise views)
+const AssemblyTable: React.FC<{ assembly: string; members: any[]; showTotal?: boolean }> = ({ assembly, members, showTotal = true }) => {
+  const CHUNK_SIZE = 22;
   const chunk = <T,>(arr: T[], size: number) => arr.reduce<T[][]>((acc, _, i) => {
     if (i % size === 0) acc.push(arr.slice(i, i + size));
     return acc;
   }, []);
+  const chunks = chunk(members, CHUNK_SIZE);
+  const assemblyTotal = members.reduce((sum, m) => sum + m.totalPunches, 0);
 
+  return (
+    <View key={assembly} style={styles.assemblySection}>
+      <Text style={styles.assemblyHeader}>{assembly} ({members.length} members)</Text>
+      {showTotal && <Text style={[styles.text, { marginTop: 2, fontSize: 9, color: '#4b5563' }]}>Cumulative Punches: {assemblyTotal.toLocaleString()}</Text>}
+      {chunks.map((rows, cidx) => (
+        <View key={`${assembly}-chunk-${cidx}`} style={styles.table} wrap={false}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableCell, { flex: 1.8, fontWeight: 'bold' }]}>Name</Text>
+            <Text style={[styles.tableCell, { flex: 1.2, fontWeight: 'bold' }]}>Phone</Text>
+            <Text style={[styles.tableCell, { flex: 0.8, fontWeight: 'bold' }]}>Total</Text>
+            <Text style={[styles.tableCell, { flex: 0.8, fontWeight: 'bold' }]}>Unique</Text>
+            <Text style={[styles.tableCell, { flex: 0.8, fontWeight: 'bold' }]}>Double</Text>
+            <Text style={[styles.tableCell, { flex: 0.8, fontWeight: 'bold' }]}>Triple+</Text>
+          </View>
+          {rows.map((m, idx) => (
+            <View key={`${assembly}-${m.slpId}-${cidx}-${idx}`} style={styles.tableRow} wrap={false}>
+              <Text style={[styles.tableCell, { flex: 1.8 }]}>{m.slpName}</Text>
+              <Text style={[styles.tableCell, { flex: 1.2 }]}>{m.phoneNumber}</Text>
+              <Text style={[styles.tableCell, { flex: 0.8 }]}>{m.totalPunches}</Text>
+              <Text style={[styles.tableCell, { flex: 0.8 }]}>{m.uniquePunches}</Text>
+              <Text style={[styles.tableCell, { flex: 0.8 }]}>{m.doubleEntries}</Text>
+              <Text style={[styles.tableCell, { flex: 0.8 }]}>{m.tripleEntries}</Text>
+            </View>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+};
+
+// Zone-wise matched members section with Performing and Under Performing subsections
+const ZoneGroupsSection: React.FC<{ seg: GGYSegmentData }> = ({ seg }) => {
+  if (!seg.zoneGroups || seg.zoneGroups.length === 0) {
+    return <Text style={styles.text}>No zone groupings available.</Text>;
+  }
+
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Zone-wise Matched Members</Text>
+      {seg.zoneGroups.map((zone) => (
+        <View key={zone.zoneId} style={{ marginBottom: 12 }}>
+          <Text style={[styles.assemblyHeader, { fontSize: 12, color: '#1f2937', marginBottom: 6 }]}>
+            {zone.zoneName}
+          </Text>
+
+          {/* Performing Assemblies */}
+          {zone.assembliesPerforming.length > 0 && (
+            <View style={{ marginLeft: 8, marginBottom: 8 }}>
+              <Text style={[styles.text, { fontWeight: 'bold', fontSize: 10, marginBottom: 4 }]}>Performing Assemblies</Text>
+              {zone.assembliesPerforming.map((g) => (
+                <AssemblyTable key={g.assembly} assembly={g.assembly} members={g.members} showTotal={true} />
+              ))}
+            </View>
+          )}
+
+          {/* Under Performing Assemblies */}
+          {zone.assembliesUnderperforming.length > 0 && (
+            <View style={{ marginLeft: 8, marginBottom: 8 }}>
+              <Text style={[styles.text, { fontWeight: 'bold', fontSize: 10, marginBottom: 4, color: '#dc2626' }]}>Under Performing (data &lt; {zone.threshold})</Text>
+              {zone.assembliesUnderperforming.map((g) => (
+                <AssemblyTable key={g.assembly} assembly={g.assembly} members={g.members} showTotal={true} />
+              ))}
+            </View>
+          )}
+        </View>
+      ))}
+    </View>
+  );
+};
+
+// Assembly-wise matched members section with chunking to prevent page crumbling (Fallback for non-zone view)
+const AssemblyGroupsSection: React.FC<{ seg: GGYSegmentData }> = ({ seg }) => {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Assembly-wise Matched Members</Text>
       {seg.assemblyGroups.length === 0 ? (
         <Text style={styles.text}>No members found in this period.</Text>
       ) : (
-        seg.assemblyGroups.map((g) => {
-          const chunks = chunk(g.members, CHUNK_SIZE);
-          return (
-            <View key={g.assembly} style={styles.assemblySection}>
-              <Text style={styles.assemblyHeader}>{g.assembly} ({g.members.length} members)</Text>
-              {chunks.map((rows, cidx) => (
-                <View key={`${g.assembly}-chunk-${cidx}`} style={styles.table} wrap={false}>
-                  <View style={styles.tableHeader}>
-                    <Text style={[styles.tableCell, { flex: 1.8, fontWeight: 'bold' }]}>Name</Text>
-                    <Text style={[styles.tableCell, { flex: 1.2, fontWeight: 'bold' }]}>Phone</Text>
-                    <Text style={[styles.tableCell, { flex: 0.8, fontWeight: 'bold' }]}>Total</Text>
-                    <Text style={[styles.tableCell, { flex: 0.8, fontWeight: 'bold' }]}>Unique</Text>
-                    <Text style={[styles.tableCell, { flex: 0.8, fontWeight: 'bold' }]}>Double</Text>
-                    <Text style={[styles.tableCell, { flex: 0.8, fontWeight: 'bold' }]}>Triple+</Text>
-                  </View>
-                  {rows.map((m, idx) => (
-                    <View key={`${g.assembly}-${m.slpId}-${cidx}-${idx}`} style={styles.tableRow} wrap={false}>
-                      <Text style={[styles.tableCell, { flex: 1.8 }]}>{m.slpName}</Text>
-                      <Text style={[styles.tableCell, { flex: 1.2 }]}>{m.phoneNumber}</Text>
-                      <Text style={[styles.tableCell, { flex: 0.8 }]}>{m.totalPunches}</Text>
-                      <Text style={[styles.tableCell, { flex: 0.8 }]}>{m.uniquePunches}</Text>
-                      <Text style={[styles.tableCell, { flex: 0.8 }]}>{m.doubleEntries}</Text>
-                      <Text style={[styles.tableCell, { flex: 0.8 }]}>{m.tripleEntries}</Text>
-                    </View>
-                  ))}
-                </View>
-              ))}
-            </View>
-          );
-        })
+        seg.assemblyGroups.map((g) => (
+          <AssemblyTable key={g.assembly} assembly={g.assembly} members={g.members} showTotal={true} />
+        ))
       )}
     </View>
   );
@@ -147,7 +194,12 @@ const GgySplitReportDoc: React.FC<{ report: GGYReportData }>=({ report })=>{
         {/* For cumulative reports, include overall assembly & invalid */}
         {(!report.segments || report.segments.length === 0) && (
           <>
-            <AssemblyGroupsSection seg={overall} />
+            {/* Use zone-wise view if available, otherwise flat assembly view */}
+            {overall.zoneGroups && overall.zoneGroups.length > 0 ? (
+              <ZoneGroupsSection seg={overall} />
+            ) : (
+              <AssemblyGroupsSection seg={overall} />
+            )}
             <InvalidSection seg={overall} />
           </>
         )}
@@ -158,7 +210,12 @@ const GgySplitReportDoc: React.FC<{ report: GGYReportData }>=({ report })=>{
         <Page key={idx} size="A4" style={styles.page}>
           <Text style={styles.subtitle}>{seg.segmentLabel}</Text>
           <SummaryTable seg={seg} />
-          <AssemblyGroupsSection seg={seg} />
+          {/* Use zone-wise view if available, otherwise flat assembly view */}
+          {seg.zoneGroups && seg.zoneGroups.length > 0 ? (
+            <ZoneGroupsSection seg={seg} />
+          ) : (
+            <AssemblyGroupsSection seg={seg} />
+          )}
           <InvalidSection seg={seg} />
         </Page>
       ))}

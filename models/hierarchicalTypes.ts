@@ -4,10 +4,14 @@
 
 export interface Zone {
   id: string;
-  name: string; // "Zone 1", "Zone 2", etc.
+  name: string; // Display name: "Zone - {zoneName}"
   assemblies: string[];
   /** Vertical this zone belongs to (e.g., 'wtm' or 'shakti-abhiyaan'). */
   parentVertical?: string;
+  /** Raw zone name from admin-users.zoneName */
+  zoneName?: string;
+  /** Zonal incharge name from admin-users.name */
+  inchargeName?: string;
 }
 
 export interface AC {
@@ -126,3 +130,29 @@ export interface CacheStructure {
 }
 
 // END OF TYPE DEFINITIONS
+ 
+// Pagination & Search Types (for Detailed Views)
+export interface PageCursor {
+  // The primary order field value to resume after (e.g., createdAt, date_submitted)
+  lastOrderValue?: string | number;
+  // Optional secondary tiebreaker: last document ID
+  lastDocId?: string;
+  // Optional per-stream cursors when multiple queries are merged
+  streamCursors?: Array<{
+    key: string; // stream identifier (e.g., 'form_type', 'type', 'assembly:chunk:0', 'handler:uid')
+    lastOrderValue?: string | number;
+    lastDocId?: string;
+  }>;
+}
+
+export interface SearchOptions {
+  term: string;
+  // Optional explicit field to search; if omitted, use per-metric defaults
+  field?: string;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  hasMore: boolean;
+  nextCursor?: PageCursor;
+}

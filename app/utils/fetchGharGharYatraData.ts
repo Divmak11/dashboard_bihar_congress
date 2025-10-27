@@ -46,6 +46,7 @@ import {
   GGYReportOptions,
   GGYReportSegment,
   GGYSegmentData,
+  GGYZoneGroup,
   ReportSummary,
 } from '../../models/ggyReportTypes';
 
@@ -191,6 +192,76 @@ async function buildAssemblyGroupsFromSlpData(slpData: SLPDataWithDate[]): Promi
 }
 
 /**
+ * Build zone groups from assembly groups with performing/underperforming splits
+ * Threshold: assemblies with totalPunches < 10 are underperforming
+ */
+async function buildZoneGroupsFromAssemblies(assemblyGroups: GGYAssemblyGroup[], threshold: number = 10): Promise<GGYZoneGroup[]> {
+  // Import zone fetcher
+  const { fetchZonesForWTM } = await import('./fetchHierarchicalData');
+  
+  // Fetch zones once (WTM by default)
+  const zones = await fetchZonesForWTM();
+  
+  // Build assembly to zone mapping
+  const assemblyToZone = new Map<string, { zoneId: string; zoneName: string }>();
+  zones.forEach(zone => {
+    zone.assemblies.forEach(assembly => {
+      assemblyToZone.set(assembly, { zoneId: zone.id, zoneName: zone.name });
+    });
+  });
+  
+  // Group assemblies by zone
+  const zoneMap = new Map<string, { zoneId: string; zoneName: string; assemblies: GGYAssemblyGroup[] }>();
+  
+  assemblyGroups.forEach(assemblyGroup => {
+    const zoneInfo = assemblyToZone.get(assemblyGroup.assembly);
+    const zoneId = zoneInfo?.zoneId || 'unmapped';
+    const zoneName = zoneInfo?.zoneName || 'Unmapped Zone';
+    
+    if (!zoneMap.has(zoneId)) {
+      zoneMap.set(zoneId, { zoneId, zoneName, assemblies: [] });
+    }
+    zoneMap.get(zoneId)!.assemblies.push(assemblyGroup);
+  });
+  
+  // Build zone groups with performing/underperforming splits
+  const zoneGroups: GGYZoneGroup[] = [];
+  
+  for (const [zoneId, zoneData] of zoneMap) {
+    const assembliesPerforming: GGYAssemblyGroup[] = [];
+    const assembliesUnderperforming: GGYAssemblyGroup[] = [];
+    
+    zoneData.assemblies.forEach(assemblyGroup => {
+      const total = assemblyGroup.totalPunches || 0;
+      if (total >= threshold) {
+        assembliesPerforming.push(assemblyGroup);
+      } else {
+        assembliesUnderperforming.push(assemblyGroup);
+      }
+    });
+    
+    // Sort assemblies by totalPunches descending for better readability
+    const sortByPunches = (a: GGYAssemblyGroup, b: GGYAssemblyGroup) => 
+      (b.totalPunches || 0) - (a.totalPunches || 0);
+    assembliesPerforming.sort(sortByPunches);
+    assembliesUnderperforming.sort(sortByPunches);
+    
+    zoneGroups.push({
+      zoneId,
+      zoneName: zoneData.zoneName,
+      assembliesPerforming,
+      assembliesUnderperforming,
+      threshold
+    });
+  }
+  
+  // Sort zones by name (consistent with zone fetcher sorting)
+  zoneGroups.sort((a, b) => a.zoneName.localeCompare(b.zoneName));
+  
+  return zoneGroups;
+}
+
+/**
  * Build a single segment's data from source functions
  */
 export async function buildGGYSegmentData(startDate: string, endDate: string, segmentLabel: string): Promise<GGYSegmentData> {
@@ -198,9 +269,18 @@ export async function buildGGYSegmentData(startDate: string, endDate: string, se
   const source = await fetchOverviewSourceData(startDate, endDate, { includeSlpData: true, useCache: true });
   const metrics = await generateAggregatedMetricsFromSource(source);
   const assemblyGroups = await buildAssemblyGroupsFromSlpData(source.slpData);
+  
+  // Compute totalPunches for each assembly (sum of member totalPunches)
+  assemblyGroups.forEach(group => {
+    group.totalPunches = group.members.reduce((sum, m) => sum + m.totalPunches, 0);
+  });
+  
   // Build report summary from summaries map (authoritative)
   const reportSummary = buildReportSummaryFromSummaries(source.dateDocuments);
   const invalidCount = reportSummary.incorrect_count; // keep aligned with 'Incorrect Format'
+  
+  // Build zone groups with performing/underperforming splits (threshold = 10)
+  const zoneGroups = await buildZoneGroupsFromAssemblies(assemblyGroups, 10);
 
   return {
     segmentLabel,
@@ -210,6 +290,7 @@ export async function buildGGYSegmentData(startDate: string, endDate: string, se
     invalidCount,
     assemblyGroups,
     reportSummary,
+    zoneGroups, // New: zone-wise grouping
   };
 }
 

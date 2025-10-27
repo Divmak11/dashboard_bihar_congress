@@ -29,13 +29,18 @@ Labels in UI updated:
   - `calculateDataQualityMetrics()` → New field preferences + label changes
   - `generateChartDataFromSource()` → Daily trend and calling patterns from summary totals, fallback to `slp_data`
 - GGY Split Report (NEW)
-  - `models/ggyReportTypes.ts` → Types for GGY split report: `GGYReportOptions`, `GGYReportSegment`, `GGYSegmentData`, `GGYReportData`
+  - `models/ggyReportTypes.ts` → Types for GGY split report: `GGYReportOptions`, `GGYReportSegment`, `GGYSegmentData`, `GGYReportData`, `GGYZoneGroup` (zone-wise grouping)
   - `components/report/ReportOptionsModal.tsx` → Modal to choose date range and split type (cumulative/day/month) with gating rules
   - `app/utils/fetchGharGharYatraData.ts` → Helpers for split report
     - `splitGGYDateRange(options)` → Build segments for cumulative/day-wise/month-wise
-    - `buildGGYSegmentData(startDate, endDate, label)` → Builds metrics, assembly-wise members, and invalid count using summaries and slp_data
+    - `buildGGYSegmentData(startDate, endDate, label)` → Builds metrics, assembly-wise members, zone groupings, and invalid count using summaries and slp_data
+    - `buildZoneGroupsFromAssemblies(assemblyGroups, threshold)` → Groups assemblies by zone with performing (≥10) / underperforming (<10) splits using fetchZonesForWTM()
     - `buildGGYReportData(options)` → Builds overall and per-segment report data structure
-  - `app/utils/generateGgySplitReportPDF.tsx` → PDF generator rendering Summary (table), Assembly-wise Matched Members, and Invalid section per segment
+  - `app/utils/generateGgySplitReportPDF.tsx` → PDF generator with conditional zone-wise or flat assembly rendering
+    - `AssemblyTable` → Reusable component for rendering assembly member tables with chunking
+    - `ZoneGroupsSection` → Zone-wise view with "Performing Assemblies" and "Under Performing (data < 10)" subsections per zone
+    - `AssemblyGroupsSection` → Fallback flat assembly-wise view when zoneGroups not available
+    - Renders Summary (table), Zone-wise or Assembly-wise Matched Members (with cumulative punches), and Invalid section per segment
   - `app/verticals/ghar-ghar-yatra-analytics/page.tsx` → Integrated new modal and split report generation; legacy generator kept as fallback
   - Summary Mapping (Updated):
     - Introduced `ReportSummary` in `models/ggyReportTypes.ts` carried via `GGYSegmentData.reportSummary`.
@@ -52,6 +57,16 @@ Labels in UI updated:
       - Total Calls → `"Unique + Duplicate = total_calls_from_parts"`
     - Invalid Section shows Incorrect Format count and Blank punches; adds a note when using fallback unique count.
     - Assembly-wise table uses row chunking with header repetition to prevent page crumbling.
+    - Assembly-wise section displays cumulative punches per assembly (sum of totalPunches across all members) on a second line below the assembly header with formatted number (thousands separator).
+    - Zone-wise grouping (NEW):
+      - Assemblies grouped by zone using `fetchZonesForWTM()` from `fetchHierarchicalData.ts`
+      - Each zone split into "Performing Assemblies" (totalPunches ≥ 10) and "Under Performing" (totalPunches < 10)
+      - Threshold configurable (default: 10 total punches per assembly per segment)
+      - Assemblies within each subsection sorted by totalPunches descending
+      - Zones sorted alphabetically (consistent with zone fetcher)
+      - Unmapped assemblies grouped under "Unmapped Zone"
+      - Applies to cumulative, day-wise, and month-wise reports
+      - Fallback to flat assembly-wise view if zoneGroups absent or empty
 - `components/ghar-ghar-yatra/MetricsCards.tsx` → Labels updated to “Members” + new Data Quality labels
 - `components/ghar-ghar-yatra/AnalyticsCharts.tsx` → “Top 10 Members” title + Data Quality labels
 # Code Map - Bihar Congress Dashboard
@@ -198,6 +213,24 @@ my-dashboard/
 │   │   ├── MembersList.tsx      # Members table
 │   │   ├── VideosList.tsx       # Videos table
 │   │   └── [other lists]        # Other activity tables
+
+#### DetailedView External Pagination & Search (Oct 2025)
+- Ownership: `components/hierarchical/DetailedView.tsx` centralizes pagination and search for ALL detailed metric cards.
+- Behavior:
+  - Initial page size: 25 items. "Load More" fetches additional items.
+  - Footer visibility: shown only when `hasMore && !searchTerm`.
+  - Search: global search input in DetailedView; per-table search is disabled.
+  - SLP-level AC metrics (meetings/volunteers/slps): short-circuited to empty set.
+- List components updated to be externally controlled (no internal paging/search):
+  - `ActivitiesList.tsx`, `MeetingsList.tsx`, `VideosList.tsx`, `FormsList.tsx`, `ClubsList.tsx`, `ChaupalsList.tsx`, `NukkadMeetingsList.tsx` now accept `footer?: React.ReactNode` and pass it to `DataTable`.
+  - `DataTable.tsx` supports `clientPaginate={false}` and `footer` slot for standardized external pagination UI.
+- Paged fetching:
+  - Fallback is implemented as `fetchDetailedDataPaged(metric, options)` in `app/utils/fetchHierarchicalData.ts`.
+    - First tries server-side keyset pagination for supported metrics: `videos`, `acVideos`, `forms`, `chaupals`, `clubs`, `nukkadAc`, `nukkadSlp`.
+    - Server-side paging uses inequality on the date field (`< endBound`) + `orderBy(dateField, 'desc')` + optional assembly chunking (`where('assembly','in', chunk)`) and handler filtering.
+    - Applies `parentVertical` include/exclude rules for WTM vs Shakti where required.
+    - Falls back to in-memory pagination when a composite index is missing or the metric is not supported.
+  - `DetailedView.tsx` uses a guarded dynamic import (`require(...)`) to call `fetchDetailedDataPaged`; otherwise it slices the full list.
 │   ├── ReportGenerator.tsx       # Main report generation component (refactored)
 │   ├── DashboardHome.tsx         # Dashboard home component
 │   ├── DateRangeFilter.tsx      # Date filtering component
@@ -238,75 +271,21 @@ Location & Files:
   - `app/wtm-slp-new/page.tsx` → Adds "All Users" button beside "Generate Report" to open the overlay. Passes current `selectedVertical` (supports both `wtm` and `shakti-abhiyaan`).
   
 UI Redesign Updates:
-- New: `components/users/UserDetailsModal.tsx` → Dedicated polished overlay for per-user profile and work summary; replaces the earlier right-side panel in UsersExplorer.
+- New: `components/users/UserDetailsModal.tsx` → Dedicated polished overlay for per-user profile and work summary; replaces the earlier right-side panel.
+- `components/users/UsersExplorer.tsx` → Updated header (gradient), improved filters (search with icon + segmented role control), sticky table header, zebra striping, clickable rows open `UserDetailsModal`, skeleton loaders and empty state; report generation continues to work from toolbar.
+
+Behavior & Data Rules:
+- Users are listed from `users` collection (no vertical filter), with show-only whitelist fields: name, phone, email, role, assembly, assemblies, district, block, village, state, vertical, createdAt/updatedAt (formatted). Hide internal identifiers and ratings.
+- Supported roles for work data: "Assembly Coordinator" and "Zonal Incharge".
+  - AC metrics call: `fetchCumulativeMetrics({ level: 'ac', handler_id: user.uid, assemblies: [assembly|assemblies], dateRange, vertical })`.
+  - Zonal metrics call: `fetchCumulativeMetrics({ level: 'zone', assemblies: getZonalAssembliesForUser(uid, vertical), dateRange, vertical })`.
+- Zonal assemblies resolution priority: `admin-users.assemblies` → `users.assemblies` → `zones` where `zonalIncharge == uid` and `parentVertical` matches.
+- Overlay has its own date filter independent from dashboard global filter.
+- Report generation: Select one or multiple supported users and choose split (cumulative/day/month). PDF lists basic user properties and the fetched `CumulativeMetrics` per segment.
 
 Notes:
 - `fetchAllUsersPaged` prefers `orderBy('name')` + cursor; falls back to simple `where(limit)` if index/order unavailable.
 - For Shakti vertical, the same explorer works; metrics are scoped by passing `vertical: 'shakti-abhiyaan'` into `fetchCumulativeMetrics`.
-
-### XLSX Exporters
-
-**Shared Utilities** (`app/utils/exporters/common.ts`):
-- `normalizeDate(row, keys[])`: Normalizes dates from epoch ms, Firestore Timestamps, or ISO strings to locale date string
-- `normalizeLinks(input)`: Converts string | string[] | null to array of valid link strings
-- `joinLinks(links, delimiter)`: Joins links with delimiter (default: newline for Excel multi-line cells)
-- `buildExportFilename(metric, context?, dateRange?)`: Generates consistent filenames like `Metric_Context_DateRange.xlsx`
-- `formatLocalDateForFilename(date)`: Returns YYYY-MM-DD string avoiding UTC conversion
-
-**Meetings** (`app/utils/exporters/meetingsXlsx.ts`):
-- Columns: Date, Coordinator Name, Assembly, Participant Name, Position, Status, Village, Block, Profession, Level of Influence, Mobile
-- Mobile numbers exported unmasked as strings
-- Triggered from `MeetingsList.tsx` via Export XLSX button
-- Exports filtered dataset (column filter applied; DataTable search not included)
-
-**Saathi/Members** (`app/utils/exporters/saathiXlsx.ts`):
-- Columns: Date, Coordinator Name, Assembly, Member Name, Village, Block, Profession, Level of Influence, Gender, Mobile
-- Date prefers `dateOfVisit`, fallback to `createdAt`
-- Mobile numbers exported unmasked as strings
-- Triggered from `ActivitiesList.tsx` when `activityType === 'saathi' || 'members'`
-- Exports filteredData (includes column-value filters)
-
-**Videos** (`app/utils/exporters/videosXlsx.ts`):
-- Columns: Date Submitted, Assembly, Description, Video Link, Image Links, Late Entry, Handler ID
-- Image links joined with newline (multiple images appear on separate lines in Excel)
-- Triggered from `VideosList.tsx` (covers both 'videos' and 'acVideos' metrics)
-- Normalizes from `video_link`, `videoLink`, `image_links`, `imageLinks`
-
-**Clubs/WA Groups** (`app/utils/exporters/clubsXlsx.ts`):
-- Columns: Created, Assembly, Panchayat, Group Name, Members, Status, Link
-- Members prefers `members` field, fallback to `membersCount`
-- Triggered from `ClubsList.tsx` (covers clubs, centralWaGroups, assemblyWaGroups, shaktiClubs, shaktiAssemblyWaGroups)
-- Link field exports chat/group URL
-
-**Forms** (`app/utils/exporters/formsXlsx.ts`):
-- Columns: Date, Assembly, Forms Distributed, Forms Collected, Completion Rate, Late Entry, Handler ID, Created
-- Completion Rate computed inline: `(distributed / collected) * 100`
-- Triggered from `FormsList.tsx` (Mai-Bahin Yojna forms)
-
-**Chaupals** (`app/utils/exporters/chaupalsXlsx.ts`):
-- Columns: Date, Assembly, Location, Topic/Notes, Total Members, Training ID, Audio Link, Video Link, Photo Links
-- Audio, video, and photo links exported as URLs
-- Photo links joined with newline for multiple photos
-- Triggered from `ChaupalsList.tsx` (covers chaupals and shaktiBaithaks)
-
-**Nukkad Meetings** (`app/utils/exporters/nukkadXlsx.ts`):
-- Columns: Date, Coordinator Name, Assembly, Panchayat, Village, Total Members, Notes, Video Link, Photo Links
-- Photo links normalized from multiple possible field names: `image_links`, `photoUrls`, `photo_urls`, `photos`, `imageLinks`, `images`
-- Total members computed from `totalMembers`, `members.length`, or `membersCount`
-- Triggered from `NukkadMeetingsList.tsx` (covers both nukkadAc and nukkadSlp)
-
-**Volunteers/SLPs** (reuses `meetingsXlsx.ts`):
-- Same columns as Meetings exporter
-- Triggered from `ActivitiesList.tsx` when `activityType === 'volunteers' || 'slps'`
-- Exports filteredData with column-value filters applied
-
-**Export Behavior Notes**:
-- All exports operate on in-memory data (no new Firebase queries, no composite indexes needed)
-- Column/value filters are included in exports when applied
-- DataTable free-text search is NOT included in exports
-- Large datasets may cause brief UI freeze during export
-- Links (video, photo, chat) exported as plain URLs for Excel compatibility
-- Multiple links joined with newline delimiter (\n) for multi-line Excel cells
 
 ### GGY Split Report (NEW)
 - UI Flow:
@@ -560,6 +539,19 @@ UI & Data Flow:
   - SLP: `getHierarchicalNukkadSlp()` + `fetchDetailedNukkadSlp()`
 - Summary wiring: `fetchCumulativeMetrics()` adds `nukkadAc`, `nukkadSlp` (AC metric is 0 at SLP level)
 
+Report Generation (WTM) — Total Nukkads (Display-only):
+- Location: `app/utils/reportDataAggregation.ts`
+- Policy: Do NOT attribute SLP Nukkads to ACs. Instead, per AC row show a derived "Total Nukkads" = `nukkadAc` (per-AC) + `nukkadSlp` (assembly-level total for that assembly and date range).
+- Implementation:
+  - Conditionally fetch detailed `nukkadAc` and `nukkadSlp` (WTM-only by passing `vertical: 'wtm'`).
+  - Increment `nukkadAc` in per-AC metrics via `addActivityToAssemblyAc(...,'nukkadAc')`.
+  - Aggregate `nukkadSlp` by assembly only, and inject into each `assemblyData.metrics.nukkadSlp`.
+  - Annotate each AC’s metrics with `assemblyNukkadSlp` for display-only derivation.
+  - In performance generators, set `ACAssemblyRow.totalNukkads = nukkadAc + assemblyNukkadSlp`.
+- Types: `models/reportTypes.ts` extended `ACAssemblyRow` with optional `totalNukkads`.
+- PDF: `app/utils/pdfGenerator.tsx` adds a "Total Nukkads" column in both the main AC table and the AC-with-assemblies tables; values are derived and not used in rollups.
+- Totals: Executive Summary and Zone/Assembly totals continue to use properly scoped metrics (`nukkadAc` + `nukkadSlp`) and never sum per-AC `totalNukkads`.
+
 ### 5. **shakti-abhiyaan** Collection
 ```typescript
 {
@@ -617,12 +609,29 @@ UI & Data Flow:
   handler_id: string,      // Not displayed; used for joins when needed
   role: 'AC' | 'SLP' | 'Saathi',
   status: string,          // e.g., 'Active'
-  createdAt: number        // Epoch ms; used for date-range filtering (UTC day boundaries)
+  createdAt: number,       // Epoch ms; used for date-range filtering (UTC day boundaries)
+  parentVertical?: 'wtm' | 'shakti-abhiyaan'  // Vertical assignment (optional)
 }
 ```
 **Query Pattern**: `where('createdAt','>=', startMs), where('createdAt','<=', endMs), orderBy('createdAt')` with cursor pagination.
 **Display Rule**: Hide `id`, `handler_id`, and `createdAt` in UI; show `name`, `phoneNumber`, `assembly`, `role`, `status`.
 **Ordering**: Role precedence `AC > SLP > Saathi`, then name.
+
+**Handler ID Semantics for Shakti Abhiyaan:**
+- **AC**: `handler_id` = AC's own phone number (self-referential)
+- **SLP**: `handler_id` = Parent AC's phone number (from "AC Phone No." in source data)
+- **Saathi**: `handler_id` = Parent SLP's phone number (from "SLP Phone No." in source data)
+
+**Import Script**: `scripts/import-d2d-shakti-members.js`
+- Parses `workbook.xlsx` with 3 sheets: "AC Details", "SLP Details", "Saathi Details"
+- Normalizes phone numbers to last 10 digits for consistent matching
+- Derives assembly for SLP/Saathi by traversing parent hierarchy (SLP→AC→Assembly, Saathi→SLP→AC→Assembly)
+- Generates deterministic document IDs: `shakti-{role}-{phoneNumber}`
+- Outputs:
+  - `scripts/output/d2d_valid_entries.json`: Valid entries ready for Firestore upload
+  - `scripts/output/d2d_conflicts.json`: Entries with missing parent references requiring review
+- Deduplicates by (role + phoneNumber), last entry wins
+- Sets `parentVertical: 'shakti-abhiyaan'` for all entries
 
 #### D2D Members List UI Behavior (Show-all Mode)
 - Loader: `components/ghar-ghar-yatra/D2DMembersList.tsx`
@@ -1074,6 +1083,16 @@ The Generate Report module provides comprehensive PDF report generation for the 
   - Enhanced font sizes for better readability
   - Metric value highlighting (bold for >0, dimmed for 0)
   - **Dual Format Support**: Conditionally renders AC-wise or Zone-wise layouts
+  - **Stability Fixes (Oct 2025)**:
+    - Ensured unique React keys for AC lists by using composite keys (`acId-index`) to avoid duplicate key warnings for placeholder entries like `no-ac-assigned`.
+    - Sanitized React-PDF `<Text>` children to avoid boolean/null nodes by using precomputed strings and ternary rendering, preventing `xCoordinate` TypeErrors during layout.
+    - Added defensive guards for optional arrays/objects (e.g., `summary.keyMetrics`, `performanceSummary`) and conditional sections to return `null` instead of boolean.
+    - Stage-5 (Zone-wise Performance) hardening:
+      - Introduced text sanitizers `safeText()` with extended normalization (NBSP, non-breaking hyphen, smart quotes, zero-width chars, BOM) and `safeNumber()` for numeric coercion.
+      - Applied sanitization across `ZoneWisePerformanceSection`, `ZoneACPerformanceSection`, `ACWithAssembliesComponent`, and `ACAssemblyRowComponent`.
+      - Added analyzer `analyzeTextForWeirdChars(label, value)` to log suspicious Unicode codepoints in Stage 5 text (NBSP, ZWSP, etc.).
+      - Added progressive debug sub-gating via `PDF_DEBUG` (`stage5MaxACPerBucket`, `stage5MaxRowsPerAC`) to binary-search a failing AC/row.
+      - Applied Helvetica fallback font on Stage 5 `<Text>` nodes to mitigate font coverage gaps that can surface as `xCoordinate` errors.
 - **PDF Structure**:
   1. Report header with title and date range
   2. Executive summary with overall metrics
@@ -1135,6 +1154,9 @@ The Generate Report module provides comprehensive PDF report generation for the 
 - **Purpose**: Fetch zones specifically for WTM vertical
 - **Query**: Filters by `role='zonal-incharge'` AND `parentVertical='wtm'`
 - **Collection**: admin-users
+- **Zone Display Format**: `"Zone - {zoneName}"` (uses admin-users.zoneName property)
+- **Structured Fields**: Returns zoneName and inchargeName as separate fields for data-driven access
+- **Note**: Replaced counter-based naming ("Zone 1 - Name") with direct zoneName property usage
 - **Returns**: Zone[] with filtered zones for WTM
 
 ##### **fetchAssemblyCoordinatorsForWTM** (`app/utils/fetchHierarchicalData.ts`)

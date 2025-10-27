@@ -50,6 +50,9 @@ export interface AssemblyData {
     forms: number;
     assemblyWaGroups: number;
     centralWaGroups: number;
+    // Optional nukkad metrics propagated from aggregation for summary computation
+    nukkadAc?: number;
+    nukkadSlp?: number;
   };
 }
 
@@ -147,6 +150,8 @@ export interface ACAssemblyRow {
   forms: number;
   videos: number;
   waGroups: number;
+  // Display-only derived metric: per-AC per-assembly total nukkads = nukkadAc (AC) + nukkadSlp (assembly-level)
+  totalNukkads?: number;
   // Color grading flags
   includeInColorGrading: boolean;
   shouldBeRed?: boolean;

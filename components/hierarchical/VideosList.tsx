@@ -3,15 +3,15 @@
 import React from 'react';
 import DataTable from './DataTable';
 import { LocalIssueVideoActivity } from '../../models/types';
-import { exportVideosToXlsx } from '@/app/utils/exporters/videosXlsx';
 
 interface VideosListProps {
   data: LocalIssueVideoActivity[];
   loading?: boolean;
   title?: string;
+  footer?: React.ReactNode;
 }
 
-const VideosList: React.FC<VideosListProps> = ({ data, loading = false, title = "Local Issue Videos" }) => {
+const VideosList: React.FC<VideosListProps> = ({ data, loading = false, title = "Local Issue Videos", footer }) => {
   const columns = [
     {
       key: 'date_submitted',
@@ -144,16 +144,8 @@ const VideosList: React.FC<VideosListProps> = ({ data, loading = false, title = 
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h4 className="text-lg font-medium text-gray-900">{title}</h4>
-        <div className="flex items-center gap-3">
-          <div className="text-sm text-gray-500">Total videos: {data.length}</div>
-          <button
-            type="button"
-            onClick={() => exportVideosToXlsx(data, { metric: title })}
-            disabled={loading || !data?.length}
-            className="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700"
-          >
-            Export XLSX
-          </button>
+        <div className="text-sm text-gray-500">
+          Total videos: {data.length}
         </div>
       </div>
       
@@ -162,8 +154,9 @@ const VideosList: React.FC<VideosListProps> = ({ data, loading = false, title = 
         columns={columns}
         loading={loading}
         emptyMessage="No videos found for the selected criteria"
-        searchable={true}
-        pageSize={10}
+        searchable={false}
+        clientPaginate={false}
+        footer={footer}
       />
     </div>
   );

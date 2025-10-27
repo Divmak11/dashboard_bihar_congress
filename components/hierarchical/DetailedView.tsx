@@ -1,7 +1,13 @@
 // components/hierarchical/DetailedView.tsx
 // Bottom panel detailed data with real data integration
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { fetchDetailedData, FetchMetricsOptions } from '../../app/utils/fetchHierarchicalData';
+// Optional paged API (implemented incrementally). Import guarded at runtime.
+let fetchDetailedDataPaged: any = null;
+try {
+  // Dynamic require to avoid build errors if not yet implemented in utils
+  fetchDetailedDataPaged = require('../../app/utils/fetchHierarchicalData').fetchDetailedDataPaged;
+} catch {}
 import MeetingsList from './MeetingsList';
 import ActivitiesList from './ActivitiesList';
 import VideosList from './VideosList';
@@ -37,56 +43,152 @@ const DetailedView: React.FC<Props> = ({
 }) => {
   const [detailedData, setDetailedData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [cursorBefore, setCursorBefore] = useState<string | number | undefined>(undefined);
 
-  // Fetch detailed data when card is selected
+  // Search state (simple debounced input; realtime listeners implemented in utils separately)
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
   useEffect(() => {
-    const fetchData = async () => {
+    const h = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 400);
+    return () => clearTimeout(h);
+  }, [searchTerm]);
+
+  // Determine if selected card is AC-level metric that should be hidden at SLP level
+  const isAcLevelAtSlp = useMemo(() => {
+    if (selectedLevel !== 'slp' || !selectedCard) return false;
+    return ['meetings', 'volunteers', 'slps'].includes(selectedCard);
+  }, [selectedLevel, selectedCard]);
+
+  // Build common options for fetchers
+  const buildOptions = useCallback((): FetchMetricsOptions => {
+    const options: FetchMetricsOptions = {
+      level: (selectedLevel as any) || 'zone'
+    };
+    if (selectedSlpId) {
+      options.handler_id = selectedSlpId;
+    } else if (selectedAcId) {
+      const selectedAc = acs.find(ac => ac.uid === selectedAcId);
+      options.handler_id = selectedAcId || undefined;
+      options.assemblies = selectedAc?.assembly ? [selectedAc.assembly] : (selectedAssembly ? [selectedAssembly] : []);
+    } else if (selectedAssembly) {
+      options.assemblies = [selectedAssembly];
+    } else if (selectedZoneId) {
+      const selectedZone = zones.find(z => z.id === selectedZoneId);
+      options.assemblies = selectedZone?.assemblies || [];
+    }
+    if (dateRange && dateRange.startDate && dateRange.endDate) {
+      options.dateRange = dateRange;
+    }
+    if (selectedVertical) {
+      options.vertical = (selectedVertical as 'wtm' | 'shakti-abhiyaan');
+    }
+    return options;
+  }, [selectedLevel, selectedSlpId, selectedAcId, acs, selectedAssembly, selectedZoneId, zones, dateRange, selectedVertical]);
+
+  // Reset data when dependencies change
+  useEffect(() => {
+    setDetailedData([]);
+    setCursorBefore(undefined);
+    setHasMore(false);
+  }, [selectedCard, selectedLevel, selectedZoneId, selectedAssembly, selectedAcId, selectedSlpId, dateRange, selectedVertical, zones, acs]);
+
+  // Load initial page or perform search
+  useEffect(() => {
+    const run = async () => {
       if (!selectedCard) {
         setDetailedData([]);
+        setHasMore(false);
+        return;
+      }
+      if (isAcLevelAtSlp) {
+        // AC-level metrics hidden at SLP level per requirements
+        setDetailedData([]);
+        setHasMore(false);
         return;
       }
 
       setLoading(true);
       try {
-        let options: FetchMetricsOptions = {
-          level: selectedLevel as any || 'zone'
-        };
-        
-        // Set up filtering options based on selected level
-        if (selectedSlpId) {
-          options.handler_id = selectedSlpId;
-        } else if (selectedAcId) {
-          const selectedAc = acs.find(ac => ac.uid === selectedAcId);
-          options.handler_id = selectedAcId;
-          options.assemblies = selectedAc?.assembly ? [selectedAc.assembly] : (selectedAssembly ? [selectedAssembly] : []);
-        } else if (selectedAssembly) {
-          options.assemblies = [selectedAssembly];
-        } else if (selectedZoneId) {
-          const selectedZone = zones.find(z => z.id === selectedZoneId);
-          options.assemblies = selectedZone?.assemblies || [];
+        const options = buildOptions();
+        // If search active (debounced), we fallback to non-paged full search fetch for now
+        if (debouncedSearch) {
+          // Basic client-side search fallback:
+          const all = await fetchDetailedData(selectedCard, options);
+          const term = debouncedSearch.toLowerCase();
+          const filtered = all.filter((row: any) => JSON.stringify(row).toLowerCase().includes(term));
+          setDetailedData(filtered);
+          setHasMore(false);
+          setCursorBefore(undefined);
+          return;
         }
 
-        // Add date range if provided
-        if (dateRange && dateRange.startDate && dateRange.endDate) {
-          options.dateRange = dateRange;
-        }
-        if (selectedVertical) {
-          options.vertical = (selectedVertical as 'wtm' | 'shakti-abhiyaan');
+        // Try paged fetch if available
+        if (typeof fetchDetailedDataPaged === 'function') {
+          const res = await fetchDetailedDataPaged(selectedCard, { ...options, pageSize: 25, cursorBefore: undefined });
+          setDetailedData(res.items || []);
+          setHasMore(!!res.hasMore);
+          setCursorBefore(res.nextCursor?.lastOrderValue);
+          return;
         }
 
-        console.log('[DetailedView] Fetching detailed data with options:', options);
+        // Fallback to legacy full fetch and slice
         const data = await fetchDetailedData(selectedCard, options);
-        setDetailedData(data);
-      } catch (error) {
-        console.error('[DetailedView] Error fetching detailed data:', error);
+        setDetailedData(data.slice(0, 25));
+        setHasMore(data.length > 25);
+        // Derive cursor from min date-like field present
+        const dateKeyGuess = ['created_at','createdAt','date_submitted','dateFormatted','date','dateOfVisit'];
+        const numericDates = data
+          .map((d: any) => {
+            for (const k of dateKeyGuess) {
+              if (typeof d[k] === 'number') return d[k];
+              if (typeof d[k] === 'string') {
+                const t = Date.parse(d[k]);
+                if (!isNaN(t)) return t;
+              }
+            }
+            return undefined;
+          })
+          .filter(Boolean) as number[];
+        setCursorBefore(numericDates.length ? Math.min(...numericDates) : undefined);
+      } catch (e) {
+        console.error('[DetailedView] Error loading data:', e);
         setDetailedData([]);
+        setHasMore(false);
+        setCursorBefore(undefined);
       } finally {
         setLoading(false);
       }
     };
+    run();
+  }, [selectedCard, isAcLevelAtSlp, debouncedSearch, buildOptions]);
 
-    fetchData();
-  }, [selectedCard, selectedLevel, selectedZoneId, selectedAssembly, selectedAcId, selectedSlpId, zones, acs, dateRange, selectedVertical]);
+  const handleLoadMore = async () => {
+    if (!selectedCard || loading || !hasMore) return;
+    setLoading(true);
+    try {
+      const options = buildOptions();
+      if (typeof fetchDetailedDataPaged === 'function') {
+        const res = await fetchDetailedDataPaged(selectedCard, { ...options, pageSize: 25, cursorBefore });
+        const next = res.items || [];
+        setDetailedData(prev => [...prev, ...next]);
+        setHasMore(!!res.hasMore);
+        setCursorBefore(res.nextCursor?.lastOrderValue);
+        return;
+      }
+      // Legacy fallback: re-fetch all then take next slice
+      const all = await fetchDetailedData(selectedCard, options);
+      const nextSlice = all.slice(detailedData.length, detailedData.length + 25);
+      setDetailedData(prev => [...prev, ...nextSlice]);
+      setHasMore(all.length > detailedData.length + nextSlice.length);
+    } catch (e) {
+      console.error('[DetailedView] Load more failed:', e);
+      setHasMore(false);
+    } finally {
+      setLoading(false);
+    }
+  };
   const getCardTitle = (cardId: string) => {
     const titles: Record<string, string> = {
       meetings: 'Meeting Details',
@@ -134,29 +236,41 @@ const DetailedView: React.FC<Props> = ({
     }
 
     // Render specific components based on card type
+    const footer = !debouncedSearch && hasMore ? (
+      <div className="flex justify-center">
+        <button
+          onClick={handleLoadMore}
+          disabled={loading}
+          className="px-4 py-2 rounded-md bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700"
+        >
+          {loading ? 'Loading…' : 'Load More'}
+        </button>
+      </div>
+    ) : undefined;
+
     if (selectedCard === 'meetings') {
-      return <MeetingsList data={detailedData} loading={loading} />;
+      return <MeetingsList data={detailedData} loading={loading} footer={footer} />;
     }
     
     if (selectedCard === 'videos' || selectedCard === 'acVideos') {
       const videoTitle = selectedCard === 'acVideos' ? 'AC Videos' : 'Local Issue Videos';
-      return <VideosList data={detailedData} loading={loading} title={videoTitle} />;
+      return <VideosList data={detailedData} loading={loading} title={videoTitle} footer={footer} />;
     }
     
     if (selectedCard === 'forms' || selectedCard === 'shaktiForms') {
-      return <FormsList data={detailedData} loading={loading} />;
+      return <FormsList data={detailedData} loading={loading} footer={footer} />;
     }
 
     if (['clubs','shaktiClubs','centralWaGroups','assemblyWaGroups','shaktiAssemblyWaGroups'].includes(selectedCard)) {
-      return <ClubsList data={detailedData} loading={loading} activityType={selectedCard} />;
+      return <ClubsList data={detailedData} loading={loading} activityType={selectedCard} footer={footer} />;
     }
 
     if (selectedCard === 'chaupals') {
-      return <ChaupalsList data={detailedData} loading={loading} />;
+      return <ChaupalsList data={detailedData} loading={loading} footer={footer} />;
     }
 
     if (selectedCard === 'nukkadAc' || selectedCard === 'nukkadSlp') {
-      return <NukkadMeetingsList data={detailedData} loading={loading} />;
+      return <NukkadMeetingsList data={detailedData} loading={loading} footer={footer} />;
     }
 
     // For all other activity types, use ActivitiesList
@@ -169,6 +283,7 @@ const DetailedView: React.FC<Props> = ({
         loading={loading} 
         activityType={selectedCard}
         showColumnFilter={supportsColumnFilter}
+        footer={footer}
       />
     );
   };
@@ -181,15 +296,30 @@ const DetailedView: React.FC<Props> = ({
             <h3 className="text-lg font-semibold text-gray-900">
               {getCardTitle(selectedCard)}
             </h3>
-            <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-              {getLevelContext(selectedLevel)}
-            </span>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search across results…"
+                  className="w-56 pl-9 pr-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                />
+                <svg className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                {getLevelContext(selectedLevel)}
+              </span>
+            </div>
           </div>
         )}
         {renderDetailedContent()}
       </div>
     </div>
   );
+
 };
 
 export default DetailedView;

@@ -2,14 +2,14 @@
 // Detailed list for Nukkad Meetings (AC and SLP)
 import React from 'react';
 import DataTable from './DataTable';
-import { exportNukkadToXlsx } from '@/app/utils/exporters/nukkadXlsx';
 
 interface Props {
   data: any[];
   loading?: boolean;
+  footer?: React.ReactNode;
 }
 
-const NukkadMeetingsList: React.FC<Props> = ({ data, loading = false }) => {
+const NukkadMeetingsList: React.FC<Props> = ({ data, loading = false, footer }) => {
   const columns = [
     {
       key: 'dateOfVisit',
@@ -140,30 +140,15 @@ const NukkadMeetingsList: React.FC<Props> = ({ data, loading = false }) => {
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h4 className="text-lg font-medium text-gray-900">Nukkad Meetings</h4>
-        <div className="flex items-center gap-3">
-          <div className="text-sm text-gray-500">Total meetings: {data.length}</div>
-          <button
-            type="button"
-            onClick={() => exportNukkadToXlsx(data, { metric: 'Nukkad_Meetings' })}
-            disabled={loading || !data?.length}
-            className="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700"
-          >
-            Export XLSX
-          </button>
-        </div>
-      </div>
-      <DataTable
-        data={data}
-        columns={columns as any}
-        loading={loading}
-        emptyMessage="No Nukkad Meetings found for the selected criteria"
-        searchable={true}
-        pageSize={10}
-      />
-    </div>
+    <DataTable
+      data={data}
+      columns={columns as any}
+      loading={loading}
+      emptyMessage="No Nukkad Meetings found for the selected criteria"
+      searchable={false}
+      clientPaginate={false}
+      footer={footer}
+    />
   );
 };
 

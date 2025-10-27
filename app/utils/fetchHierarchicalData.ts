@@ -1654,23 +1654,22 @@ import { Zone, AC, SLP } from '../../models/hierarchicalTypes';
 
 /**
  * Fetch list of zones.
- * Assumes users collection stores Zonal Incharges with `role` === 'Zonal Incharge' and has `zoneId` & `zoneName` fields.
+ * Reads zoneName from admin-users.zoneName property and formats display as "Zone - {zoneName}".
  */
 export const fetchZones = async (): Promise<Zone[]> => {
   try {
     const q = query(collection(db, 'admin-users'), where('role', '==', 'zonal-incharge'));
     const snap = await getDocs(q);
     const zones: Zone[] = [];
-    let counter = 0;
     snap.forEach((d: QueryDocumentSnapshot) => {
-      counter += 1;
       const data = d.data() as any;
       const id = d.id;
       const assemblies: string[] = data.assemblies || [];
-      const zonalName: string = data.name ? String(data.name) : 'Unknown';
-      const name = `Zone ${counter} - ${zonalName}`;
+      const zoneName: string = data.zoneName ? String(data.zoneName) : 'Unknown';
+      const inchargeName: string = data.name ? String(data.name) : 'Unknown';
+      const name = `Zone - ${zoneName}`;
       const parentVertical: string = data.parentVertical || 'wtm';
-      zones.push({ id, name, assemblies, parentVertical });
+      zones.push({ id, name, assemblies, parentVertical, zoneName, inchargeName });
     });
     // Sort alphabetically
     zones.sort((a, b) => a.name.localeCompare(b.name));
@@ -1684,6 +1683,7 @@ export const fetchZones = async (): Promise<Zone[]> => {
 /**
  * Fetch list of zones specifically for WTM vertical.
  * Filters by parentVertical='wtm' AND role='zonal-incharge' from admin-users collection.
+ * Reads zoneName from admin-users.zoneName property and formats display as "Zone - {zoneName}".
  */
 export const fetchZonesForWTM = async (): Promise<Zone[]> => {
   try {
@@ -1694,16 +1694,15 @@ export const fetchZonesForWTM = async (): Promise<Zone[]> => {
     );
     const snap = await getDocs(q);
     const zones: Zone[] = [];
-    let counter = 0;
     snap.forEach((d: QueryDocumentSnapshot) => {
-      counter += 1;
       const data = d.data() as any;
       const id = d.id;
       const assemblies: string[] = data.assemblies || [];
-      const zonalName: string = data.name ? String(data.name) : 'Unknown';
-      const name = `Zone ${counter} - ${zonalName}`;
+      const zoneName: string = data.zoneName ? String(data.zoneName) : 'Unknown';
+      const inchargeName: string = data.name ? String(data.name) : 'Unknown';
+      const name = `Zone - ${zoneName}`;
       const parentVertical: string = 'wtm'; // Always WTM for this function
-      zones.push({ id, name, assemblies, parentVertical });
+      zones.push({ id, name, assemblies, parentVertical, zoneName, inchargeName });
     });
     // Sort alphabetically
     zones.sort((a, b) => a.name.localeCompare(b.name));
@@ -2752,6 +2751,256 @@ export const fetchDetailedData = async (metricType: string, options: FetchMetric
       console.warn(`[fetchDetailedData] Unknown metric type: ${metricType}`);
       return [];
   }
+};
+
+/**
+ * Lightweight paged fetcher (fallback) that wraps fetchDetailedData
+ * - Orders results by best-effort date field guess (DESC)
+ * - Applies a simple cursor (items with orderValue < cursorBefore)
+ * - Returns page items and nextCursor.lastOrderValue for subsequent calls
+ *
+ * NOTE: This is an in-memory pagination fallback intended to unblock UI.
+ *       It will be replaced by a proper Paged Query Controller with Firestore cursors.
+ */
+export const fetchDetailedDataPaged = async (
+  metricType: string,
+  options: FetchMetricsOptions & { pageSize?: number; cursorBefore?: number | string | undefined }
+): Promise<{ items: any[]; hasMore: boolean; nextCursor?: { lastOrderValue: number } }> => {
+  const { pageSize = 25, cursorBefore } = options as { pageSize?: number; cursorBefore?: number | string | undefined };
+
+  // Try server-side paging for supported metrics; fallback to in-memory
+  const supported = new Set([
+    'videos', 'acVideos', 'forms', 'chaupals', 'clubs', 'nukkadAc', 'nukkadSlp'
+  ]);
+  try {
+    if (supported.has(metricType)) {
+      const res = await serverPagedFetchForMetric(metricType, options, pageSize, cursorBefore);
+      // If server paging yielded items, return directly
+      if (res) return res;
+    }
+  } catch (err) {
+    console.warn('[fetchDetailedDataPaged] Server-side paging failed, falling back:', err);
+  }
+
+  // Fallback: Reuse existing detailed fetcher and paginate in-memory
+  const all = await fetchDetailedData(metricType, options);
+
+  // Heuristics to derive an order value (ms since epoch)
+  const toMs = (val: any): number | undefined => {
+    if (val === null || val === undefined) return undefined;
+    if (typeof val === 'number') return val;
+    if (typeof val === 'string') {
+      const t = Date.parse(val);
+      return isNaN(t) ? undefined : t;
+    }
+    // Firestore Timestamp objects
+    // - { seconds: number, nanoseconds: number }
+    if (typeof val === 'object') {
+      if (typeof (val as any).toDate === 'function') {
+        try { return (val as any).toDate().getTime(); } catch {}
+      }
+      if (typeof (val as any).seconds === 'number') {
+        return (val as any).seconds * 1000;
+      }
+    }
+    return undefined;
+  };
+
+  const candidateKeys: string[] = [
+    // Common normalized fields first
+    'dateOfVisit', 'date_submitted', 'dateFormatted', 'date',
+    // Raw created fields
+    'createdAt', 'created_at'
+  ];
+
+  const withOrder = all.map((row: any) => {
+    let v: number | undefined;
+    for (const k of candidateKeys) {
+      v = toMs(row[k]);
+      if (typeof v === 'number') break;
+    }
+    // As a final fallback, try nested metadata
+    if (v === undefined && row?.metadata) {
+      for (const k of candidateKeys) {
+        v = toMs(row.metadata[k]);
+        if (typeof v === 'number') break;
+      }
+    }
+    return { row, orderValue: typeof v === 'number' ? v : 0 };
+  });
+
+  // Sort DESC (newest first)
+  withOrder.sort((a, b) => b.orderValue - a.orderValue);
+
+  // Apply cursor: include items strictly older than cursorBefore
+  let filtered = withOrder;
+  if (cursorBefore !== undefined && cursorBefore !== null) {
+    const cbNum = typeof cursorBefore === 'string' ? (Date.parse(cursorBefore) || 0) : Number(cursorBefore);
+    filtered = withOrder.filter(item => item.orderValue < cbNum);
+  }
+
+  const pageItems = filtered.slice(0, pageSize).map(x => x.row);
+  const hasMore = filtered.length > pageItems.length;
+  const lastOrder = pageItems.length ? Math.min(...pageItems.map((r: any) => {
+    let v: number | undefined;
+    for (const k of candidateKeys) {
+      const t = toMs(r[k]);
+      if (typeof t === 'number') { v = t; break; }
+    }
+    if (v === undefined && r?.metadata) {
+      for (const k of candidateKeys) {
+        const t = toMs(r.metadata[k]);
+        if (typeof t === 'number') { v = t; break; }
+      }
+    }
+    return typeof v === 'number' ? v : 0;
+  })) : undefined;
+
+  return {
+    items: pageItems,
+    hasMore,
+    nextCursor: hasMore && typeof lastOrder === 'number' ? { lastOrderValue: lastOrder } : undefined,
+  };
+};
+
+// Helper: attempt server-side Firestore pagination for specific metrics
+const serverPagedFetchForMetric = async (
+  metricType: string,
+  options: FetchMetricsOptions & { cursorBefore?: number | string | undefined },
+  pageSize: number,
+  cursorBefore?: number | string
+): Promise<{ items: any[]; hasMore: boolean; nextCursor?: { lastOrderValue: number } } | null> => {
+  const assemblies = options.assemblies || [];
+  const handler_id = options.handler_id;
+  const vertical = options.vertical;
+  const dateRange = options.dateRange;
+
+  // Determine collection, filters, and date field per metric
+  type MetricConfig = {
+    collectionName: 'slp-activity' | 'wtm-slp';
+    formTypes: string[]; // match against either form_type or legacy type
+    dateField: string; // field used for ordering and bounds
+    dateKind: 'string' | 'number';
+    includeParentVerticalEq?: 'shakti-abhiyaan'; // when filtering shakti explicitly
+    excludeParentVerticalShaktiClient?: boolean; // when we must exclude client-side
+  };
+
+  const cfgMap: Record<string, MetricConfig> = {
+    videos: { collectionName: 'slp-activity', formTypes: ['local-issue-video'], dateField: 'date_submitted', dateKind: 'string', excludeParentVerticalShaktiClient: true },
+    acVideos: { collectionName: 'wtm-slp', formTypes: ['local-issue-video'], dateField: 'date_submitted', dateKind: 'string' },
+    forms: { collectionName: 'slp-activity', formTypes: ['mai-bahin-yojna'], dateField: 'date', dateKind: 'string', excludeParentVerticalShaktiClient: true },
+    chaupals: { collectionName: 'slp-activity', formTypes: ['weekly_meeting'], dateField: 'dateFormatted', dateKind: 'string', excludeParentVerticalShaktiClient: true },
+    clubs: { collectionName: 'slp-activity', formTypes: ['panchayat-wa'], dateField: 'createdAt', dateKind: 'string', excludeParentVerticalShaktiClient: true },
+    nukkadAc: { collectionName: 'wtm-slp', formTypes: ['nukkad_meeting'], dateField: 'createdAt', dateKind: 'number', includeParentVerticalEq: vertical === 'shakti-abhiyaan' ? 'shakti-abhiyaan' : undefined, excludeParentVerticalShaktiClient: vertical !== 'shakti-abhiyaan' },
+    nukkadSlp: { collectionName: 'slp-activity', formTypes: ['nukkad_meeting'], dateField: 'createdAt', dateKind: 'number', excludeParentVerticalShaktiClient: true },
+  } as const;
+
+  const cfg = cfgMap[metricType];
+  if (!cfg) return null;
+
+  // Normalize end bound using cursorBefore if provided
+  const convertMsToDateStr = (ms: number) => new Date(ms).toISOString().slice(0,10);
+  let endBound: string | number | undefined = undefined;
+  if (cursorBefore !== undefined && cursorBefore !== null) {
+    endBound = typeof cursorBefore === 'number' ? (cfg.dateKind === 'string' ? convertMsToDateStr(cursorBefore) : cursorBefore) : cursorBefore;
+  } else if (dateRange?.endDate) {
+    endBound = cfg.dateKind === 'string' ? dateRange.endDate : new Date(`${dateRange.endDate}T23:59:59.999Z`).getTime();
+  }
+  const startBound = dateRange?.startDate
+    ? (cfg.dateKind === 'string' ? dateRange.startDate : new Date(`${dateRange.startDate}T00:00:00.000Z`).getTime())
+    : undefined;
+
+  // Build two base queries (form_type and legacy type) and merge
+  const colRef = collection(db, cfg.collectionName);
+
+  const buildBase = (useLegacyType: boolean) => {
+    let qBase: any = query(colRef, where(useLegacyType ? 'type' : 'form_type', '==', cfg.formTypes[0]));
+    if (assemblies.length > 0) {
+      // Assemblies filtered later via chunking
+    }
+    if (handler_id) {
+      qBase = query(qBase, where('handler_id', '==', handler_id));
+    }
+    if (cfg.includeParentVerticalEq) {
+      qBase = query(qBase, where('parentVertical', '==', cfg.includeParentVerticalEq));
+    }
+    // Apply date bounds if available. Use <= endBound and >= startBound.
+    if (startBound !== undefined) {
+      qBase = query(qBase, where(cfg.dateField as any, '>=', startBound as any));
+    }
+    if (endBound !== undefined) {
+      qBase = query(qBase, where(cfg.dateField as any, '<', endBound as any));
+    }
+    // Order by dateField DESC for pagination
+    qBase = query(qBase, orderBy(cfg.dateField as any, 'desc'), limit(pageSize));
+    return qBase;
+  };
+
+  // Execute with optional assembly chunking
+  const execWithAssemblies = async (qBase: any) => {
+    if (assemblies.length > 0) {
+      const uniqueAssemblies = [...new Set(assemblies)];
+      if (uniqueAssemblies.length <= 10) {
+        const q1 = query(qBase, where('assembly', 'in', uniqueAssemblies));
+        return [await getDocs(q1)];
+      } else {
+        const chunks: string[][] = [];
+        for (let i = 0; i < uniqueAssemblies.length; i += 10) {
+          chunks.push(uniqueAssemblies.slice(i, i + 10));
+        }
+        const promises = chunks.map(chunk => getDocs(query(qBase, where('assembly', 'in', chunk))));
+        return await Promise.all(promises);
+      }
+    }
+    return [await getDocs(qBase)];
+  };
+
+  const [snaps1, snaps2] = await Promise.all([
+    execWithAssemblies(buildBase(false)),
+    execWithAssemblies(buildBase(true))
+  ]);
+
+  // Merge and dedupe by doc id, then apply client-side vertical exclusion if needed
+  const map = new Map<string, any>();
+  const add = (arr: any[]) => {
+    arr.forEach(snap => {
+      snap.forEach((d: any) => {
+        if (!map.has(d.id)) map.set(d.id, { ...d.data(), id: d.id });
+      });
+    });
+  };
+  add(snaps1); add(snaps2);
+  let merged = Array.from(map.values());
+
+  if (cfg.excludeParentVerticalShaktiClient) {
+    merged = merged.filter((doc: any) => doc?.parentVertical !== 'shakti-abhiyaan');
+  }
+
+  // Sort DESC by date field and truncate to pageSize; compute hasMore
+  const toMsLocal = (v: any): number => {
+    if (cfg.dateKind === 'number') {
+      if (typeof v === 'number') return v;
+      if (typeof v === 'object' && typeof v?.seconds === 'number') return v.seconds * 1000;
+      return 0;
+    } else {
+      if (typeof v === 'string') {
+        const t = Date.parse(v);
+        return isNaN(t) ? 0 : t;
+      }
+      return 0;
+    }
+  };
+  merged.sort((a: any, b: any) => toMsLocal(b[cfg.dateField]) - toMsLocal(a[cfg.dateField]));
+
+  const items = merged.slice(0, pageSize);
+  const hasMore = merged.length > pageSize;
+  const lastOrderValue = items.length ? Math.min(...items.map((it: any) => toMsLocal(it[cfg.dateField]))) : undefined;
+
+  return {
+    items,
+    hasMore,
+    nextCursor: hasMore && typeof lastOrderValue === 'number' ? { lastOrderValue } : undefined
+  };
 };
 
 // END OF SCAFFOLDING

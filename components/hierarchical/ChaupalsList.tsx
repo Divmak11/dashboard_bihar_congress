@@ -3,14 +3,14 @@
 import React from 'react';
 import DataTable from './DataTable';
 import { ChaupalActivity } from '../../models/types';
-import { exportChaupalsToXlsx } from '@/app/utils/exporters/chaupalsXlsx';
 
 interface ChaupalsListProps {
   data: ChaupalActivity[];
   loading?: boolean;
+  footer?: React.ReactNode;
 }
 
-const ChaupalsList: React.FC<ChaupalsListProps> = ({ data, loading = false }) => {
+const ChaupalsList: React.FC<ChaupalsListProps> = ({ data, loading = false, footer }) => {
   const columns = [
     {
       key: 'dateFormatted',
@@ -118,16 +118,8 @@ const ChaupalsList: React.FC<ChaupalsListProps> = ({ data, loading = false }) =>
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h4 className="text-lg font-medium text-gray-900">Chaupal Sessions</h4>
-        <div className="flex items-center gap-3">
-          <div className="text-sm text-gray-500">Total sessions: {data.length}</div>
-          <button
-            type="button"
-            onClick={() => exportChaupalsToXlsx(data, { metric: 'Chaupal_Sessions' })}
-            disabled={loading || !data?.length}
-            className="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700"
-          >
-            Export XLSX
-          </button>
+        <div className="text-sm text-gray-500">
+          Total sessions: {data.length}
         </div>
       </div>
 
@@ -136,8 +128,9 @@ const ChaupalsList: React.FC<ChaupalsListProps> = ({ data, loading = false }) =>
         columns={columns}
         loading={loading}
         emptyMessage="No chaupal sessions found for the selected criteria"
-        searchable={true}
-        pageSize={10}
+        searchable={false}
+        clientPaginate={false}
+        footer={footer}
       />
     </div>
   );

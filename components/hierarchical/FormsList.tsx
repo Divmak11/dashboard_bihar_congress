@@ -3,14 +3,14 @@
 import React from 'react';
 import DataTable from './DataTable';
 import { MaiBahinYojnaActivity } from '../../models/types';
-import { exportFormsToXlsx } from '@/app/utils/exporters/formsXlsx';
 
 interface FormsListProps {
   data: MaiBahinYojnaActivity[];
   loading?: boolean;
+  footer?: React.ReactNode;
 }
 
-const FormsList: React.FC<FormsListProps> = ({ data, loading = false }) => {
+const FormsList: React.FC<FormsListProps> = ({ data, loading = false, footer }) => {
   const columns = [
     {
       key: 'date',
@@ -141,16 +141,8 @@ const FormsList: React.FC<FormsListProps> = ({ data, loading = false }) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h4 className="text-lg font-medium text-gray-900">Mai Bahin Yojna Forms</h4>
-        <div className="flex items-center gap-3">
-          <div className="text-sm text-gray-500">Total records: {data.length}</div>
-          <button
-            type="button"
-            onClick={() => exportFormsToXlsx(data, { metric: 'Mai_Bahin_Yojna_Forms' })}
-            disabled={loading || !data?.length}
-            className="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700"
-          >
-            Export XLSX
-          </button>
+        <div className="text-sm text-gray-500">
+          Total records: {data.length}
         </div>
       </div>
       
@@ -179,8 +171,9 @@ const FormsList: React.FC<FormsListProps> = ({ data, loading = false }) => {
         columns={columns}
         loading={loading}
         emptyMessage="No forms found for the selected criteria"
-        searchable={true}
-        pageSize={10}
+        searchable={false}
+        clientPaginate={false}
+        footer={footer}
       />
     </div>
   );
