@@ -609,12 +609,29 @@ Report Generation (WTM) — Total Nukkads (Display-only):
   handler_id: string,      // Not displayed; used for joins when needed
   role: 'AC' | 'SLP' | 'Saathi',
   status: string,          // e.g., 'Active'
-  createdAt: number        // Epoch ms; used for date-range filtering (UTC day boundaries)
+  createdAt: number,       // Epoch ms; used for date-range filtering (UTC day boundaries)
+  parentVertical?: 'wtm' | 'shakti-abhiyaan'  // Vertical assignment (optional)
 }
 ```
 **Query Pattern**: `where('createdAt','>=', startMs), where('createdAt','<=', endMs), orderBy('createdAt')` with cursor pagination.
 **Display Rule**: Hide `id`, `handler_id`, and `createdAt` in UI; show `name`, `phoneNumber`, `assembly`, `role`, `status`.
 **Ordering**: Role precedence `AC > SLP > Saathi`, then name.
+
+**Handler ID Semantics for Shakti Abhiyaan:**
+- **AC**: `handler_id` = AC's own phone number (self-referential)
+- **SLP**: `handler_id` = Parent AC's phone number (from "AC Phone No." in source data)
+- **Saathi**: `handler_id` = Parent SLP's phone number (from "SLP Phone No." in source data)
+
+**Import Script**: `scripts/import-d2d-shakti-members.js`
+- Parses `workbook.xlsx` with 3 sheets: "AC Details", "SLP Details", "Saathi Details"
+- Normalizes phone numbers to last 10 digits for consistent matching
+- Derives assembly for SLP/Saathi by traversing parent hierarchy (SLP→AC→Assembly, Saathi→SLP→AC→Assembly)
+- Generates deterministic document IDs: `shakti-{role}-{phoneNumber}`
+- Outputs:
+  - `scripts/output/d2d_valid_entries.json`: Valid entries ready for Firestore upload
+  - `scripts/output/d2d_conflicts.json`: Entries with missing parent references requiring review
+- Deduplicates by (role + phoneNumber), last entry wins
+- Sets `parentVertical: 'shakti-abhiyaan'` for all entries
 
 #### D2D Members List UI Behavior (Show-all Mode)
 - Loader: `components/ghar-ghar-yatra/D2DMembersList.tsx`

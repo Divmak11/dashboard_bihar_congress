@@ -12,6 +12,7 @@ export interface D2DMember {
   role: D2DRole;
   status: string; // e.g., "Active"
   createdAt: number; // epoch ms (not displayed)
+  parentVertical?: 'wtm' | 'shakti-abhiyaan'; // vertical assignment (optional for backward compatibility)
 }
 
 export interface D2DMemberMetrics {
