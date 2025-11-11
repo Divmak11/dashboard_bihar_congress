@@ -637,11 +637,12 @@ Report Generation (WTM) — Total Nukkads (Display-only):
 - Loader: `components/ghar-ghar-yatra/D2DMembersList.tsx`
 - Fetcher: `app/utils/fetchD2DMembers.ts`
 - Behavior:
-  - Uses `fetchAllD2DMembersInRange(dateRange)` to page through Firestore until the full set in range is loaded (cursor on `createdAt` ASC, page size 500).
+  - Uses `fetchAllD2DMembers()` to page through the entire `d2d_members` collection (no date filtering; cursor on `createdAt` ASC, page size 500).
   - Metrics are attached once via `attachGgyMetricsToMembers()` using `fetchOverviewSourceData()` (summary-first source) for efficient per-member aggregations.
   - Search is fully in-memory (name, assembly, phone substring; phone digits normalized). Sorting is client-side with role precedence, then selected column.
-  - Pagination UI is removed. The table represents the entire result set for the selected date range.
-- Performance notes:
+  - Default sort is by `Total Punches` in descending order to surface high activity first.
+  - Pagination UI is removed. The table represents the entire roster; only the metrics reflect the selected date range.
+  - Performance notes:
   - Default date range remains “lastWeek” to keep loads bounded; selecting very wide ranges may increase load time and memory.
   - Consider using narrower ranges for best UX. Future enhancement could add server-side tokenized search if needed.
 
@@ -2240,6 +2241,101 @@ Added to `GharGharYatraSummary` interface:
 
 ---
 
-*Last Updated: October 2025*
-*Version: 1.6.0*
-*Changes: Added Ghar-Ghar Yatra pre-calculated aggregates, Unidentified Entries tab, and enhanced data model documentation*
+## Recommended Optimizations
+
+### GGY D2D Members List Performance
+
+**Current Behavior:**
+- On every date range change, both roster and metrics are refetched
+- Roster fetch: ~ceil(M/500) sequential paginated queries on `d2d_members` collection
+- Metrics fetch: ~D getDoc + ~D getDocs calls (where D = days in range), chunked and parallel
+- Cache exists for metrics (`ggyCache` keyed by date range) but not for roster
+
+**Firebase Call Patterns:**
+
+*Initial Load (Last Week, D ≈ 7):*
+- Roster: ~2-3 queries for ~1,000 members (sequential pagination, 500/page)
+- Metrics: 1 range listing + ~7 main docs + ~7 slp_data subcollections = ~15 calls
+- Total: ~17-18 Firebase calls
+
+*Date Change (e.g., Last Week → Last Day):*
+- Roster: ~2-3 queries (refetched unnecessarily since roster is date-independent)
+- Metrics: If cached for that range, 0 calls; otherwise ~3 calls for 1 day
+- Total: ~2-3 to ~5-6 Firebase calls
+
+*Search/Sort/Export:*
+- Zero Firebase calls (all in-memory operations)
+
+**Parallelism:**
+- ✅ Metrics: Parallel within chunks (25 for main docs, 20 for slp_data)
+- ❌ Roster: Sequential cursor-based pagination (standard Firestore pattern)
+- ❌ Roster + Metrics: Sequential (roster fetched first, then metrics attached)
+
+**Optimization Opportunities:**
+
+1. **Cache Roster Across Date Changes** (High Impact)
+   - Problem: Roster is independent of date but refetched on every date change
+   - Solution: Store roster in component state/ref after first fetch; only re-run `attachGgyMetricsToMembers()` on date change
+   - Impact: Eliminates ~ceil(M/500) queries per date change
+   - Implementation: Add `useRef` for roster, check if populated before fetching
+   - Files: `components/ghar-ghar-yatra/D2DMembersList.tsx`
+
+2. **Debounce/Cancel In-Flight Requests** (Medium Impact)
+   - Problem: Rapid date filter changes trigger overlapping fetches
+   - Solution: Add AbortController or request ID to ignore stale responses
+   - Impact: Prevents redundant fetches and state thrashing
+   - Implementation: Track request ID in state, compare before setState
+   - Files: `components/ghar-ghar-yatra/D2DMembersList.tsx`
+
+3. **Parallel Roster + Metrics Fetch** (Low-Medium Impact)
+   - Problem: Roster and metrics fetched sequentially
+   - Solution: Run `Promise.all([fetchAllD2DMembers(), fetchOverviewSourceData()])` then merge
+   - Impact: Reduces total load time by ~30-40% (overlap I/O wait)
+   - Trade-off: Slightly more complex error handling
+   - Files: `components/ghar-ghar-yatra/D2DMembersList.tsx`
+
+4. **Warm Common Range Caches** (Low Impact)
+   - Problem: First access to "Last Day" or "Last Week" always hits Firestore
+   - Solution: Prefetch these ranges in background on initial mount
+   - Impact: Instant subsequent date changes for common ranges
+   - Implementation: Fire-and-forget fetch in useEffect after initial load
+   - Files: `components/ghar-ghar-yatra/D2DMembersList.tsx`
+
+5. **Incremental Metrics for Sliding Windows** (Low Impact, Complex)
+   - Problem: Moving a 1-day window (e.g., yesterday → today) refetches all days
+   - Solution: Compute delta by adding new day and subtracting dropped day
+   - Impact: Reduces metrics fetch from D calls to 1-2 calls for sliding windows
+   - Trade-off: Requires holding per-day slp_data in memory; complex state management
+   - Files: `app/utils/fetchD2DMembers.ts`, `components/ghar-ghar-yatra/D2DMembersList.tsx`
+
+6. **Client Storage for Roster** (Low Impact, Optional)
+   - Problem: Roster refetched across browser sessions
+   - Solution: Store roster in `localStorage` with version hash
+   - Impact: Zero queries on subsequent visits (until roster changes)
+   - Trade-off: Stale data risk; needs invalidation strategy
+   - Files: `components/ghar-ghar-yatra/D2DMembersList.tsx`
+
+7. **Reduce SLP Sub-Collection Reads** (Low Impact, Data-Dependent)
+   - Problem: Always reads `slp_data` for per-member metrics
+   - Solution: If server-side pre-aggregation exists, use summary fields instead
+   - Impact: Could reduce ~D getDocs calls to 0 for metrics
+   - Trade-off: Requires backend changes; not applicable if per-member granularity needed
+   - Files: `app/utils/fetchGharGharYatraData.ts`
+
+**Priority Recommendation:**
+1. **Implement #1 (Cache Roster)** first → immediate 50-70% reduction in date-change queries
+2. **Implement #2 (Debounce)** second → prevents waste from rapid filter changes
+3. **Consider #3 (Parallel Fetch)** if initial load time is a concern
+4. Others are nice-to-have for marginal gains
+
+**References:**
+- Roster pagination: `app/utils/fetchD2DMembers.ts` → `fetchAllD2DMembers()`
+- Metrics source: `app/utils/fetchGharGharYatraData.ts` → `fetchOverviewSourceData()`
+- Metrics cache: `app/utils/cacheUtils.ts` → `ggyCache`
+- UI loader: `components/ghar-ghar-yatra/D2DMembersList.tsx` → `loadAll()`
+
+---
+
+*Last Updated: November 2025*
+*Version: 1.7.0*
+*Changes: Added Ghar-Ghar Yatra pre-calculated aggregates, Unidentified Entries tab, D2D roster decoupling, default metrics-high sort, and performance optimization recommendations*

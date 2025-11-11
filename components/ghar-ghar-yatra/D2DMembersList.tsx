@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import DateRangeFilter from '../DateRangeFilter';
 import { DateRange } from '../../models/gharGharYatraTypes';
 import { D2DMemberWithMetrics } from '../../models/d2dTypes';
-import { fetchAllD2DMembersInRange, attachGgyMetricsToMembers, roleWeight } from '../../app/utils/fetchD2DMembers';
+import { fetchAllD2DMembers, attachGgyMetricsToMembers, roleWeight } from '../../app/utils/fetchD2DMembers';
 
 // In 'show all' mode we do not paginate; full dataset is loaded once per date range
 
@@ -29,8 +29,9 @@ const D2DMembersList: React.FC = () => {
   const [search, setSearch] = useState<string>('');
   // Pagination removed in 'show all' mode
 
-  const [sortKey, setSortKey] = useState<SortKey>('name');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  // Default sorting: show highest work first (Total Punches DESC)
+  const [sortKey, setSortKey] = useState<SortKey>('totalPunches');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   const dateRange: DateRange = { startDate, endDate };
 
@@ -47,10 +48,10 @@ const D2DMembersList: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch ALL members for the range, then attach metrics once
-      console.time('[D2DMembersList] Fetch all members');
-      const d2dAll = await fetchAllD2DMembersInRange(dateRange);
-      console.timeEnd('[D2DMembersList] Fetch all members');
+      // Fetch ALL members (no date filtering), then attach metrics for the selected range
+      console.time('[D2DMembersList] Fetch all members (no date filter)');
+      const d2dAll = await fetchAllD2DMembers();
+      console.timeEnd('[D2DMembersList] Fetch all members (no date filter)');
 
       console.time('[D2DMembersList] Attach metrics');
       const withMetrics = await attachGgyMetricsToMembers(d2dAll, dateRange);
