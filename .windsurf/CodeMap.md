@@ -637,11 +637,12 @@ Report Generation (WTM) — Total Nukkads (Display-only):
 - Loader: `components/ghar-ghar-yatra/D2DMembersList.tsx`
 - Fetcher: `app/utils/fetchD2DMembers.ts`
 - Behavior:
-  - Uses `fetchAllD2DMembersInRange(dateRange)` to page through Firestore until the full set in range is loaded (cursor on `createdAt` ASC, page size 500).
+  - Uses `fetchAllD2DMembers()` to page through the entire `d2d_members` collection (no date filtering; cursor on `createdAt` ASC, page size 500).
   - Metrics are attached once via `attachGgyMetricsToMembers()` using `fetchOverviewSourceData()` (summary-first source) for efficient per-member aggregations.
   - Search is fully in-memory (name, assembly, phone substring; phone digits normalized). Sorting is client-side with role precedence, then selected column.
-  - Pagination UI is removed. The table represents the entire result set for the selected date range.
-- Performance notes:
+  - Default sort is by `Total Punches` in descending order to surface high activity first.
+  - Pagination UI is removed. The table represents the entire roster; only the metrics reflect the selected date range.
+  - Performance notes:
   - Default date range remains “lastWeek” to keep loads bounded; selecting very wide ranges may increase load time and memory.
   - Consider using narrower ranges for best UX. Future enhancement could add server-side tokenized search if needed.
 

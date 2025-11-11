@@ -206,3 +206,47 @@ export async function fetchAllD2DMembersInRange(
 
   return all;
 }
+
+/**
+ * Fetch ALL D2D members (no date filtering)
+ * - Paginates through the entire d2d_members collection
+ * - Orders by createdAt ASC and iterates with cursor until no more docs
+ * - Returns fully aggregated array, sorted by role precedence then name
+ */
+export async function fetchAllD2DMembers(): Promise<D2DMember[]> {
+  const PAGE_SIZE = 500; // Larger page size to reduce round-trips
+  let all: D2DMember[] = [];
+  let lastVisible: DocumentSnapshot | null = null;
+
+  while (true) {
+    const constraints: QueryConstraint[] = [
+      orderBy('createdAt', 'asc'),
+      limit(PAGE_SIZE),
+    ];
+    if (lastVisible) constraints.push(startAfter(lastVisible));
+
+    const qRef = query(collection(db, 'd2d_members'), ...constraints);
+    const snap = await getDocs(qRef);
+    const page: D2DMember[] = snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => ({
+      id: d.id,
+      ...(d.data() as Omit<D2DMember, 'id'>),
+    }));
+    all = all.concat(page);
+
+    if (snap.docs.length < PAGE_SIZE) {
+      // No more pages
+      break;
+    }
+    lastVisible = (snap.docs[snap.docs.length - 1] as DocumentSnapshot<DocumentData>) || null;
+    if (!lastVisible) break;
+  }
+
+  // Sort by role precedence then name for stable UI ordering
+  all.sort((a, b) => {
+    const rw = roleWeight(a.role) - roleWeight(b.role);
+    if (rw !== 0) return rw;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  return all;
+}
