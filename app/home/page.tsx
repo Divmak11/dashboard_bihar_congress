@@ -7,7 +7,8 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db } from "../utils/firebase";
 import { getWtmSlpSummary, getCurrentAdminUser } from "../utils/fetchFirebaseData";
 import { fetchYoutubeSummary } from "../utils/fetchYoutubeData";
-import { fetchManifestoSummary, LS_KEYS } from "../utils/fetchManifestoData";
+import { fetchManifestoSummary } from "../utils/fetchManifestoData";
+import { fetchMigrantSummary } from "../utils/fetchMigrantData";
 import { WtmSlpSummary } from "../../models/types";
 import { YoutubeSummaryMetrics } from "../../models/youtubeTypes";
 import { initializeCache, forceCacheRefresh, CACHE_KEYS } from "../utils/cacheUtils";
@@ -23,6 +24,7 @@ interface DashboardCardMetrics {
   youtubeMetrics: YoutubeSummaryMetrics | null;
   isLoading: boolean;
   manifestoTotalSurveys: number | null;
+  migrantTotalSurveys: number | null;
 }
 
 export default function HomePage() {
@@ -32,7 +34,8 @@ export default function HomePage() {
     wtmSlpMetrics: null,
     youtubeMetrics: null,
     isLoading: true,
-    manifestoTotalSurveys: null
+    manifestoTotalSurveys: null,
+    migrantTotalSurveys: null
   });
   const [role, setRole] = useState<string | null>(null);
   const [cacheInitialized, setCacheInitialized] = useState(false);
@@ -118,16 +121,16 @@ export default function HomePage() {
       console.log('[HomePage] Admin user confirmed - fetching dashboard data');
       setMetrics(prev => ({ ...prev, isLoading: true }));
       
-      // Fetch summaries in parallel with caching
-      // Only fetch Manifesto summary if a token exists in localStorage; otherwise show "Login required"
-      const manifestoTokenExists = typeof window !== 'undefined' && !!localStorage.getItem(LS_KEYS.TOKEN);
-      const [wtmSlpSummary, youtubeSummary, manifestoSummary] = await Promise.all([
+      // Fetch summaries in parallel with caching (auto-login if needed)
+      const [wtmSlpSummary, youtubeSummary, manifestoSummary, migrantSummary] = await Promise.all([
         // Fetch WTM-SLP summary for all time (no date parameters) - uses caching for homepage
         getWtmSlpSummary(undefined, undefined, undefined),
         // Fetch YouTube summary for admin only - uses caching
         fetchYoutubeSummary(),
-        // Manifesto summary (optional)
-        manifestoTokenExists ? fetchManifestoSummary() : Promise.resolve({ totalSurveys: 0 })
+        // Manifesto summary (auto-login inside util)
+        fetchManifestoSummary(),
+        // Migrant summary (auto-login inside util)
+        fetchMigrantSummary()
       ]);
       
       console.log('[HomePage] WTM-SLP summary data:', wtmSlpSummary);
@@ -138,7 +141,8 @@ export default function HomePage() {
         wtmSlpMetrics: wtmSlpSummary,
         youtubeMetrics: youtubeSummary,
         isLoading: false,
-        manifestoTotalSurveys: manifestoTokenExists ? (manifestoSummary?.totalSurveys || 0) : null
+        manifestoTotalSurveys: manifestoSummary?.totalSurveys ?? 0,
+        migrantTotalSurveys: migrantSummary?.totalSurveys ?? 0
       });
       
     } catch (error) {
@@ -147,7 +151,8 @@ export default function HomePage() {
         wtmSlpMetrics: null,
         youtubeMetrics: null,
         isLoading: false,
-        manifestoTotalSurveys: null
+        manifestoTotalSurveys: null,
+        migrantTotalSurveys: null
       });
     }
   }, [user?.uid, router]);
@@ -168,21 +173,27 @@ export default function HomePage() {
     
     try {
       // Clear caches
-      forceCacheRefresh([CACHE_KEYS.WTM_SLP_SUMMARY, CACHE_KEYS.YOUTUBE_SUMMARY, CACHE_KEYS.MANIFESTO_SUMMARY]);
+      forceCacheRefresh([
+        CACHE_KEYS.WTM_SLP_SUMMARY,
+        CACHE_KEYS.YOUTUBE_SUMMARY,
+        CACHE_KEYS.MANIFESTO_SUMMARY,
+        CACHE_KEYS.MIGRANT_SUMMARY
+      ]);
       
       // Fetch fresh data
-      const manifestoTokenExists = typeof window !== 'undefined' && !!localStorage.getItem(LS_KEYS.TOKEN);
-      const [wtmSlpSummary, youtubeSummary, manifestoSummary] = await Promise.all([
+      const [wtmSlpSummary, youtubeSummary, manifestoSummary, migrantSummary] = await Promise.all([
         getWtmSlpSummary(undefined, undefined, undefined, undefined, undefined, true), // forceRefresh = true
         fetchYoutubeSummary(true), // forceRefresh = true
-        manifestoTokenExists ? fetchManifestoSummary(true) : Promise.resolve({ totalSurveys: 0 })
+        fetchManifestoSummary(true),
+        fetchMigrantSummary(true)
       ]);
       
       setMetrics({
         wtmSlpMetrics: wtmSlpSummary,
         youtubeMetrics: youtubeSummary,
         isLoading: false,
-        manifestoTotalSurveys: manifestoTokenExists ? (manifestoSummary?.totalSurveys || 0) : null
+        manifestoTotalSurveys: manifestoSummary?.totalSurveys ?? 0,
+        migrantTotalSurveys: migrantSummary?.totalSurveys ?? 0
       });
       
       console.log('[HomePage] Force refresh completed');
@@ -485,6 +496,47 @@ export default function HomePage() {
                 <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-amber-500 border-t-transparent"></div>
                   <span className="text-gray-700 font-medium">Loading Manifesto...</span>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {/* Migrant card - Admin only */}
+        {role === 'admin' ? (
+          <div
+            onClick={() => {
+              setNavigatingTo('/migrant');
+              router.push('/migrant');
+            }}
+            className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-emerald-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
+          >
+            <div className="flex flex-col items-center mb-2 gap-1">
+              <h2 className="text-xl font-bold text-center group-hover:text-emerald-700 transition">Migrant</h2>
+              <span className="px-3 py-1 rounded-full bg-white/70 text-gray-800 text-xs font-semibold border border-gray-300 mt-1">
+                External API
+              </span>
+            </div>
+            <div className="flex flex-col gap-2 mt-2">
+              {metrics.isLoading ? (
+                <div className="flex justify-center items-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-emerald-500"></div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 justify-center">
+                  <span className="font-semibold text-gray-700">Total Surveys:</span>
+                  <span className="text-gray-900 dark:text-gray-100 font-bold">
+                    {metrics.migrantTotalSurveys ?? 0}
+                  </span>
+                </div>
+              )}
+            </div>
+            {/* Loading overlay for navigation */}
+            {navigatingTo === '/migrant' && (
+              <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-emerald-500 border-t-transparent"></div>
+                  <span className="text-gray-700 font-medium">Loading Migrant...</span>
                 </div>
               </div>
             )}

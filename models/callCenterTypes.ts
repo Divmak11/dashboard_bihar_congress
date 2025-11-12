@@ -29,3 +29,20 @@ export interface CallCenterOldMetrics {
   date?: string;
   reportUrl?: string;
 }
+
+// NEW: List item for date + report link display in modal and selectors
+export interface CallCenterListItem {
+  id: string; // Prefer document ID; fallback to `${created_at}`
+  date?: string; // YYYY-MM-DD
+  report_url?: string;
+  created_at?: any; // Firestore Timestamp | number
+}
+
+// NEW: Generic paged result type
+export interface PagedResult<T> {
+  items: T[];
+  nextCursor?: any; // Firestore DocumentSnapshot or field value depending on pagination mode
+}
+
+// NEW: UI mode for vertical
+export type DateMode = 'all' | 'single';

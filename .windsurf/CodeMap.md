@@ -85,6 +85,46 @@ Labels in UI updated:
 
 ---
 
+### Migrant Vertical (NEW)
+
+Location & Files:
+- UI:
+  - `app/migrant/page.tsx` → Admin-only dashboard for external Migrant Survey API with filters, charts, and exports (PDF/Excel). Supports city switcher (Delhi vs Other Districts).
+- Types:
+  - `models/migrantTypes.ts` → `City`, `MigrantFilters`, `MigrantStatistics`, `MigrantSurveyItem`, `MigrantPagedResult`
+- Utilities:
+  - `app/utils/fetchMigrantData.ts` → External API login and paged reports fetcher
+    - `loginMigrantApi(username?, password?)` → Stores token in localStorage under namespaced keys
+    - `fetchMigrantReportsPaged(city, filters, token?, limit?, maxPages?)` → Paginates `/migrantSurvey[/Jaipur]/reports` until `statistics.totalSurveys`
+    - `fetchMigrantSummary(forceRefresh?)` → Cached home-card summary (Delhi + Jaipur totals) using `homePageCache`
+- Data:
+  - `data/migrantGeo.ts` → `delhiDistricts`, `migrantJaipurSurveyDistricts` (kept separate from BR data)
+
+External API Endpoints:
+- Auth Login: `POST https://api.shaktiabhiyan.in/api/v1/auth/login`
+- Reports (Delhi): `GET https://api.shaktiabhiyan.in/api/v1/migrantSurvey/reports`
+- Reports (Other Districts): `GET https://api.shaktiabhiyan.in/api/v1/migrantSurveyJaipur/reports`
+
+LocalStorage Keys (namespaced):
+- `migrant:token`
+- `migrant:user`
+
+Caching:
+- Home card summary cached via `homePageCache` with `CACHE_KEYS.MIGRANT_SUMMARY` (TTL 15 min)
+
+Home Page Integration:
+- `app/home/page.tsx` adds an Admin-only "Migrant" card linking to `/migrant`
+- Card shows total surveys (Delhi + Other Districts) using auto-login summary
+
+Access Control:
+- Admin-only guard in `app/migrant/page.tsx` using Firebase `getCurrentAdminUser()` (non-admin redirected to `/wtm-slp-new`)
+
+Notes:
+- City-specific filters: `delhiDistrict` for Delhi, `jaipurDistrict` for Other Districts; mutual exclusion enforced by query builder
+- Date handling is timezone-safe (local YYYY-MM-DD strings)
+- Auto-login implemented both on page and home summary
+
+
 ## Project Overview
 
 **Tech Stack:**
@@ -293,12 +333,25 @@ Location & Files:
 - UI:
   - `app/home/page.tsx` → Adds a navigational parent card "Call Center" (no data fetch on Home). Clicking routes to the vertical.
   - `app/verticals/call-center/page.tsx` → Vertical landing. Shows the legacy dataset card: "Call Center Old" with computed metrics and optional PDF link.
+- NEW UI (External dataset):
+  - `app/verticals/call-center/external-new/page.tsx` → Lists converted users grouped by day with pagination, search, and CSV export.
+  - `components/call-center/ExternalNewConvertedList.tsx` → Presentational grouped list used by the page above.
 - Types:
   - `models/callCenterTypes.ts` → `CallCenterSummary`, `CallCenterDocument`, `CallCenterOldMetrics` types.
+  - `models/callCenterNewTypes.ts` → `CallCenterNewSummary`, `CallCenterNewDocument`, `CallCenterNewMetrics`, `CallCenterNewConvertedRow`.
 - Utilities:
   - `app/utils/fetchCallCenterData.ts` →
     - `fetchLatestCallCenterDocument()` → Reads the latest document from `call-center` collection by `date` desc; falls back to `created_at` desc.
     - `computeCallCenterOldMetricsFromSummary(summary, date?, reportUrl?)` → Derives three Home metrics from exact/raw `status_counts` without normalizing keys.
+    - `fetchCallCenterDocByDate(date)` → Fetch one document by ID or `where('date','==',date)` fallback.
+    - `fetchCallCenterDatesList({ pageSize, cursor })` → Paged list of `{ id, date, report_url }` ordered by `date desc` with fallback to `created_at desc`.
+    - `fetchCallCenterCumulativeMetrics({ pageSize, maxPages, onProgress })` → Paged aggregation of conversions, notContacted, totalCalls across all docs.
+  - `app/utils/fetchCallCenterNewData.ts` → (External dataset: `call-center-external`)
+    - `computeCallCenterNewMetricsFromSummary(summary, date?)` → Conversions (from `convertedCount` or `convertedList.length`), Not contacted (`notConvertedCount`), Total calls (prefer `totals.total_rows`).
+    - `fetchCallCenterNewDocByDate(date)` → Fetch doc by ID or `where('date','==',date)` fallback.
+    - `fetchCallCenterNewDatesList({ pageSize, cursor })` → Paged list of available dates ordered by `date desc` (fallback `created_at desc`).
+    - `fetchCallCenterNewCumulativeMetrics({ pageSize, maxPages, onProgress })` → Paged aggregation across all external docs.
+    - `fetchCallCenterNewConvertedPaged({ pageSize, cursor })` → Paged, per-day groups of converted rows (loads a page of dates and fetches each day's converted list).
 
 Firestore Data Model (call-center):
 - Collection: `call-center`
@@ -316,6 +369,19 @@ Firestore Data Model (call-center):
   - `report_url: string` — public PDF URL (stored at `call-center/{date}/report.pdf`)
   - `created_at`, `updated_at`: Firestore timestamps
 
+Firestore Data Model (call-center-external):
+- Collection: `call-center-external`
+- Document ID: `{YYYY-MM-DD}`
+- Fields:
+  - `date: string` — selected date for the upload
+  - `summary: object` — external summary
+    - `totals.total_rows: number`
+    - `convertedCount?: number`
+    - `notConvertedCount?: number`
+    - `convertedList?: Array<{ name?: string; phone?: string; acName?: string }>`
+  - `report_url?: string` — optional downloadable artifact
+  - `created_at`, `updated_at`: Firestore timestamps
+
 Call Center Old Metrics (computed from `summary.status_counts`):
 - Overall Conversions Done =
   - `status_counts["Conversation Done with Female"]`
@@ -330,11 +396,19 @@ Call Center Old Metrics (computed from `summary.status_counts`):
 
 Caching & Navigation:
 - Home page parent card is navigational only (no caching, no read).
-- The vertical page fetches only the latest `call-center` doc once per load; caching can be added later if needed.
+- The vertical page now shows cumulative metrics by default (across all dates), with an option to switch to a single-date view.
+- Per-date report links are available via a modal when the metric card is tapped.
 
 Behavior & UX:
-- If no document found, show an empty state message and no PDF link.
-- If `report_url` exists, display "View PDF Report" button (opens in new tab).
+- Default mode is "All dates (Cumulative)"; the date chip reflects mode and selected date.
+- Switch to "Single date" to view that date’s metrics and show the PDF link when available.
+- The modal lists dates with their PDF links, includes client-side search, and supports pagination (Load more).
+- If no data exists, show an empty state; if `report_url` missing, show "No report" in the modal list.
+
+Call Center New Card (External dataset):
+- Appears on the Call Center vertical landing at the same level as "Call Center Old" labeled exactly "Call Center New".
+- Shares the same `DateSelector` state: shows cumulative metrics by default; in "Single date" mode shows that date’s external metrics.
+- Clicking the card navigates to `/verticals/call-center/external-new`, which displays a paginated, per-day grouped list of converted users with search and CSV export.
 
 ---
 
@@ -394,7 +468,7 @@ Caching:
 
 Home Page Integration:
 - `app/home/page.tsx` adds an Admin-only "Manifesto" card linking to `/manifesto`
-- If token exists, shows `Total Surveys`; otherwise shows "Login required"
+- Card shows Total Surveys using auto-login summary (util logs in if token missing)
 
 Access Control:
 - Admin-only guard in `app/manifesto/page.tsx` using Firebase `getCurrentAdminUser()` (non-admin redirected to `/wtm-slp-new`)
@@ -2428,5 +2502,5 @@ Added to `GharGharYatraSummary` interface:
 ---
 
 *Last Updated: November 2025*
-*Version: 1.8.0*
-*Changes: Added Call Center vertical (parent card on Home + vertical page with legacy dataset metrics), new Call Center types and fetch utilities, and documentation of Firestore call-center schema*
+*Version: 1.10.0*
+*Changes: Added Migrant vertical (UI, utils, types, data, home card, caching). Enabled auto-login for Manifesto and Migrant summaries on Home. Added MIGRANT_SUMMARY cache key.*
