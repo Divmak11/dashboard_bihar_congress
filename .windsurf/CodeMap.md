@@ -287,6 +287,57 @@ Notes:
 - `fetchAllUsersPaged` prefers `orderBy('name')` + cursor; falls back to simple `where(limit)` if index/order unavailable.
 - For Shakti vertical, the same explorer works; metrics are scoped by passing `vertical: 'shakti-abhiyaan'` into `fetchCumulativeMetrics`.
 
+### Call Center Vertical (NEW)
+
+Location & Files:
+- UI:
+  - `app/home/page.tsx` → Adds a navigational parent card "Call Center" (no data fetch on Home). Clicking routes to the vertical.
+  - `app/verticals/call-center/page.tsx` → Vertical landing. Shows the legacy dataset card: "Call Center Old" with computed metrics and optional PDF link.
+- Types:
+  - `models/callCenterTypes.ts` → `CallCenterSummary`, `CallCenterDocument`, `CallCenterOldMetrics` types.
+- Utilities:
+  - `app/utils/fetchCallCenterData.ts` →
+    - `fetchLatestCallCenterDocument()` → Reads the latest document from `call-center` collection by `date` desc; falls back to `created_at` desc.
+    - `computeCallCenterOldMetricsFromSummary(summary, date?, reportUrl?)` → Derives three Home metrics from exact/raw `status_counts` without normalizing keys.
+
+Firestore Data Model (call-center):
+- Collection: `call-center`
+- Document ID: `{YYYY-MM-DD}`
+- Fields:
+  - `date: string` — selected date for the upload
+  - `summary: object` — aggregated counts with exact/raw keys
+    - `totals.total_rows: number`
+    - `status_counts: Record<string, number>` (no normalization of keys)
+    - `gender_counts: Record<string, number>`
+    - `non_contact_reason_counts: Record<string, number>` (only for Status = Not contacted; includes `(blank)`)
+    - `questions: { Q1..Q6: Record<string, number> }`
+    - `assigned_to_counts: Record<string, number>`
+    - `assigned_to_list: string[]`
+  - `report_url: string` — public PDF URL (stored at `call-center/{date}/report.pdf`)
+  - `created_at`, `updated_at`: Firestore timestamps
+
+Call Center Old Metrics (computed from `summary.status_counts`):
+- Overall Conversions Done =
+  - `status_counts["Conversation Done with Female"]`
+  + `status_counts["Conversation Done with Female via Male"]`
+  - Uses exact/raw keys; includes case-insensitive fallback for lookup only (no re-keying in stored data).
+- Total Not contacted =
+  - `status_counts["Not contacted"]`
+  - Exact/raw key; case-insensitive fallback for lookup.
+- Total Calls Made =
+  - Sum of all values in `status_counts` (not `totals.total_rows`).
+  - If sum differs from `totals.total_rows`, we log a warning but do not adjust the value.
+
+Caching & Navigation:
+- Home page parent card is navigational only (no caching, no read).
+- The vertical page fetches only the latest `call-center` doc once per load; caching can be added later if needed.
+
+Behavior & UX:
+- If no document found, show an empty state message and no PDF link.
+- If `report_url` exists, display "View PDF Report" button (opens in new tab).
+
+---
+
 ### GGY Split Report (NEW)
 - UI Flow:
   1. User clicks `Generate PDF` in `app/verticals/ghar-ghar-yatra-analytics/page.tsx`
@@ -315,6 +366,44 @@ Notes:
 7. Download triggered automatically on completion
 ```
 
+### Manifesto Vertical (NEW)
+
+Location & Files:
+- UI:
+  - `app/manifesto/page.tsx` → Admin-only dashboard for external Manifesto Survey API with filters, charts, and exports (PDF/Excel)
+- Types:
+  - `models/manifestoTypes.ts` → `ManifestoFilters`, `ManifestoStatistics`, `ManifestoSurveyItem`, `ManifestoPagedResult`
+- Utilities:
+  - `app/utils/fetchManifestoData.ts` → External API login and paged reports fetcher
+    - `loginManifestoApi(username?, password?)` → Stores token in localStorage under namespaced keys
+    - `fetchManifestoReportsPaged(filters, token?, limit?, maxPages?)` → Paginates `/manifestoSurvey/reports` until `statistics.totalSurveys`
+    - `fetchManifestoSummary(forceRefresh?)` → Cached home-card summary using `homePageCache`
+- Data:
+  - `data/statesData.ts` → BR-only `indianDistricts`, `AssemblySeatsDistrictWise`, and `availableCommunity`
+
+External API Endpoints:
+- Auth Login: `POST https://api.shaktiabhiyan.in/api/v1/auth/login`
+- Reports: `GET https://api.shaktiabhiyan.in/api/v1/manifestoSurvey/reports`
+
+LocalStorage Keys (namespaced):
+- `manifesto:token`
+- `manifesto:user`
+
+Caching:
+- Home card summary cached via `homePageCache` with `CACHE_KEYS.MANIFESTO_SUMMARY` (TTL 15 min)
+
+Home Page Integration:
+- `app/home/page.tsx` adds an Admin-only "Manifesto" card linking to `/manifesto`
+- If token exists, shows `Total Surveys`; otherwise shows "Login required"
+
+Access Control:
+- Admin-only guard in `app/manifesto/page.tsx` using Firebase `getCurrentAdminUser()` (non-admin redirected to `/wtm-slp-new`)
+
+Notes:
+- Filters, charts and export columns mirror `ManifestoReportDashboard.js`
+- Date handling is timezone-safe (local YYYY-MM-DD strings)
+- Credentials for API login stored in `app/utils/fetchManifestoData.ts` per project directive
+
 ---
 
 ## Data Caching System
@@ -339,7 +428,9 @@ Implemented localStorage-based caching for home page vertical cards to prevent u
 ```typescript
 CACHE_KEYS = {
   WTM_SLP_SUMMARY: 'wtm_slp_summary',
-  YOUTUBE_SUMMARY: 'youtube_summary'
+  YOUTUBE_SUMMARY: 'youtube_summary',
+  MANIFESTO_SUMMARY: 'manifesto_summary',
+  // ... other keys
 }
 ```
 
@@ -864,7 +955,7 @@ function formatLocalDate(date: Date): string {
 | Mai-Bahin | `date` |
 | Videos | `date_submitted` |
 | Chaupals | `dateFormatted` |
-| Meetings | `dateOfVisit` |
+| Meetings | `dateOfVisit`  |
 
 ---
 
@@ -2337,5 +2428,5 @@ Added to `GharGharYatraSummary` interface:
 ---
 
 *Last Updated: November 2025*
-*Version: 1.7.0*
-*Changes: Added Ghar-Ghar Yatra pre-calculated aggregates, Unidentified Entries tab, D2D roster decoupling, default metrics-high sort, and performance optimization recommendations*
+*Version: 1.8.0*
+*Changes: Added Call Center vertical (parent card on Home + vertical page with legacy dataset metrics), new Call Center types and fetch utilities, and documentation of Firestore call-center schema*

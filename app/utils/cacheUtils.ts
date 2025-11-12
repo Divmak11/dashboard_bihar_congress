@@ -225,7 +225,8 @@ export const homePageCache = new DataCache({
 // Cache keys for vertical cards
 export const CACHE_KEYS = {
   WTM_SLP_SUMMARY: 'wtm_slp_summary',
-  YOUTUBE_SUMMARY: 'youtube_summary'
+  YOUTUBE_SUMMARY: 'youtube_summary',
+  MANIFESTO_SUMMARY: 'manifesto_summary'
 } as const;
 
 // GGY cache instance and helpers (for Analytics)

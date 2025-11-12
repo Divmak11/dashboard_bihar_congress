@@ -7,6 +7,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db } from "../utils/firebase";
 import { getWtmSlpSummary, getCurrentAdminUser } from "../utils/fetchFirebaseData";
 import { fetchYoutubeSummary } from "../utils/fetchYoutubeData";
+import { fetchManifestoSummary, LS_KEYS } from "../utils/fetchManifestoData";
 import { WtmSlpSummary } from "../../models/types";
 import { YoutubeSummaryMetrics } from "../../models/youtubeTypes";
 import { initializeCache, forceCacheRefresh, CACHE_KEYS } from "../utils/cacheUtils";
@@ -21,6 +22,7 @@ interface DashboardCardMetrics {
   wtmSlpMetrics: WtmSlpSummary | null;
   youtubeMetrics: YoutubeSummaryMetrics | null;
   isLoading: boolean;
+  manifestoTotalSurveys: number | null;
 }
 
 export default function HomePage() {
@@ -29,7 +31,8 @@ export default function HomePage() {
   const [metrics, setMetrics] = useState<DashboardCardMetrics>({
     wtmSlpMetrics: null,
     youtubeMetrics: null,
-    isLoading: true
+    isLoading: true,
+    manifestoTotalSurveys: null
   });
   const [role, setRole] = useState<string | null>(null);
   const [cacheInitialized, setCacheInitialized] = useState(false);
@@ -116,11 +119,15 @@ export default function HomePage() {
       setMetrics(prev => ({ ...prev, isLoading: true }));
       
       // Fetch summaries in parallel with caching
-      const [wtmSlpSummary, youtubeSummary] = await Promise.all([
+      // Only fetch Manifesto summary if a token exists in localStorage; otherwise show "Login required"
+      const manifestoTokenExists = typeof window !== 'undefined' && !!localStorage.getItem(LS_KEYS.TOKEN);
+      const [wtmSlpSummary, youtubeSummary, manifestoSummary] = await Promise.all([
         // Fetch WTM-SLP summary for all time (no date parameters) - uses caching for homepage
         getWtmSlpSummary(undefined, undefined, undefined),
         // Fetch YouTube summary for admin only - uses caching
-        fetchYoutubeSummary()
+        fetchYoutubeSummary(),
+        // Manifesto summary (optional)
+        manifestoTokenExists ? fetchManifestoSummary() : Promise.resolve({ totalSurveys: 0 })
       ]);
       
       console.log('[HomePage] WTM-SLP summary data:', wtmSlpSummary);
@@ -130,7 +137,8 @@ export default function HomePage() {
       setMetrics({
         wtmSlpMetrics: wtmSlpSummary,
         youtubeMetrics: youtubeSummary,
-        isLoading: false
+        isLoading: false,
+        manifestoTotalSurveys: manifestoTokenExists ? (manifestoSummary?.totalSurveys || 0) : null
       });
       
     } catch (error) {
@@ -138,7 +146,8 @@ export default function HomePage() {
       setMetrics({
         wtmSlpMetrics: null,
         youtubeMetrics: null,
-        isLoading: false
+        isLoading: false,
+        manifestoTotalSurveys: null
       });
     }
   }, [user?.uid, router]);
@@ -159,18 +168,21 @@ export default function HomePage() {
     
     try {
       // Clear caches
-      forceCacheRefresh([CACHE_KEYS.WTM_SLP_SUMMARY, CACHE_KEYS.YOUTUBE_SUMMARY]);
+      forceCacheRefresh([CACHE_KEYS.WTM_SLP_SUMMARY, CACHE_KEYS.YOUTUBE_SUMMARY, CACHE_KEYS.MANIFESTO_SUMMARY]);
       
       // Fetch fresh data
-      const [wtmSlpSummary, youtubeSummary] = await Promise.all([
+      const manifestoTokenExists = typeof window !== 'undefined' && !!localStorage.getItem(LS_KEYS.TOKEN);
+      const [wtmSlpSummary, youtubeSummary, manifestoSummary] = await Promise.all([
         getWtmSlpSummary(undefined, undefined, undefined, undefined, undefined, true), // forceRefresh = true
-        fetchYoutubeSummary(true) // forceRefresh = true
+        fetchYoutubeSummary(true), // forceRefresh = true
+        manifestoTokenExists ? fetchManifestoSummary(true) : Promise.resolve({ totalSurveys: 0 })
       ]);
       
       setMetrics({
         wtmSlpMetrics: wtmSlpSummary,
         youtubeMetrics: youtubeSummary,
-        isLoading: false
+        isLoading: false,
+        manifestoTotalSurveys: manifestoTokenExists ? (manifestoSummary?.totalSurveys || 0) : null
       });
       
       console.log('[HomePage] Force refresh completed');
@@ -431,6 +443,82 @@ export default function HomePage() {
             )}
           </div>
         ) : null}
+
+        {/* Manifesto card - Admin only */}
+        {role === 'admin' ? (
+          <div
+            onClick={() => {
+              setNavigatingTo('/manifesto');
+              router.push('/manifesto');
+            }}
+            className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-amber-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
+          >
+            <div className="flex flex-col items-center mb-2 gap-1">
+              <h2 className="text-xl font-bold text-center group-hover:text-amber-700 transition">Manifesto</h2>
+              <span className="px-3 py-1 rounded-full bg-white/70 text-gray-800 text-xs font-semibold border border-gray-300 mt-1">
+                External API
+              </span>
+            </div>
+            <div className="flex flex-col gap-2 mt-2">
+              {metrics.isLoading ? (
+                <div className="flex justify-center items-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-amber-500"></div>
+                </div>
+              ) : (
+                <>
+                  {metrics.manifestoTotalSurveys === null ? (
+                    <div className="text-sm text-gray-700 text-center">Login required</div>
+                  ) : (
+                    <div className="flex items-center gap-2 justify-center">
+                      <span className="font-semibold text-gray-700">Total Surveys:</span>
+                      <span className="text-gray-900 dark:text-gray-100 font-bold">
+                        {metrics.manifestoTotalSurveys}
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            {/* Loading overlay for navigation */}
+            {navigatingTo === '/manifesto' && (
+              <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-amber-500 border-t-transparent"></div>
+                  <span className="text-gray-700 font-medium">Loading Manifesto...</span>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {/* Call Center parent card - navigational only */}
+        <div
+          onClick={() => {
+            setNavigatingTo('/verticals/call-center');
+            router.push('/verticals/call-center');
+          }}
+          className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-cyan-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
+        >
+          <div className="flex flex-col items-center mb-2 gap-1">
+            <h2 className="text-xl font-bold text-center group-hover:text-cyan-700 transition">Call Center</h2>
+            <span className="px-3 py-1 rounded-full bg-white/70 text-gray-800 text-xs font-semibold border border-gray-300 mt-1">
+              Parent Vertical
+            </span>
+          </div>
+          <div className="text-sm text-gray-700">
+            Tap to open. Inside you’ll find the “Call Center Old” dataset card with report metrics.
+          </div>
+
+          {/* Loading overlay for navigation */}
+          {navigatingTo === '/verticals/call-center' && (
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+              <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-cyan-500 border-t-transparent"></div>
+                <span className="text-gray-700 font-medium">Loading Call Center...</span>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Ghar-Ghar Yatra Analytics card - Admin only */}
         {role === 'admin' ? (
