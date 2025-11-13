@@ -85,6 +85,47 @@ Labels in UI updated:
 
 ---
 
+### Migrant Vertical (NEW)
+
+Location & Files:
+- UI:
+  - `app/migrant/page.tsx` → Admin-only dashboard for external Migrant Survey API with filters, charts, and exports (PDF/Excel). Supports city switcher (Delhi vs Other Districts).
+- Types:
+  - `models/migrantTypes.ts` → `City`, `MigrantFilters`, `MigrantStatistics`, `MigrantSurveyItem`, `MigrantPagedResult`
+- Utilities:
+  - `app/utils/fetchMigrantData.ts` → External API login and paged reports fetcher
+    - `loginMigrantApi(username?, password?)` → Stores token in localStorage under namespaced keys
+    - `fetchMigrantReportsPaged(city, filters, token?, limit?, maxPages?)` → Paginates `/migrantSurvey[/Jaipur]/reports` until `statistics.totalSurveys`
+    - `fetchMigrantSummary(forceRefresh?)` → Cached home-card summary (Delhi + Jaipur totals) using `homePageCache`
+- Data:
+  - `data/migrantGeo.ts` → `delhiDistricts`, `migrantJaipurSurveyDistricts` (kept separate from BR data)
+
+External API Endpoints:
+- Auth Login: `POST https://api.shaktiabhiyan.in/api/v1/auth/login`
+- Reports (Delhi): `GET https://api.shaktiabhiyan.in/api/v1/migrantSurvey/reports`
+- Reports (Other Districts): `GET https://api.shaktiabhiyan.in/api/v1/migrantSurveyJaipur/reports`
+
+LocalStorage Keys (namespaced):
+- `migrant:token`
+- `migrant:user`
+
+Caching:
+- Home card summary cached via `homePageCache` with `CACHE_KEYS.MIGRANT_SUMMARY` (TTL 15 min)
+
+Home Page Integration:
+- `app/home/page.tsx` adds an Admin-only "Migrant" card linking to `/migrant`
+- Card shows total surveys (Delhi + Other Districts) using auto-login summary
+- Grouped under "Connecting Dashboard Data" section with Manifesto card (admin-only section)
+
+Access Control:
+- Admin-only guard in `app/migrant/page.tsx` using Firebase `getCurrentAdminUser()` (non-admin redirected to `/wtm-slp-new`)
+
+Notes:
+- City-specific filters: `delhiDistrict` for Delhi, `jaipurDistrict` for Other Districts; mutual exclusion enforced by query builder
+- Date handling is timezone-safe (local YYYY-MM-DD strings)
+- Auto-login implemented both on page and home summary
+
+
 ## Project Overview
 
 **Tech Stack:**
@@ -236,9 +277,10 @@ my-dashboard/
 │   ├── DateRangeFilter.tsx      # Date filtering component
 │   └── NavBar.tsx                # Navigation bar
 ├── scripts/                      # Utility Node.js scripts for data sync/reporting
-│   ├── ac-assembly-slp-report.js # Generates AC→Assembly→SLP coverage CSV (phone-first, name fallback)
-│   ├── sync-slp-activity-status.js # Sync SLP activityStatus via Excel + FB matching
-│   └── non-matching-slps-report.js # Extracts sheet SLPs not found in Firestore
+│   ├── ac-assembly-slp-report.js     # Generates AC→Assembly→SLP coverage CSV (phone-first, name fallback)
+│   ├── sync-slp-activity-status.js   # Sync SLP activityStatus via Excel + FB matching
+│   ├── non-matching-slps-report.js   # Extracts sheet SLPs not found in Firestore
+│   └── youtube-deduplicate-influencers.js # TEMP: Deduplicate youtube influencer-data safely (dry-run by default; cross-ref theme-data before deleting unreferenced duplicates)
 ├── models/                       # TypeScript type definitions
 │   ├── types.ts                  # Core data types
 │   ├── hierarchicalTypes.ts     # Hierarchy-specific types
@@ -287,6 +329,95 @@ Notes:
 - `fetchAllUsersPaged` prefers `orderBy('name')` + cursor; falls back to simple `where(limit)` if index/order unavailable.
 - For Shakti vertical, the same explorer works; metrics are scoped by passing `vertical: 'shakti-abhiyaan'` into `fetchCumulativeMetrics`.
 
+### Call Center Vertical (NEW)
+
+Location & Files:
+- UI:
+  - `app/home/page.tsx` → Adds a navigational parent card "Call Center" (no data fetch on Home). Clicking routes to the vertical.
+  - `app/verticals/call-center/page.tsx` → Vertical landing. Shows the legacy dataset card: "Call Center Old" with computed metrics and optional PDF link.
+- NEW UI (External dataset):
+  - `app/verticals/call-center/external-new/page.tsx` → Lists converted users grouped by day with pagination, search, and CSV export.
+  - `components/call-center/ExternalNewConvertedList.tsx` → Presentational grouped list used by the page above.
+- Types:
+  - `models/callCenterTypes.ts` → `CallCenterSummary`, `CallCenterDocument`, `CallCenterOldMetrics` types.
+  - `models/callCenterNewTypes.ts` → `CallCenterNewSummary`, `CallCenterNewDocument`, `CallCenterNewMetrics`, `CallCenterNewConvertedRow`.
+- Utilities:
+  - `app/utils/fetchCallCenterData.ts` →
+    - `fetchLatestCallCenterDocument()` → Reads the latest document from `call-center` collection by `date` desc; falls back to `created_at` desc.
+    - `computeCallCenterOldMetricsFromSummary(summary, date?, reportUrl?)` → Derives three Home metrics from exact/raw `status_counts` without normalizing keys.
+    - `fetchCallCenterDocByDate(date)` → Fetch one document by ID or `where('date','==',date)` fallback.
+    - `fetchCallCenterDatesList({ pageSize, cursor })` → Paged list of `{ id, date, report_url }` ordered by `date desc` with fallback to `created_at desc`.
+    - `fetchCallCenterCumulativeMetrics({ pageSize, maxPages, onProgress })` → Paged aggregation of conversions, notContacted, totalCalls across all docs.
+  - `app/utils/fetchCallCenterNewData.ts` → (External dataset: `call-center-external`)
+    - `computeCallCenterNewMetricsFromSummary(summary, date?)` → Conversions (from `convertedCount` or `convertedList.length`), Not contacted (`notConvertedCount`), Total calls (prefer `totals.total_rows`).
+    - `fetchCallCenterNewDocByDate(date)` → Fetch doc by ID or `where('date','==',date)` fallback.
+    - `fetchCallCenterNewDatesList({ pageSize, cursor })` → Paged list of available dates ordered by `date desc` (fallback `created_at desc`).
+    - `fetchCallCenterNewCumulativeMetrics({ pageSize, maxPages, onProgress })` → Paged aggregation across all external docs.
+    - `fetchCallCenterNewConvertedPaged({ pageSize, cursor })` → Paged, per-day groups of converted rows (loads a page of dates and fetches each day's converted list).
+
+Firestore Data Model (call-center):
+- Collection: `call-center`
+- Document ID: `{YYYY-MM-DD}`
+- Fields:
+  - `date: string` — selected date for the upload
+  - `summary: object` — aggregated counts with exact/raw keys
+    - `totals.total_rows: number`
+    - `status_counts: Record<string, number>` (no normalization of keys)
+    - `gender_counts: Record<string, number>`
+    - `non_contact_reason_counts: Record<string, number>` (only for Status = Not contacted; includes `(blank)`)
+    - `questions: { Q1..Q6: Record<string, number> }`
+    - `assigned_to_counts: Record<string, number>`
+    - `assigned_to_list: string[]`
+  - `report_url: string` — public PDF URL (stored at `call-center/{date}/report.pdf`)
+  - `created_at`, `updated_at`: Firestore timestamps
+
+Firestore Data Model (call-center-external):
+- Collection: `call-center-external`
+- Document ID: `{YYYY-MM-DD}`
+- Fields:
+  - `date: string` — selected date for the upload
+  - `summary: object` — external summary
+    - `totals.total_rows: number`
+    - `convertedCount?: number`
+    - `notConvertedCount?: number`
+    - `convertedList?: Array<{ name?: string; phone?: string; acName?: string }>`
+  - `report_url?: string` — optional downloadable artifact
+  - `created_at`, `updated_at`: Firestore timestamps
+
+Call Center Old Metrics (computed from `summary.status_counts`):
+- Overall Conversions Done =
+  - `status_counts["Conversation Done with Female"]`
+  + `status_counts["Conversation Done with Female via Male"]`
+  - Uses exact/raw keys; includes case-insensitive fallback for lookup only (no re-keying in stored data).
+- Total Not contacted =
+  - `status_counts["Not contacted"]`
+  - Exact/raw key; case-insensitive fallback for lookup.
+- Total Calls Made =
+  - Sum of all values in `status_counts` (not `totals.total_rows`).
+  - If sum differs from `totals.total_rows`, we log a warning but do not adjust the value.
+
+Caching & Navigation:
+- Home page parent card is navigational only (no caching, no read).
+- The vertical page now shows cumulative metrics by default (across all dates), with an option to switch to a single-date view.
+- Per-date report links are available via a modal when the metric card is tapped.
+
+Behavior & UX:
+- Default mode is "All dates (Cumulative)"; the date chip reflects mode and selected date.
+- Switch to "Single date" to view that date’s metrics and show the PDF link when available.
+- The modal lists dates with their PDF links, includes client-side search, and supports pagination (Load more).
+- If no data exists, show an empty state; if `report_url` missing, show "No report" in the modal list.
+
+Call Center New Card (External dataset):
+- Appears on the Call Center vertical landing at the same level as "Call Center Old" labeled exactly "Call Center New".
+- Shares the same `DateSelector` state: shows cumulative metrics by default; in "Single date" mode shows that date’s external metrics.
+- Clicking the card navigates to `/verticals/call-center/external-new`, which displays a paginated, per-day grouped list of converted users with search and CSV export.
+- Metric display order (both cards):
+  1) Total Calls
+  2) Total Conversions
+  3) Total Not Contacted
+
+---
+
 ### GGY Split Report (NEW)
 - UI Flow:
   1. User clicks `Generate PDF` in `app/verticals/ghar-ghar-yatra-analytics/page.tsx`
@@ -315,6 +446,45 @@ Notes:
 7. Download triggered automatically on completion
 ```
 
+### Manifesto Vertical (NEW)
+
+Location & Files:
+- UI:
+  - `app/manifesto/page.tsx` → Admin-only dashboard for external Manifesto Survey API with filters, charts, and exports (PDF/Excel)
+- Types:
+  - `models/manifestoTypes.ts` → `ManifestoFilters`, `ManifestoStatistics`, `ManifestoSurveyItem`, `ManifestoPagedResult`
+- Utilities:
+  - `app/utils/fetchManifestoData.ts` → External API login and paged reports fetcher
+    - `loginManifestoApi(username?, password?)` → Stores token in localStorage under namespaced keys
+    - `fetchManifestoReportsPaged(filters, token?, limit?, maxPages?)` → Paginates `/manifestoSurvey/reports` until `statistics.totalSurveys`
+    - `fetchManifestoSummary(forceRefresh?)` → Cached home-card summary using `homePageCache`
+- Data:
+  - `data/statesData.ts` → BR-only `indianDistricts`, `AssemblySeatsDistrictWise`, and `availableCommunity`
+
+External API Endpoints:
+- Auth Login: `POST https://api.shaktiabhiyan.in/api/v1/auth/login`
+- Reports: `GET https://api.shaktiabhiyan.in/api/v1/manifestoSurvey/reports`
+
+LocalStorage Keys (namespaced):
+- `manifesto:token`
+- `manifesto:user`
+
+Caching:
+- Home card summary cached via `homePageCache` with `CACHE_KEYS.MANIFESTO_SUMMARY` (TTL 15 min)
+
+Home Page Integration:
+- `app/home/page.tsx` adds an Admin-only "Manifesto" card linking to `/manifesto`
+- Card shows Total Surveys using auto-login summary (util logs in if token missing)
+- Grouped under "Connecting Dashboard Data" section with Migrant card (admin-only section)
+
+Access Control:
+- Admin-only guard in `app/manifesto/page.tsx` using Firebase `getCurrentAdminUser()` (non-admin redirected to `/wtm-slp-new`)
+
+Notes:
+- Filters, charts and export columns mirror `ManifestoReportDashboard.js`
+- Date handling is timezone-safe (local YYYY-MM-DD strings)
+- Credentials for API login stored in `app/utils/fetchManifestoData.ts` per project directive
+
 ---
 
 ## Data Caching System
@@ -339,7 +509,9 @@ Implemented localStorage-based caching for home page vertical cards to prevent u
 ```typescript
 CACHE_KEYS = {
   WTM_SLP_SUMMARY: 'wtm_slp_summary',
-  YOUTUBE_SUMMARY: 'youtube_summary'
+  YOUTUBE_SUMMARY: 'youtube_summary',
+  MANIFESTO_SUMMARY: 'manifesto_summary',
+  // ... other keys
 }
 ```
 
@@ -359,6 +531,28 @@ CACHE_KEYS = {
 - **Bypass**: Filtered requests (date ranges, handler_id, SLP details) skip cache
 
 #### **YouTube Caching** (`app/utils/fetchYoutubeData.ts`)
+
+##### YouTube Vertical - Video Stats Resolution & Fallback (Nov 2025)
+- Source of per-video metrics:
+  - API-fetched stats keyed by original `videoLink` via `app/utils/videoApi.ts::fetchVideoStatsFromLinks()`.
+  - Fallback to stored `theme.influencerEntries[].metrics` when no API stats are present for a link.
+- Precedence (per link):
+  1) Use API stats from `videoStats.get(videoLink)` when available.
+  2) Else use `entry.metrics` stored in the theme document.
+  3) Else default to `{ views: 0, likes: 0 }`.
+- Fetch behavior update:
+  - `fetchVideoStatsFromLinks()` no longer inserts zero-value placeholders for:
+    - Unsupported platforms.
+    - Platforms missing credentials (e.g., no Facebook access token).
+  - Only successfully fetched results are merged into the stats map; absent entries trigger fallback to `entry.metrics` in aggregators.
+- Implications:
+  - Non-YouTube links (e.g., Facebook) now display stored metrics when credentials are not provided, instead of showing zeros.
+  - Legitimate zero values returned by APIs remain zero in the UI (we do not override real zeros).
+  - If credentials are present but invalid, platform-specific fetchers may still return zero for failed requests; fix credentials to prefer API stats, or temporarily remove the invalid credential to allow fallback.
+- Affected files:
+  - `app/utils/videoApi.ts` (unified mixed-platform fetch; merges only successful stats, skips zero placeholders for unsupported/unconfigured)
+  - Aggregators use fallback automatically:
+    - `app/utils/fetchYoutubeData.ts` → `aggregateTheme()`, `aggregateInfluencer()`, `computeOverviewAggregates()`
 - **Function**: `fetchYoutubeSummary()` enhanced with persistent caching
 - **Replaced**: In-memory cache with localStorage persistence
 - **TTL**: 15 minutes (inherits from DataCache default)
@@ -864,7 +1058,7 @@ function formatLocalDate(date: Date): string {
 | Mai-Bahin | `date` |
 | Videos | `date_submitted` |
 | Chaupals | `dateFormatted` |
-| Meetings | `dateOfVisit` |
+| Meetings | `dateOfVisit`  |
 
 ---
 
@@ -2337,5 +2531,5 @@ Added to `GharGharYatraSummary` interface:
 ---
 
 *Last Updated: November 2025*
-*Version: 1.7.0*
-*Changes: Added Ghar-Ghar Yatra pre-calculated aggregates, Unidentified Entries tab, D2D roster decoupling, default metrics-high sort, and performance optimization recommendations*
+*Version: 1.10.0*
+*Changes: Added Migrant vertical (UI, utils, types, data, home card, caching). Enabled auto-login for Manifesto and Migrant summaries on Home. Added MIGRANT_SUMMARY cache key.*
