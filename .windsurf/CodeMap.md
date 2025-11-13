@@ -115,6 +115,7 @@ Caching:
 Home Page Integration:
 - `app/home/page.tsx` adds an Admin-only "Migrant" card linking to `/migrant`
 - Card shows total surveys (Delhi + Other Districts) using auto-login summary
+- Grouped under "Connecting Dashboard Data" section with Manifesto card (admin-only section)
 
 Access Control:
 - Admin-only guard in `app/migrant/page.tsx` using Firebase `getCurrentAdminUser()` (non-admin redirected to `/wtm-slp-new`)
@@ -474,6 +475,7 @@ Caching:
 Home Page Integration:
 - `app/home/page.tsx` adds an Admin-only "Manifesto" card linking to `/manifesto`
 - Card shows Total Surveys using auto-login summary (util logs in if token missing)
+- Grouped under "Connecting Dashboard Data" section with Migrant card (admin-only section)
 
 Access Control:
 - Admin-only guard in `app/manifesto/page.tsx` using Firebase `getCurrentAdminUser()` (non-admin redirected to `/wtm-slp-new`)

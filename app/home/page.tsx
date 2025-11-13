@@ -9,6 +9,7 @@ import { getWtmSlpSummary, getCurrentAdminUser } from "../utils/fetchFirebaseDat
 import { fetchYoutubeSummary } from "../utils/fetchYoutubeData";
 import { fetchManifestoSummary } from "../utils/fetchManifestoData";
 import { fetchMigrantSummary } from "../utils/fetchMigrantData";
+import { getManifestoComplaintsCount } from "../utils/fetchManifestoComplaintsData";
 import { WtmSlpSummary } from "../../models/types";
 import { YoutubeSummaryMetrics } from "../../models/youtubeTypes";
 import { initializeCache, forceCacheRefresh, CACHE_KEYS } from "../utils/cacheUtils";
@@ -25,6 +26,7 @@ interface DashboardCardMetrics {
   isLoading: boolean;
   manifestoTotalSurveys: number | null;
   migrantTotalSurveys: number | null;
+  manifestoComplaintsCount: number | null;
 }
 
 export default function HomePage() {
@@ -35,7 +37,8 @@ export default function HomePage() {
     youtubeMetrics: null,
     isLoading: true,
     manifestoTotalSurveys: null,
-    migrantTotalSurveys: null
+    migrantTotalSurveys: null,
+    manifestoComplaintsCount: null
   });
   const [role, setRole] = useState<string | null>(null);
   const [cacheInitialized, setCacheInitialized] = useState(false);
@@ -122,7 +125,7 @@ export default function HomePage() {
       setMetrics(prev => ({ ...prev, isLoading: true }));
       
       // Fetch summaries in parallel with caching (auto-login if needed)
-      const [wtmSlpSummary, youtubeSummary, manifestoSummary, migrantSummary] = await Promise.all([
+      const [wtmSlpSummary, youtubeSummary, manifestoSummary, migrantSummary, manifestoComplaintsCount] = await Promise.all([
         // Fetch WTM-SLP summary for all time (no date parameters) - uses caching for homepage
         getWtmSlpSummary(undefined, undefined, undefined),
         // Fetch YouTube summary for admin only - uses caching
@@ -130,7 +133,9 @@ export default function HomePage() {
         // Manifesto summary (auto-login inside util)
         fetchManifestoSummary(),
         // Migrant summary (auto-login inside util)
-        fetchMigrantSummary()
+        fetchMigrantSummary(),
+        // Get manifesto complaints count
+        getManifestoComplaintsCount()
       ]);
       
       console.log('[HomePage] WTM-SLP summary data:', wtmSlpSummary);
@@ -142,7 +147,8 @@ export default function HomePage() {
         youtubeMetrics: youtubeSummary,
         isLoading: false,
         manifestoTotalSurveys: manifestoSummary?.totalSurveys ?? 0,
-        migrantTotalSurveys: migrantSummary?.totalSurveys ?? 0
+        migrantTotalSurveys: migrantSummary?.totalSurveys ?? 0,
+        manifestoComplaintsCount: manifestoComplaintsCount ?? 0
       });
       
     } catch (error) {
@@ -152,7 +158,8 @@ export default function HomePage() {
         youtubeMetrics: null,
         isLoading: false,
         manifestoTotalSurveys: null,
-        migrantTotalSurveys: null
+        migrantTotalSurveys: null,
+        manifestoComplaintsCount: null
       });
     }
   }, [user?.uid, router]);
@@ -181,11 +188,12 @@ export default function HomePage() {
       ]);
       
       // Fetch fresh data
-      const [wtmSlpSummary, youtubeSummary, manifestoSummary, migrantSummary] = await Promise.all([
+      const [wtmSlpSummary, youtubeSummary, manifestoSummary, migrantSummary, manifestoComplaintsCount] = await Promise.all([
         getWtmSlpSummary(undefined, undefined, undefined, undefined, undefined, true), // forceRefresh = true
         fetchYoutubeSummary(true), // forceRefresh = true
         fetchManifestoSummary(true),
-        fetchMigrantSummary(true)
+        fetchMigrantSummary(true),
+        getManifestoComplaintsCount()
       ]);
       
       setMetrics({
@@ -193,7 +201,8 @@ export default function HomePage() {
         youtubeMetrics: youtubeSummary,
         isLoading: false,
         manifestoTotalSurveys: manifestoSummary?.totalSurveys ?? 0,
-        migrantTotalSurveys: migrantSummary?.totalSurveys ?? 0
+        migrantTotalSurveys: migrantSummary?.totalSurveys ?? 0,
+        manifestoComplaintsCount: manifestoComplaintsCount ?? 0
       });
       
       console.log('[HomePage] Force refresh completed');
@@ -471,7 +480,21 @@ export default function HomePage() {
               </span>
             </div>
             <div className="flex flex-col gap-2 mt-2">
-              <div className="text-sm text-gray-700 text-center">Tap to view AC and Panchayat level complaints.</div>
+              {metrics.isLoading ? (
+                <div className="flex justify-center items-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-rose-500"></div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 justify-center">
+                    <span className="font-semibold text-gray-700">Total Complaints:</span>
+                    <span className="text-gray-900 dark:text-gray-100 font-bold">
+                      {metrics.manifestoComplaintsCount ?? 0}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-700 text-center">Tap to view AC and Panchayat level complaints.</div>
+                </>
+              )}
             </div>
             {/* Loading overlay for navigation */}
             {navigatingTo === '/manifesto-complaints' && (
@@ -479,94 +502,6 @@ export default function HomePage() {
                 <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-rose-500 border-t-transparent"></div>
                   <span className="text-gray-700 font-medium">Loading Manifesto Complaints...</span>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : null}
-
-        {/* Manifesto card - Admin only */}
-        {role === 'admin' ? (
-          <div
-            onClick={() => {
-              setNavigatingTo('/manifesto');
-              router.push('/manifesto');
-            }}
-            className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-amber-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
-          >
-            <div className="flex flex-col items-center mb-2 gap-1">
-              <h2 className="text-xl font-bold text-center group-hover:text-amber-700 transition">Manifesto</h2>
-              <span className="px-3 py-1 rounded-full bg-white/70 text-gray-800 text-xs font-semibold border border-gray-300 mt-1">
-                External API
-              </span>
-            </div>
-            <div className="flex flex-col gap-2 mt-2">
-              {metrics.isLoading ? (
-                <div className="flex justify-center items-center py-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-amber-500"></div>
-                </div>
-              ) : (
-                <>
-                  {metrics.manifestoTotalSurveys === null ? (
-                    <div className="text-sm text-gray-700 text-center">Login required</div>
-                  ) : (
-                    <div className="flex items-center gap-2 justify-center">
-                      <span className="font-semibold text-gray-700">Total Surveys:</span>
-                      <span className="text-gray-900 dark:text-gray-100 font-bold">
-                        {metrics.manifestoTotalSurveys}
-                      </span>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-            {/* Loading overlay for navigation */}
-            {navigatingTo === '/manifesto' && (
-              <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-amber-500 border-t-transparent"></div>
-                  <span className="text-gray-700 font-medium">Loading Manifesto...</span>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : null}
-
-        {/* Migrant card - Admin only */}
-        {role === 'admin' ? (
-          <div
-            onClick={() => {
-              setNavigatingTo('/migrant');
-              router.push('/migrant');
-            }}
-            className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-emerald-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
-          >
-            <div className="flex flex-col items-center mb-2 gap-1">
-              <h2 className="text-xl font-bold text-center group-hover:text-emerald-700 transition">Migrant</h2>
-              <span className="px-3 py-1 rounded-full bg-white/70 text-gray-800 text-xs font-semibold border border-gray-300 mt-1">
-                External API
-              </span>
-            </div>
-            <div className="flex flex-col gap-2 mt-2">
-              {metrics.isLoading ? (
-                <div className="flex justify-center items-center py-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-emerald-500"></div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 justify-center">
-                  <span className="font-semibold text-gray-700">Total Surveys:</span>
-                  <span className="text-gray-900 dark:text-gray-100 font-bold">
-                    {metrics.migrantTotalSurveys ?? 0}
-                  </span>
-                </div>
-              )}
-            </div>
-            {/* Loading overlay for navigation */}
-            {navigatingTo === '/migrant' && (
-              <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-emerald-500 border-t-transparent"></div>
-                  <span className="text-gray-700 font-medium">Loading Migrant...</span>
                 </div>
               </div>
             )}
@@ -672,6 +607,98 @@ export default function HomePage() {
         ))}
         */}
       </div>
+
+      {/* Connecting Dashboard Data Section - Admin only */}
+      {role === 'admin' && (
+        <div className="mt-8">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Connecting Dashboard Data</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Manifesto card */}
+            <div
+              onClick={() => {
+                setNavigatingTo('/manifesto');
+                router.push('/manifesto');
+              }}
+              className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-amber-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
+            >
+              <div className="flex flex-col items-center mb-2 gap-1">
+                <h2 className="text-xl font-bold text-center group-hover:text-amber-700 transition">Manifesto</h2>
+                <span className="px-3 py-1 rounded-full bg-white/70 text-gray-800 text-xs font-semibold border border-gray-300 mt-1">
+                  External API
+                </span>
+              </div>
+              <div className="flex flex-col gap-2 mt-2">
+                {metrics.isLoading ? (
+                  <div className="flex justify-center items-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-amber-500"></div>
+                  </div>
+                ) : (
+                  <>
+                    {metrics.manifestoTotalSurveys === null ? (
+                      <div className="text-sm text-gray-700 text-center">Login required</div>
+                    ) : (
+                      <div className="flex items-center gap-2 justify-center">
+                        <span className="font-semibold text-gray-700">Total Surveys:</span>
+                        <span className="text-gray-900 dark:text-gray-100 font-bold">
+                          {metrics.manifestoTotalSurveys}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              {/* Loading overlay for navigation */}
+              {navigatingTo === '/manifesto' && (
+                <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-amber-500 border-t-transparent"></div>
+                    <span className="text-gray-700 font-medium">Loading Manifesto...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Migrant card */}
+            <div
+              onClick={() => {
+                setNavigatingTo('/migrant');
+                router.push('/migrant');
+              }}
+              className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-emerald-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
+            >
+              <div className="flex flex-col items-center mb-2 gap-1">
+                <h2 className="text-xl font-bold text-center group-hover:text-emerald-700 transition">Migrant</h2>
+                <span className="px-3 py-1 rounded-full bg-white/70 text-gray-800 text-xs font-semibold border border-gray-300 mt-1">
+                  External API
+                </span>
+              </div>
+              <div className="flex flex-col gap-2 mt-2">
+                {metrics.isLoading ? (
+                  <div className="flex justify-center items-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-emerald-500"></div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 justify-center">
+                    <span className="font-semibold text-gray-700">Total Surveys:</span>
+                    <span className="text-gray-900 dark:text-gray-100 font-bold">
+                      {metrics.migrantTotalSurveys ?? 0}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {/* Loading overlay for navigation */}
+              {navigatingTo === '/migrant' && (
+                <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-emerald-500 border-t-transparent"></div>
+                    <span className="text-gray-700 font-medium">Loading Migrant...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create Account Modal */}
       {showCreateAccountModal && (
