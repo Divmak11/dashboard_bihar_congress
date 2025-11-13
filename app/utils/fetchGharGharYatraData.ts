@@ -4,7 +4,7 @@
  */
 
 import { db } from './firebase';
-import { ggyCache, makeGGYRangeKey } from './cacheUtils';
+import { ggyCache, makeGGYRangeKey, homePageCache, CACHE_KEYS } from './cacheUtils';
 import { 
   collection, 
   doc, 
@@ -48,6 +48,7 @@ import {
   GGYSegmentData,
   GGYZoneGroup,
   ReportSummary,
+  GgyHomeSummary,
 } from '../../models/ggyReportTypes';
 
 /**
@@ -1222,6 +1223,55 @@ export async function generateChartDataFromSource(
     dataQuality,
     callingPatterns
   };
+}
+
+/**
+ * Aggregate overall GGY summary for Home card (all dates)
+ * - Sums summary.total_punches across all documents
+ * - Sums summary.total_unique_entries (fallback: total_unique_punches)
+ * - Computes matchedCount / totalParam2Values * 100 for matchRate
+ * Uses homePageCache with CACHE_KEYS.GGY_OVERALL_SUMMARY
+ */
+export async function fetchGgyOverallSummary(forceRefresh: boolean = false): Promise<GgyHomeSummary> {
+  try {
+    if (!forceRefresh) {
+      const cached = homePageCache.get<GgyHomeSummary>(CACHE_KEYS.GGY_OVERALL_SUMMARY);
+      if (cached) return cached;
+    }
+
+    const colRef = collection(db, 'ghar_ghar_yatra');
+    const snapshot = await getDocs(colRef);
+
+    let totalPunches = 0;
+    let totalUniqueEntries = 0;
+    let matchedCount = 0;
+    let totalParam2Values = 0;
+
+    snapshot.forEach((d) => {
+      const data: any = d.data();
+      const s: any = data?.summary || {};
+      totalPunches += Number(s.total_punches || 0);
+      const uniqueVal = s.total_unique_entries ?? s.total_unique_punches ?? 0;
+      totalUniqueEntries += Number(uniqueVal || 0);
+      matchedCount += Number(s.matched_count || 0);
+      totalParam2Values += Number(s.total_param2_values || 0);
+    });
+
+    const matchRate = totalParam2Values > 0 ? (matchedCount / totalParam2Values) * 100 : 0;
+    const result: GgyHomeSummary = {
+      totalPunches,
+      totalUniqueEntries,
+      matchedCount,
+      totalParam2Values,
+      matchRate: Math.round(matchRate * 10) / 10,
+    };
+
+    homePageCache.set(CACHE_KEYS.GGY_OVERALL_SUMMARY, result);
+    return result;
+  } catch (error) {
+    console.error('[fetchGgyOverallSummary] Error:', error);
+    return { totalPunches: 0, totalUniqueEntries: 0, matchedCount: 0, totalParam2Values: 0, matchRate: 0 };
+  }
 }
 
 /**

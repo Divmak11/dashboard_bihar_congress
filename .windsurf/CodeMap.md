@@ -116,6 +116,7 @@ Home Page Integration:
 - `app/home/page.tsx` adds an Admin-only "Migrant" card linking to `/migrant`
 - Card shows total surveys (Delhi + Other Districts) using auto-login summary
 - Grouped under "Connecting Dashboard Data" section with Manifesto card (admin-only section)
+ - NOTE (Nov 2025): Home-card uses a hard override to display fixed totals until API is stabilized. See `HOME_CARD_OVERRIDES` in `app/home/page.tsx` (Migrant = 3276). Vertical page `/migrant` still uses live API.
 
 Access Control:
 - Admin-only guard in `app/migrant/page.tsx` using Firebase `getCurrentAdminUser()` (non-admin redirected to `/wtm-slp-new`)
@@ -476,6 +477,7 @@ Home Page Integration:
 - `app/home/page.tsx` adds an Admin-only "Manifesto" card linking to `/manifesto`
 - Card shows Total Surveys using auto-login summary (util logs in if token missing)
 - Grouped under "Connecting Dashboard Data" section with Migrant card (admin-only section)
+ - NOTE (Nov 2025): Home-card uses a hard override to display a fixed total until API is stabilized. See `HOME_CARD_OVERRIDES` in `app/home/page.tsx` (Manifesto = 415). Vertical page `/manifesto` still uses live API.
 
 Access Control:
 - Admin-only guard in `app/manifesto/page.tsx` using Firebase `getCurrentAdminUser()` (non-admin redirected to `/wtm-slp-new`)
@@ -484,6 +486,39 @@ Notes:
 - Filters, charts and export columns mirror `ManifestoReportDashboard.js`
 - Date handling is timezone-safe (local YYYY-MM-DD strings)
 - Credentials for API login stored in `app/utils/fetchManifestoData.ts` per project directive
+
+---
+
+### Ghar-Ghar Yatra (GGY) Home Card (NEW)
+
+Location & Files:
+- Home Card UI:
+  - `app/home/page.tsx` → Admin-only "Ghar-Ghar Yatra Data" card displays aggregated, all-time metrics
+- Types:
+  - `models/ggyReportTypes.ts` → `GgyHomeSummary` (home card totals shape)
+- Utilities:
+  - `app/utils/fetchGharGharYatraData.ts`
+    - `fetchGgyOverallSummary(forceRefresh?)` → Aggregates across all `ghar_ghar_yatra` docs by summing `summary` fields
+      - `total_punches`
+      - `total_unique_entries` (fallback: `total_unique_punches`)
+      - `matched_count`
+      - `total_param2_values`
+      - Computes `matchRate = matched_count / total_param2_values * 100`
+
+Caching:
+- Home card summary cached via `homePageCache` with `CACHE_KEYS.GGY_OVERALL_SUMMARY` (TTL 15 min)
+
+Home Page Integration:
+- `app/home/page.tsx` shows three metrics:
+  - Total Punches (sum of summaries)
+  - Total Unique Entries (sum of summaries with safe fallbacks)
+  - Total Matched (percentage = matched_count / total_param2_values)
+- Data fetched in parallel with other home summaries using `Promise.all`
+- Force Refresh clears `GGY_OVERALL_SUMMARY` cache and refetches totals
+
+Notes:
+- Aggregation is resilient to legacy field names (`total_unique_punches`)
+- Uses local timezone-safe display with `toLocaleString()` formatting in UI
 
 ---
 
