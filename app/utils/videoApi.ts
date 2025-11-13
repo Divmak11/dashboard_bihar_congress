@@ -139,23 +139,23 @@ export async function fetchVideoStatsFromLinks(
     }
   }
 
-  // Set zero stats for unsupported links
-  for (const unsupportedLink of platformGroups.unsupported) {
-    console.warn(`[fetchVideoStatsFromLinks] Unsupported link, setting zero stats: ${unsupportedLink}`);
-    results.set(unsupportedLink, { views: 0, likes: 0 });
+  // Do not insert zero-value placeholders for unsupported or unfetched links.
+  // Leaving them absent allows downstream aggregators to fall back to stored entry metrics.
+  if (platformGroups.unsupported.length > 0) {
+    for (const unsupportedLink of platformGroups.unsupported) {
+      console.warn(`[fetchVideoStatsFromLinks] Unsupported link detected, skipping stats insertion: ${unsupportedLink}`);
+      // Intentionally do not set any stats for unsupported links
+    }
   }
 
-  // Set zero stats for links that couldn't be fetched (missing API keys)
-  for (const youtubeLink of platformGroups.youtube) {
-    if (!results.has(youtubeLink)) {
-      results.set(youtubeLink, { views: 0, likes: 0 });
-    }
+  // If API credentials were missing for a platform, links from that platform
+  // will not be present in results. We intentionally do not add zero stats here
+  // to allow fallback to document-provided metrics (entry.metrics).
+  if (platformGroups.youtube.length > 0 && !opts.youtubeApiKey) {
+    console.warn('[fetchVideoStatsFromLinks] YouTube API key missing; skipping zero placeholders for YouTube links');
   }
-  
-  for (const facebookLink of platformGroups.facebook) {
-    if (!results.has(facebookLink)) {
-      results.set(facebookLink, { views: 0, likes: 0 });
-    }
+  if (platformGroups.facebook.length > 0 && !opts.facebookAccessToken) {
+    console.warn('[fetchVideoStatsFromLinks] Facebook access token missing; skipping zero placeholders for Facebook links');
   }
 
   console.log(`[fetchVideoStatsFromLinks] Successfully processed ${results.size} total links`);

@@ -222,16 +222,16 @@ export default function CallCenterPage() {
         ) : (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-700">Overall Conversions Done:</span>
+              <span className="font-semibold text-gray-700">Total Calls:</span>
+              <span className="text-gray-900 font-bold">{currentMetrics.totalCalls}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-gray-700">Total Conversions:</span>
               <span className="text-gray-900 font-bold">{currentMetrics.conversions}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-700">Total Not contacted:</span>
+              <span className="font-semibold text-gray-700">Total Not Contacted:</span>
               <span className="text-gray-900 font-bold">{currentMetrics.notContacted}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-700">Total Calls Made:</span>
-              <span className="text-gray-900 font-bold">{currentMetrics.totalCalls}</span>
             </div>
             {mode === 'single' && currentMetrics.reportUrl ? (
               <div className="pt-2">
@@ -275,16 +275,16 @@ export default function CallCenterPage() {
         ) : (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-700">Overall Conversions Done:</span>
+              <span className="font-semibold text-gray-700">Total Calls:</span>
+              <span className="text-gray-900 font-bold">{currentNewMetrics.totalCalls}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-gray-700">Total Conversions:</span>
               <span className="text-gray-900 font-bold">{currentNewMetrics.conversions}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-700">Total Not contacted:</span>
+              <span className="font-semibold text-gray-700">Total Not Contacted:</span>
               <span className="text-gray-900 font-bold">{currentNewMetrics.notContacted}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-gray-700">Total Calls Made:</span>
-              <span className="text-gray-900 font-bold">{currentNewMetrics.totalCalls}</span>
             </div>
           </div>
         )}

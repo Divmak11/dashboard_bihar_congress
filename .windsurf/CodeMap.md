@@ -276,9 +276,10 @@ my-dashboard/
 │   ├── DateRangeFilter.tsx      # Date filtering component
 │   └── NavBar.tsx                # Navigation bar
 ├── scripts/                      # Utility Node.js scripts for data sync/reporting
-│   ├── ac-assembly-slp-report.js # Generates AC→Assembly→SLP coverage CSV (phone-first, name fallback)
-│   ├── sync-slp-activity-status.js # Sync SLP activityStatus via Excel + FB matching
-│   └── non-matching-slps-report.js # Extracts sheet SLPs not found in Firestore
+│   ├── ac-assembly-slp-report.js     # Generates AC→Assembly→SLP coverage CSV (phone-first, name fallback)
+│   ├── sync-slp-activity-status.js   # Sync SLP activityStatus via Excel + FB matching
+│   ├── non-matching-slps-report.js   # Extracts sheet SLPs not found in Firestore
+│   └── youtube-deduplicate-influencers.js # TEMP: Deduplicate youtube influencer-data safely (dry-run by default; cross-ref theme-data before deleting unreferenced duplicates)
 ├── models/                       # TypeScript type definitions
 │   ├── types.ts                  # Core data types
 │   ├── hierarchicalTypes.ts     # Hierarchy-specific types
@@ -409,6 +410,10 @@ Call Center New Card (External dataset):
 - Appears on the Call Center vertical landing at the same level as "Call Center Old" labeled exactly "Call Center New".
 - Shares the same `DateSelector` state: shows cumulative metrics by default; in "Single date" mode shows that date’s external metrics.
 - Clicking the card navigates to `/verticals/call-center/external-new`, which displays a paginated, per-day grouped list of converted users with search and CSV export.
+- Metric display order (both cards):
+  1) Total Calls
+  2) Total Conversions
+  3) Total Not Contacted
 
 ---
 
@@ -524,6 +529,28 @@ CACHE_KEYS = {
 - **Bypass**: Filtered requests (date ranges, handler_id, SLP details) skip cache
 
 #### **YouTube Caching** (`app/utils/fetchYoutubeData.ts`)
+
+##### YouTube Vertical - Video Stats Resolution & Fallback (Nov 2025)
+- Source of per-video metrics:
+  - API-fetched stats keyed by original `videoLink` via `app/utils/videoApi.ts::fetchVideoStatsFromLinks()`.
+  - Fallback to stored `theme.influencerEntries[].metrics` when no API stats are present for a link.
+- Precedence (per link):
+  1) Use API stats from `videoStats.get(videoLink)` when available.
+  2) Else use `entry.metrics` stored in the theme document.
+  3) Else default to `{ views: 0, likes: 0 }`.
+- Fetch behavior update:
+  - `fetchVideoStatsFromLinks()` no longer inserts zero-value placeholders for:
+    - Unsupported platforms.
+    - Platforms missing credentials (e.g., no Facebook access token).
+  - Only successfully fetched results are merged into the stats map; absent entries trigger fallback to `entry.metrics` in aggregators.
+- Implications:
+  - Non-YouTube links (e.g., Facebook) now display stored metrics when credentials are not provided, instead of showing zeros.
+  - Legitimate zero values returned by APIs remain zero in the UI (we do not override real zeros).
+  - If credentials are present but invalid, platform-specific fetchers may still return zero for failed requests; fix credentials to prefer API stats, or temporarily remove the invalid credential to allow fallback.
+- Affected files:
+  - `app/utils/videoApi.ts` (unified mixed-platform fetch; merges only successful stats, skips zero placeholders for unsupported/unconfigured)
+  - Aggregators use fallback automatically:
+    - `app/utils/fetchYoutubeData.ts` → `aggregateTheme()`, `aggregateInfluencer()`, `computeOverviewAggregates()`
 - **Function**: `fetchYoutubeSummary()` enhanced with persistent caching
 - **Replaced**: In-memory cache with localStorage persistence
 - **TTL**: 15 minutes (inherits from DataCache default)
