@@ -447,6 +447,63 @@ Call Center New Card (External dataset):
 7. Download triggered automatically on completion
 ```
 
+### Training Data Vertical (NEW)
+
+Location & Files:
+- UI:
+  - `app/verticals/training-data/page.tsx` → Training data dashboard with WTM and Shakti tabs showing Zone → Assembly grouped view
+  - `components/training/TrainingTabs.tsx` → Tab switcher for WTM vs Shakti data with counts
+  - `components/training/TrainingZoneGroupList.tsx` → Collapsible zone groups with assembly cards
+  - `components/training/TrainingAssemblyCard.tsx` → Assembly training sessions with date, SLP, coordinator, attendees
+  - `components/training/TrainingSkeleton.tsx` → Loading skeletons for zones and assemblies
+- Scripts:
+  - `scripts/wtm-training-upload-web.js` → Extracts WTM training data from `WTM_club.xlsx` to `scripts/wtm-training-data.json`
+    - Validation relaxed: rows with missing coordinator/SLP/date are kept with defaults ("Unknown" or empty date)
+    - Logs inconsistencies but does not drop completed rows
+  - `scripts/shakti-training-upload.js` → Extracts Shakti training data from `Shakti_club.xlsx` to `scripts/shakti-training-data.json`
+    - Validation relaxed similarly; keeps completed rows with defaults
+  - `scripts/upload-to-firebase.js` / `scripts/upload-shakti-to-firebase.js` → Upload extracted JSON via API with base URL fallback
+  - `scripts/upload-training-filtered.js` → Helper to incrementally upload only valid-completed rows with date normalization and correct `form_type`; chunks requests and relies on idempotent IDs (no purge needed)
+    - `fetchTrainingRecords(formType)` → Query training collection by form_type ('wtm' or 'shakti-data')
+    - `groupTrainingByZonal(records)` → Group by Zone → Assembly with sorting and totals
+    - `computeTotalAttendees(record)` → Sum attendees + attendeesOtherThanClub
+    - `parseTrainingDate(dateStr)` → Multi-format date parsing (YYYY-MM-DD, DD/MM/YYYY, etc.)
+    - `formatTrainingDate(dateStr)` → Display-friendly date formatting
+- Types:
+  - `models/trainingTypes.ts` → `TrainingRecord`, `TrainingAssemblyItem`, `TrainingZoneGroup`, `TrainingFormType`, etc.
+- Utilities:
+  - `app/utils/fetchTrainingData.ts` → Firestore queries, grouping logic, date parsing, edge case handling
+
+- API:
+  - `app/api/training/upload/route.ts` → Accepts `trainingData` array. Now validates `form_type` from input (`'wtm' | 'shakti-data'`), enforces completed-only guard, and writes documents with a deterministic ID
+    `formtype__zonal__assembly__date__slp` using `batch.set(..., { merge: true })` to make uploads idempotent and prevent duplicates on re-upload. When `dateOfTraining` or `slpName` is unknown, appends `__row-N` to the doc ID and stores `rowNumber` in the doc to avoid collisions.
+
+Current dataset counts after re-extraction (relaxed rules) and re-upload:
+- WTM: 84 records
+- Shakti: 112 records
+
+Firestore Data Model:
+- Collection: `training`
+- Document fields: `zonal`, `assembly`, `assemblyCoordinator`, `trainingStatus`, `dateOfTraining`, `slpName`, `attendees`, `attendeesOtherThanClub`, `form_type` ('wtm' | 'shakti-data'), timestamps
+- Query pattern: `where('form_type', '==', formType)` for tab separation
+
+UI Features:
+- Two tabs: "WTM" (80 records) and "Shakti" (107 records)
+- Hierarchical view: Zones → Assemblies → Training sessions
+- Collapsible zone sections with totals (sessions, attendees, assembly count)
+- Assembly cards show latest training date, SLP names, coordinators, total attendees
+- Multiple sessions per assembly displayed as expandable timeline
+- Edge case handling: missing dates/SLP/coordinator → fallback to "Unknown" values
+- Client-side sorting: zones/assemblies alphabetically, sessions by date desc
+
+Home Page Integration:
+- `app/home/page.tsx` → Added "Training Data" card in "Connecting Dashboard Data" section (admin-only)
+- Links to `/verticals/training-data`
+
+Performance Notes:
+- Client-side grouping and sorting (current dataset: 187 records total)
+- Future optimization: composite Firestore index for server-side ordering if needed
+
 ### Manifesto Vertical (NEW)
 
 Location & Files:

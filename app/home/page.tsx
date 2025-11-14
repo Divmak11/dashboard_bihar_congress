@@ -731,6 +731,36 @@ export default function HomePage() {
                 </div>
               )}
             </div>
+
+            {/* Training Data card */}
+            <div
+              onClick={() => {
+                setNavigatingTo('/verticals/training-data');
+                router.push('/verticals/training-data');
+              }}
+              className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-teal-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
+            >
+              <div className="flex flex-col items-center mb-2 gap-1">
+                <h2 className="text-xl font-bold text-center group-hover:text-teal-700 transition">Training Data</h2>
+                <span className="px-3 py-1 rounded-full bg-white/70 text-gray-800 text-xs font-semibold border border-gray-300 mt-1">
+                  WTM & Shakti Sessions
+                </span>
+              </div>
+              <div className="flex flex-col gap-2 mt-2">
+                <div className="text-sm text-gray-700 text-center">
+                  View WTM and Shakti training sessions organized by zones and assemblies
+                </div>
+              </div>
+              {/* Loading overlay for navigation */}
+              {navigatingTo === '/verticals/training-data' && (
+                <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-teal-500 border-t-transparent"></div>
+                    <span className="text-gray-700 font-medium">Loading Training Data...</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
