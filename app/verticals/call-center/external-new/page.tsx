@@ -39,11 +39,19 @@ export default function CallCenterExternalNewPage() {
     const rows: string[] = [header.join(',')];
     for (const g of groups) {
       for (const r of g.rows) {
-        const cols = [g.date, r.name || '', r.phone || '', r.acName || ''];
-        // Escape commas and quotes
+        // Sanitize AC Name and coerce all values to strings
+        const rawAc: any = r.acName;
+        const safeAcName = (rawAc && typeof rawAc === 'object')
+          ? '--'
+          : (typeof rawAc === 'string' && rawAc.trim().toLowerCase() === '[object object]')
+            ? '--'
+            : (rawAc ?? '');
+        const cols = [g.date, r.name ?? '', r.phone ?? '', safeAcName];
+        // Escape commas and quotes, ensure string coercion first
         const escaped = cols.map((v) => {
-          const needsQuote = /[",\n]/.test(v);
-          const vv = v.replace(/"/g, '""');
+          const sv = String(v);
+          const needsQuote = /[",\n]/.test(sv);
+          const vv = sv.replace(/"/g, '""');
           return needsQuote ? `"${vv}"` : vv;
         });
         rows.push(escaped.join(','));

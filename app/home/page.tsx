@@ -377,6 +377,7 @@ export default function HomePage() {
           <LogoutButton />
         </div>
       </div>
+      {/* Commented out "View Map" button as requested
       {role === 'admin' && (
         <div className="flex justify-center mb-6">
           <Link href="/map">
@@ -386,6 +387,7 @@ export default function HomePage() {
           </Link>
         </div>
       )}
+      */}
       {/* All cards in a single grid for alignment */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Ravi Pandit card with real data and dashboard link */}
@@ -691,7 +693,7 @@ export default function HomePage() {
             className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-teal-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
           >
             <div className="flex flex-col items-center mb-2 gap-1">
-              <h2 className="text-xl font-bold text-center group-hover:text-teal-700 transition">Training Data</h2>
+              <h2 className="text-xl font-bold text-center group-hover:text-teal-700 transition">Club Training Data</h2>
               <span className="px-3 py-1 rounded-full bg-white/70 text-gray-800 text-xs font-semibold border border-gray-300 mt-1">
                 WTM & Shakti Sessions
               </span>
