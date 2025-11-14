@@ -281,7 +281,10 @@ my-dashboard/
 │   ├── ac-assembly-slp-report.js     # Generates AC→Assembly→SLP coverage CSV (phone-first, name fallback)
 │   ├── sync-slp-activity-status.js   # Sync SLP activityStatus via Excel + FB matching
 │   ├── non-matching-slps-report.js   # Extracts sheet SLPs not found in Firestore
-│   └── youtube-deduplicate-influencers.js # TEMP: Deduplicate youtube influencer-data safely (dry-run by default; cross-ref theme-data before deleting unreferenced duplicates)
+│   ├── youtube-deduplicate-influencers.js # TEMP: Deduplicate youtube influencer-data safely (dry-run by default; cross-ref theme-data before deleting unreferenced duplicates)
+│   └── upload-whatsapp-groups.js      # Uploads `whatsapp_groups.json` to Firestore collection (default: `whatsapp_data`) using firebase-admin.
+│                                      # Preserves objects EXACTLY as in JSON (no transformation), uses deterministic SHA1-based doc IDs to avoid duplicates across runs,
+│                                      # and chunks writes in batches of 500.
 ├── models/                       # TypeScript type definitions
 │   ├── types.ts                  # Core data types
 │   ├── hierarchicalTypes.ts     # Hierarchy-specific types
@@ -291,6 +294,12 @@ my-dashboard/
     ├── Plan.md                   # Implementation plan
     ├── Tasks.md                  # Task tracking
     └── CodeMap.md                # This file
+
+#### Python utilities (root)
+- `extract_workbook_data.py` — Legacy extractor for various AC sheets; outputs `extracted_assembly_data.json`.
+- `extract_whatsapp_groups.py` — Extracts WhatsApp group rows from the root workbook `whatsapp_workbook.xlsx` (sheets: "Sakti/Shakti Team", "WTM Group", "public").
+  - Outputs `whatsapp_groups.json` with fields: "Assembly", "Group Name", "Group Link", "Group Members", "Admin", plus added `form_type` mapped as: shakti (Sakti/Shakti Team), wtm (WTM Group), public (public).
+  - Missing cell values are filled with empty strings. Assembly text is preserved exactly as present in the sheet.
 
 ### Report Generation Architecture (Refactored)
 
@@ -559,12 +568,48 @@ Location & Files:
       - `total_punches`
       - `total_unique_entries` (fallback: `total_unique_punches`)
       - `matched_count`
-      - `total_param2_values`
+    - `total_param2_values`
+
+### SLP Training Vertical (NEW)
+
+Location & Files:
+- API:
+  - `app/api/slp-training/upload/route.ts` → Accepts `{ slpTrainingData }` and writes to `slp_training` using deterministic IDs.
+- Scripts:
+  - `scripts/upload-slp-training.js` → Reads `extracted_assembly_data.json` and POSTs to the API (tries :3000/:3001 or env API_BASE_URL).
+- Models:
+  - `models/slpTrainingTypes.ts` → `SlpTrainingRecord`, `SlpTrainingAssemblyGroup`, `SlpTrainingSummary`, `SlpTrainingPageData`.
+- Utilities:
+  - `app/utils/fetchSlpTrainingData.ts` → Fetch all records, group by assembly, summary calculators. Avoids composite indexes (no multi-field orderBy; sorts in memory).
+- UI:
+  - `app/slp-training/page.tsx` → Admin-only page listing trained SLPs grouped by Assembly with search and expand/collapse. Uses an `isAdmin` guard (calls `getCurrentAdminUser(user.uid)`), summary cards, and responsive grid.
+  - `app/home/page.tsx` → Adds "SLP Training" card (emerald theme) under "Connecting Dashboard Data" for admins; displays total SLPs, assemblies, trained count via `fetchSlpTrainingSummary()`.
+
+Firestore Data Model:
+- Collection: `slp_training`
+- Deterministic Document ID: `assembly__name__mobile` (normalized, lowercased, URL-safe)
+- Fields:
+  - `name: string`
+  - `mobile_number: string` (".0" trimmed)
+  - `assembly: string`
+  - `status: 'trained' | 'in-progress' | 'pending'` (default: 'trained' for uploaded data)
+  - `trainingDate: string` (YYYY-MM-DD) – defaults to current date on upload
+  - `createdAt`, `updatedAt`: ISO strings
+
+Query Pattern & Indexing:
+- `fetchAllSlpTrainingRecords()` fetches the whole collection then sorts in memory by `assembly` then `name` to avoid composite index prompts.
+- `fetchSlpTrainingByAssembly(assembly)` uses `where('assembly','==', assembly)` and sorts by `name` in memory.
+- Rationale: Current dataset (~621 docs) is small; removing multi-field `orderBy` prevents composite index requirements while keeping UI fast and simple.
+
+Access Control:
+- SLP Training page is admin-only. Guard calls `getCurrentAdminUser(user.uid)`; non-admins redirect to `/wtm-slp-new`.
+
       - Computes `matchRate = matched_count / total_param2_values * 100`
 
 Caching:
 - Home card summary cached via `homePageCache` with `CACHE_KEYS.GGY_OVERALL_SUMMARY` (TTL 15 min)
 
+{{ ... }}
 Home Page Integration:
 - `app/home/page.tsx` shows three metrics:
   - Total Punches (sum of summaries)
