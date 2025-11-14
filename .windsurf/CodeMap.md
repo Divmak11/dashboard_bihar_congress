@@ -85,6 +85,174 @@ Labels in UI updated:
 
 ---
 
+### WhatsApp Data Vertical (NEW)
+
+Location & Files:
+- UI:
+  - `app/verticals/whatsapp-data/page.tsx` → Vertical landing page with three tabs (Shakti, WTM, Public) and assembly-grouped lists
+  - Components:
+    - `components/whatsapp/WhatsappTabs.tsx` → Tab switcher (counts + loading states)
+    - `components/whatsapp/WhatsappGroupsList.tsx` → Assembly → Groups expandable lists with search
+- Models:
+  - `models/whatsappTypes.ts` → `WhatsappGroup`, `WhatsappAssemblyGroup`, `WhatsappSummary`, `WhatsappPageData`, `WhatsappFormType`, `WhatsappTabCounts`
+- Utilities:
+  - `app/utils/fetchWhatsappData.ts` → Fetchers and in-memory grouping/summary
+    - `fetchWhatsappGroupsByType(formType)` → `where('form_type','==', formType)`
+    - `groupWhatsappDataByAssembly(groups)` → Assembly grouping + totals (client-side)
+    - `computeWhatsappSummary(shakti, wtm, public)` → Totals and assemblies set
+    - `fetchAllWhatsappData()` → Parallel fetch per form_type, returns `WhatsappPageData`
+    - `fetchWhatsappTabCounts()` → Light count fetch per form_type
+    - `fetchWhatsappHomeSummary()` → Home-card summary: `{ totalGroups, totalAssemblies }`
+
+Firestore Data Model:
+- Collection: `whatsapp_data`
+- Fields (exactly as stored; no transformations):
+  - `Assembly: string`
+  - `Group Name: string`
+  - `Group Link: string`
+  - `Group Members: string` (parsed with `parseInt`, decimals ignored, empty = 0)
+  - `Admin: string`
+  - `form_type: 'shakti' | 'wtm' | 'public'`
+
+Query Pattern & Indexing:
+- Uses single-field filter `where('form_type','==', value)`
+- No `orderBy` and no multi-field filters → avoids composite index requirements
+- All grouping/sorting is done in memory on the client
+
+UI Behavior:
+- Three tabs with counts: Shakti, WTM, Public
+- Each tab shows assemblies alphabetically with expandable group lists
+- Search filters by assembly name and group name
+- Group cards show: Group Name, Members, Admin, and a “Join Group” link button
+- Loading skeletons while fetching; empty state when no results
+
+Home Page Integration:
+- `app/home/page.tsx` → Adds a "WhatsApp Data" card alongside general verticals (not under "Connecting Dashboard Data")
+  - Shows Total Groups and Assemblies via `fetchWhatsappHomeSummary()`
+  - Navigates to `/verticals/whatsapp-data` with a loading overlay pattern consistent with other cards
+
+Notes:
+- This vertical relies on the uploaded dataset (`scripts/upload-whatsapp-groups-client.js` or admin alternative) and preserves objects exactly as in `whatsapp_groups.json`.
+
+
+## Firebase Initialization Patterns
+
+The project uses **3 distinct Firebase initialization patterns** that should be reused consistently across all scripts and components to avoid confusion and duplication.
+
+### Pattern 1: Client SDK for Web Components
+**Location**: `app/utils/firebase.ts` - **PRIMARY PATTERN FOR WEB APP**
+
+```typescript
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDD9RZZM8u5_Q6I24SJk1_jACFeZTGgSpw",
+  authDomain: "congressdashboard-e521d.firebaseapp.com",
+  projectId: "congressdashboard-e521d",
+  storageBucket: "congressdashboard-e521d.firebasestorage.app",
+  messagingSenderId: "561776205072",
+  appId: "1:561776205072:web:003a31ab2a9def84915995"
+};
+
+// Singleton pattern - prevents duplicate initialization
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+export { db, auth };
+```
+
+**When to Use**: All React components, utility functions in `app/` directory, and client-side Firebase operations.
+
+### Pattern 2: Admin SDK for Server Scripts
+**Location**: `scripts/upload-whatsapp-groups.js` and other admin scripts
+
+```javascript
+const admin = require('firebase-admin');
+const { getFirestore } = require('firebase-admin/firestore');
+
+// Initialize Firebase Admin SDK (only once check)
+if (!admin.apps.length) {
+  admin.initializeApp({
+    projectId: 'congressdashboard-e521d'
+  });
+}
+
+const db = getFirestore();
+```
+
+**When to Use**: 
+- Server-side scripts with elevated permissions
+- Bulk data operations
+- Administrative tasks
+- Scripts that don't need user authentication
+
+**Key Benefits**: 
+- No API keys required (uses service account)
+- Bypasses security rules
+- Full admin access to Firestore
+
+### Pattern 3: Client SDK for Node.js Scripts
+**Location**: `scripts/analyze-slp-activity-status.js`, `scripts/sync-slp-activity-status.js`, etc.
+
+```javascript
+const { initializeApp } = require('firebase/app');
+const { getFirestore, collection, query, where, getDocs } = require('firebase/firestore');
+
+// Firebase configuration (same as web app)
+const firebaseConfig = {
+  apiKey: "AIzaSyDD9RZZM8u5_Q6I24SJk1_jACFeZTGgSpw",
+  authDomain: "congressdashboard-e521d.firebaseapp.com",
+  projectId: "congressdashboard-e521d",
+  storageBucket: "congressdashboard-e521d.firebasestorage.app",
+  messagingSenderId: "561776205072",
+  appId: "1:561776205072:web:003a31ab2a9def84915995"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+```
+
+**When to Use**:
+- Node.js scripts that need read-only access
+- Scripts that should respect security rules
+- Analysis and reporting scripts
+- Scripts that don't need admin privileges
+
+### Pattern Selection Guide
+
+| Use Case | Pattern | Reason |
+|----------|---------|---------|
+| React Components | Client SDK (Pattern 1) | Web-optimized, authentication support |
+| Admin Scripts | Admin SDK (Pattern 2) | Elevated permissions, no API limits |
+| Analysis Scripts | Client SDK (Pattern 3) | Respects security rules, read-only safe |
+| Bulk Uploads | Admin SDK (Pattern 2) | Bypass rate limits, batch operations |
+| User-facing Features | Client SDK (Pattern 1) | Authentication integration |
+
+### Reusability Instructions
+
+**For New Scripts:**
+1. **Determine needed permissions**: Admin (Pattern 2) vs Regular (Pattern 3)
+2. **Copy exact config**: Use the same `firebaseConfig` object from existing files
+3. **Include singleton check**: For admin scripts, always check `!admin.apps.length`
+4. **Import consistency**: Use the same import statements as existing scripts
+
+**Common Mistakes to Avoid:**
+- ❌ Creating new Firebase apps with different configs
+- ❌ Missing singleton checks (causes initialization errors)
+- ❌ Using admin SDK when client SDK is sufficient
+- ❌ Hardcoding different project IDs or API keys
+
+**Environment Variables:** 
+- Not required for scripts (configs are hardcoded)
+- Admin SDK uses default service account authentication
+- Client SDK uses public config (safe to commit)
+
+---
+
 ### Migrant Vertical (NEW)
 
 Location & Files:
@@ -281,7 +449,10 @@ my-dashboard/
 │   ├── ac-assembly-slp-report.js     # Generates AC→Assembly→SLP coverage CSV (phone-first, name fallback)
 │   ├── sync-slp-activity-status.js   # Sync SLP activityStatus via Excel + FB matching
 │   ├── non-matching-slps-report.js   # Extracts sheet SLPs not found in Firestore
-│   └── youtube-deduplicate-influencers.js # TEMP: Deduplicate youtube influencer-data safely (dry-run by default; cross-ref theme-data before deleting unreferenced duplicates)
+│   ├── youtube-deduplicate-influencers.js # TEMP: Deduplicate youtube influencer-data safely (dry-run by default; cross-ref theme-data before deleting unreferenced duplicates)
+│   └── upload-whatsapp-groups.js      # Uploads `whatsapp_groups.json` to Firestore collection (default: `whatsapp_data`) using firebase-admin.
+│                                      # Preserves objects EXACTLY as in JSON (no transformation), uses deterministic SHA1-based doc IDs to avoid duplicates across runs,
+│                                      # and chunks writes in batches of 500.
 ├── models/                       # TypeScript type definitions
 │   ├── types.ts                  # Core data types
 │   ├── hierarchicalTypes.ts     # Hierarchy-specific types
@@ -291,6 +462,12 @@ my-dashboard/
     ├── Plan.md                   # Implementation plan
     ├── Tasks.md                  # Task tracking
     └── CodeMap.md                # This file
+
+#### Python utilities (root)
+- `extract_workbook_data.py` — Legacy extractor for various AC sheets; outputs `extracted_assembly_data.json`.
+- `extract_whatsapp_groups.py` — Extracts WhatsApp group rows from the root workbook `whatsapp_workbook.xlsx` (sheets: "Sakti/Shakti Team", "WTM Group", "public").
+  - Outputs `whatsapp_groups.json` with fields: "Assembly", "Group Name", "Group Link", "Group Members", "Admin", plus added `form_type` mapped as: shakti (Sakti/Shakti Team), wtm (WTM Group), public (public).
+  - Missing cell values are filled with empty strings. Assembly text is preserved exactly as present in the sheet.
 
 ### Report Generation Architecture (Refactored)
 
@@ -497,7 +674,7 @@ UI Features:
 - Client-side sorting: zones/assemblies alphabetically, sessions by date desc
 
 Home Page Integration:
-- `app/home/page.tsx` → Added "Training Data" card in "Connecting Dashboard Data" section (admin-only)
+- `app/home/page.tsx` → "Training Data" card placed alongside the general verticals grid (admin-only)
 - Links to `/verticals/training-data`
 
 Performance Notes:
@@ -559,12 +736,48 @@ Location & Files:
       - `total_punches`
       - `total_unique_entries` (fallback: `total_unique_punches`)
       - `matched_count`
-      - `total_param2_values`
+    - `total_param2_values`
+
+### SLP Training Vertical (NEW)
+
+Location & Files:
+- API:
+  - `app/api/slp-training/upload/route.ts` → Accepts `{ slpTrainingData }` and writes to `slp_training` using deterministic IDs.
+- Scripts:
+  - `scripts/upload-slp-training.js` → Reads `extracted_assembly_data.json` and POSTs to the API (tries :3000/:3001 or env API_BASE_URL).
+- Models:
+  - `models/slpTrainingTypes.ts` → `SlpTrainingRecord`, `SlpTrainingAssemblyGroup`, `SlpTrainingSummary`, `SlpTrainingPageData`.
+- Utilities:
+  - `app/utils/fetchSlpTrainingData.ts` → Fetch all records, group by assembly, summary calculators. Avoids composite indexes (no multi-field orderBy; sorts in memory).
+- UI:
+  - `app/slp-training/page.tsx` → Admin-only page listing trained SLPs grouped by Assembly with search and expand/collapse. Uses an `isAdmin` guard (calls `getCurrentAdminUser(user.uid)`), summary cards, and responsive grid.
+  - `app/home/page.tsx` → Adds "SLP Training" card (emerald theme) alongside the general verticals grid (admin-only); displays total SLPs, assemblies, trained count via `fetchSlpTrainingSummary()`.
+
+Firestore Data Model:
+- Collection: `slp_training`
+- Deterministic Document ID: `assembly__name__mobile` (normalized, lowercased, URL-safe)
+- Fields:
+  - `name: string`
+  - `mobile_number: string` (".0" trimmed)
+  - `assembly: string`
+  - `status: 'trained' | 'in-progress' | 'pending'` (default: 'trained' for uploaded data)
+  - `trainingDate: string` (YYYY-MM-DD) – defaults to current date on upload
+  - `createdAt`, `updatedAt`: ISO strings
+
+Query Pattern & Indexing:
+- `fetchAllSlpTrainingRecords()` fetches the whole collection then sorts in memory by `assembly` then `name` to avoid composite index prompts.
+- `fetchSlpTrainingByAssembly(assembly)` uses `where('assembly','==', assembly)` and sorts by `name` in memory.
+- Rationale: Current dataset (~621 docs) is small; removing multi-field `orderBy` prevents composite index requirements while keeping UI fast and simple.
+
+Access Control:
+- SLP Training page is admin-only. Guard calls `getCurrentAdminUser(user.uid)`; non-admins redirect to `/wtm-slp-new`.
+
       - Computes `matchRate = matched_count / total_param2_values * 100`
 
 Caching:
 - Home card summary cached via `homePageCache` with `CACHE_KEYS.GGY_OVERALL_SUMMARY` (TTL 15 min)
 
+{{ ... }}
 Home Page Integration:
 - `app/home/page.tsx` shows three metrics:
   - Total Punches (sum of summaries)

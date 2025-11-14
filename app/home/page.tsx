@@ -13,8 +13,11 @@ import { getManifestoComplaintsCount } from "../utils/fetchManifestoComplaintsDa
 import { WtmSlpSummary } from "../../models/types";
 import { GgyHomeSummary } from "../../models/ggyReportTypes";
 import { fetchGgyOverallSummary } from "../utils/fetchGharGharYatraData";
+import { fetchSlpTrainingSummary } from "../utils/fetchSlpTrainingData";
 import { YoutubeSummaryMetrics } from "../../models/youtubeTypes";
+import { SlpTrainingSummary } from "../../models/slpTrainingTypes";
 import { initializeCache, forceCacheRefresh, CACHE_KEYS } from "../utils/cacheUtils";
+import { fetchWhatsappHomeSummary } from "../utils/fetchWhatsappData";
 import LogoutButton from "../../components/LogoutButton";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, collection, getDocs } from "firebase/firestore";
@@ -37,6 +40,8 @@ interface DashboardCardMetrics {
   migrantTotalSurveys: number | null;
   manifestoComplaintsCount: number | null;
   ggyHomeSummary: GgyHomeSummary | null;
+  slpTrainingSummary: SlpTrainingSummary | null;
+  whatsappHomeSummary: { totalGroups: number; totalAssemblies: number } | null;
 }
 
 export default function HomePage() {
@@ -49,7 +54,9 @@ export default function HomePage() {
     manifestoTotalSurveys: null,
     migrantTotalSurveys: null,
     manifestoComplaintsCount: null,
-    ggyHomeSummary: null
+    ggyHomeSummary: null,
+    slpTrainingSummary: null,
+    whatsappHomeSummary: null
   });
   const [role, setRole] = useState<string | null>(null);
   const [cacheInitialized, setCacheInitialized] = useState(false);
@@ -137,7 +144,7 @@ export default function HomePage() {
       
       // Fetch summaries in parallel with caching (auto-login if needed)
       // Note: Manifesto/Migrant summaries are intentionally excluded to enforce hardcoded home-card values.
-      const [wtmSlpSummary, youtubeSummary, manifestoComplaintsCount, ggySummary] = await Promise.all([
+      const [wtmSlpSummary, youtubeSummary, manifestoComplaintsCount, ggySummary, slpTrainingSummary, whatsappSummary] = await Promise.all([
         // Fetch WTM-SLP summary for all time (no date parameters) - uses caching for homepage
         getWtmSlpSummary(undefined, undefined, undefined),
         // Fetch YouTube summary for admin only - uses caching
@@ -145,7 +152,11 @@ export default function HomePage() {
         // Get manifesto complaints count
         getManifestoComplaintsCount(),
         // GGY overall home summary (cached)
-        fetchGgyOverallSummary()
+        fetchGgyOverallSummary(),
+        // SLP Training summary
+        fetchSlpTrainingSummary(),
+        // WhatsApp Data summary (single-field reads; no composite indexes)
+        fetchWhatsappHomeSummary()
       ]);
       
       console.log('[HomePage] WTM-SLP summary data:', wtmSlpSummary);
@@ -160,7 +171,9 @@ export default function HomePage() {
         manifestoTotalSurveys: HOME_CARD_OVERRIDES.MANIFESTO_TOTAL_SURVEYS,
         migrantTotalSurveys: HOME_CARD_OVERRIDES.MIGRANT_TOTAL_SURVEYS,
         manifestoComplaintsCount: manifestoComplaintsCount ?? 0,
-        ggyHomeSummary: ggySummary ?? null
+        ggyHomeSummary: ggySummary ?? null,
+        slpTrainingSummary: slpTrainingSummary,
+        whatsappHomeSummary: whatsappSummary ?? null
       });
       
     } catch (error) {
@@ -173,7 +186,9 @@ export default function HomePage() {
         manifestoTotalSurveys: HOME_CARD_OVERRIDES.MANIFESTO_TOTAL_SURVEYS,
         migrantTotalSurveys: HOME_CARD_OVERRIDES.MIGRANT_TOTAL_SURVEYS,
         manifestoComplaintsCount: null,
-        ggyHomeSummary: null
+        ggyHomeSummary: null,
+        slpTrainingSummary: null,
+        whatsappHomeSummary: null
       });
     }
   }, [user?.uid, router]);
@@ -203,11 +218,13 @@ export default function HomePage() {
       ]);
       
       // Fetch fresh data (Manifesto/Migrant excluded; use hardcoded values below)
-      const [wtmSlpSummary, youtubeSummary, manifestoComplaintsCount, ggySummary] = await Promise.all([
+      const [wtmSlpSummary, youtubeSummary, manifestoComplaintsCount, ggySummary, slpTrainingSummary, whatsappSummary] = await Promise.all([
         getWtmSlpSummary(undefined, undefined, undefined, undefined, undefined, true), // forceRefresh = true
         fetchYoutubeSummary(true), // forceRefresh = true
         getManifestoComplaintsCount(),
-        fetchGgyOverallSummary(true)
+        fetchGgyOverallSummary(true),
+        fetchSlpTrainingSummary(),
+        fetchWhatsappHomeSummary()
       ]);
       
       
@@ -219,7 +236,9 @@ export default function HomePage() {
         manifestoTotalSurveys: HOME_CARD_OVERRIDES.MANIFESTO_TOTAL_SURVEYS,
         migrantTotalSurveys: HOME_CARD_OVERRIDES.MIGRANT_TOTAL_SURVEYS,
         manifestoComplaintsCount: manifestoComplaintsCount ?? 0,
-        ggyHomeSummary: ggySummary ?? null
+        ggyHomeSummary: ggySummary ?? null,
+        slpTrainingSummary: slpTrainingSummary,
+        whatsappHomeSummary: whatsappSummary ?? null
       });
       
       console.log('[HomePage] Force refresh completed');
@@ -554,6 +573,146 @@ export default function HomePage() {
           )}
         </div>
 
+        {/* WhatsApp Data card */}
+        <div
+          onClick={() => {
+            setNavigatingTo('/verticals/whatsapp-data');
+            router.push('/verticals/whatsapp-data');
+          }}
+          className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-teal-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
+        >
+          <div className="flex flex-col items-center mb-2 gap-1">
+            <h2 className="text-xl font-bold text-center group-hover:text-teal-700 transition">WhatsApp Data</h2>
+            <span className="px-3 py-1 rounded-full bg-white/70 text-gray-800 text-xs font-semibold border border-gray-300 mt-1">
+              Internal Dataset
+            </span>
+          </div>
+          <div className="flex flex-col gap-2 mt-2">
+            {metrics.isLoading ? (
+              <div className="flex justify-center items-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-teal-500"></div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-700">Total Groups:</span>
+                  <span className="text-gray-900 dark:text-gray-100 font-bold">
+                    {metrics.whatsappHomeSummary ? metrics.whatsappHomeSummary.totalGroups : 0}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-700">Assemblies:</span>
+                  <span className="text-gray-900 dark:text-gray-100 font-bold">
+                    {metrics.whatsappHomeSummary ? metrics.whatsappHomeSummary.totalAssemblies : 0}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+          {/* Loading overlay for navigation */}
+          {navigatingTo === '/verticals/whatsapp-data' && (
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+              <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-teal-500 border-t-transparent"></div>
+                <span className="text-gray-700 font-medium">Loading WhatsApp Data...</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* SLP Training card - Admin only (moved from Connecting Dashboard Data) */}
+        {role === 'admin' ? (
+          <div
+            onClick={() => {
+              setNavigatingTo('/slp-training');
+              router.push('/slp-training');
+            }}
+            className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-emerald-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
+          >
+            <div className="flex flex-col items-center mb-2 gap-1">
+              <h2 className="text-xl font-bold text-center group-hover:text-emerald-700 transition">SLP Training</h2>
+              <span className="px-3 py-1 rounded-full bg-white/70 text-gray-800 text-xs font-semibold border border-gray-300 mt-1">
+                Trained Leaders
+              </span>
+            </div>
+            <div className="flex flex-col gap-2 mt-2">
+              {metrics.isLoading ? (
+                <div className="flex justify-center items-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-emerald-500"></div>
+                </div>
+              ) : (
+                <>
+                  {metrics.slpTrainingSummary ? (
+                    <>
+                      <div className="flex items-center gap-2 justify-center">
+                        <span className="font-semibold text-gray-700">Total SLPs:</span>
+                        <span className="text-gray-900 dark:text-gray-100 font-bold">
+                          {metrics.slpTrainingSummary.totalSlps}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 justify-center">
+                        <span className="font-semibold text-gray-700">Assemblies:</span>
+                        <span className="text-gray-900 dark:text-gray-100 font-bold">
+                          {metrics.slpTrainingSummary.totalAssemblies}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 justify-center">
+                        <span className="font-semibold text-gray-700">Trained:</span>
+                        <span className="text-gray-900 dark:text-gray-100 font-bold">
+                          {metrics.slpTrainingSummary.trainedCount}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-sm text-gray-700 text-center">No data available</div>
+                  )}
+                </>
+              )}
+            </div>
+            {/* Loading overlay for navigation */}
+            {navigatingTo === '/slp-training' && (
+              <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-emerald-500 border-t-transparent"></div>
+                  <span className="text-gray-700 font-medium">Loading SLP Training...</span>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {/* Training Data card - Admin only (moved from Connecting Dashboard Data) */}
+        {role === 'admin' ? (
+          <div
+            onClick={() => {
+              setNavigatingTo('/verticals/training-data');
+              router.push('/verticals/training-data');
+            }}
+            className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-teal-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
+          >
+            <div className="flex flex-col items-center mb-2 gap-1">
+              <h2 className="text-xl font-bold text-center group-hover:text-teal-700 transition">Training Data</h2>
+              <span className="px-3 py-1 rounded-full bg-white/70 text-gray-800 text-xs font-semibold border border-gray-300 mt-1">
+                WTM & Shakti Sessions
+              </span>
+            </div>
+            <div className="flex flex-col gap-2 mt-2">
+              <div className="text-sm text-gray-700 text-center">
+                View WTM and Shakti training sessions organized by zones and assemblies
+              </div>
+            </div>
+            {/* Loading overlay for navigation */}
+            {navigatingTo === '/verticals/training-data' && (
+              <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-teal-500 border-t-transparent"></div>
+                  <span className="text-gray-700 font-medium">Loading Training Data...</span>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
+
         {/* Ghar-Ghar Yatra Analytics card - Admin only */}
         {role === 'admin' ? (
           <div
@@ -647,7 +806,7 @@ export default function HomePage() {
       {role === 'admin' && (
         <div className="mt-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Connecting Dashboard Data</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Manifesto card */}
             <div
               onClick={() => {
@@ -732,35 +891,9 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Training Data card */}
-            <div
-              onClick={() => {
-                setNavigatingTo('/verticals/training-data');
-                router.push('/verticals/training-data');
-              }}
-              className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-teal-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
-            >
-              <div className="flex flex-col items-center mb-2 gap-1">
-                <h2 className="text-xl font-bold text-center group-hover:text-teal-700 transition">Training Data</h2>
-                <span className="px-3 py-1 rounded-full bg-white/70 text-gray-800 text-xs font-semibold border border-gray-300 mt-1">
-                  WTM & Shakti Sessions
-                </span>
-              </div>
-              <div className="flex flex-col gap-2 mt-2">
-                <div className="text-sm text-gray-700 text-center">
-                  View WTM and Shakti training sessions organized by zones and assemblies
-                </div>
-              </div>
-              {/* Loading overlay for navigation */}
-              {navigatingTo === '/verticals/training-data' && (
-                <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                  <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-teal-500 border-t-transparent"></div>
-                    <span className="text-gray-700 font-medium">Loading Training Data...</span>
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* SLP Training card moved to general grid */}
+
+            {/* Training Data card moved to general grid */}
           </div>
         </div>
       )}
