@@ -377,7 +377,6 @@ export default function HomePage() {
           <LogoutButton />
         </div>
       </div>
-      {/* Commented out "View Map" button as requested
       {role === 'admin' && (
         <div className="flex justify-center mb-6">
           <Link href="/map">
@@ -387,7 +386,6 @@ export default function HomePage() {
           </Link>
         </div>
       )}
-      */}
       {/* All cards in a single grid for alignment */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Ravi Pandit card with real data and dashboard link */}

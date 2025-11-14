@@ -14,7 +14,7 @@ This document now serves as an index to the modular documentation structure. Det
 
 ## UI Navigation Notes
 
-- **Map Page**: The Map page (`/map`) exists but its navigation button is currently hidden/commented out in the home page. The map functionality remains accessible via direct URL but is not exposed in the main UI.
+- **Map Page**: The Map button is visible on Home for admin users and links to `/map`.
 
 ## Documentation Structure
 
@@ -99,6 +99,9 @@ Use this snippet for the Short Log below:
 ## Recent Updates (Short Log)
 
 - [2025-11-14 17:18 IST] Change: Hide "View Map" button on Home. Files: `app/home/page.tsx`. Docs: [Architecture.md](../Architecture.md#map-navigation). Notes: Map still accessible at `/map`; added UI Navigation note in this index.
+- [2025-11-14 17:45 IST] Change: Restored "View Map" button on Home (admin-only). Files: `app/home/page.tsx`. Docs: [Architecture.md](../Architecture.md#map-navigation). Notes: UI Navigation note updated to reflect visibility.
 - [2025-11-14 17:20 IST] Fix: Call Center New AC Name UI showed "[object Object]" for malformed values. Sanitized rendering, search, and CSV export to show "--" instead. Files: `components/call-center/ExternalNewConvertedList.tsx`, `app/verticals/call-center/external-new/page.tsx`.
+- [2025-11-14 18:10 IST] Change: Map WhatsApp tab now shows real per-assembly metrics with fuzzy assembly matching. Files: `app/utils/assemblyNameUtils.ts`, `app/utils/mapWhatsappAggregator.ts`, `app/map/page.tsx`. Docs: [Architecture.md](../Architecture.md#map-assembly-matching--aggregation), [Verticals.md](../Verticals.md#whatsapp-data-vertical), [Data-schemas.md](../Data-schemas.md#assembly-field-map-by-vertical). Notes: Test implementation; WTM/Shakti tabs unchanged.
+- [2025-11-14 18:22 IST] Change: Added Training and SLP Training map integration using fuzzy assembly matching. New tabs: "Training" (WTM/Shakti sessions+attendees) and "SLP Training" (trained/in-progress/pending). Files: `app/utils/mapTrainingAggregator.ts`, `app/utils/mapSlpTrainingAggregator.ts`, `app/map/page.tsx`. Docs: [Architecture.md](../Architecture.md#map-assembly-matching--aggregation), [Verticals.md](../Verticals.md#training-data-vertical), [Verticals.md](../Verticals.md#slp-training-vertical). Notes: Uses existing `training` and `slp_training` collections; hover remains lightweight.
 
 ---

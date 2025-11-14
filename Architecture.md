@@ -274,11 +274,10 @@ if (handler_id && slp) {
 
 ### Map Navigation
 
-**Note**: The "View Map" button on the home page is currently commented out/hidden. The map page remains accessible directly via `/map` URL but is not exposed in the UI.
+**Note**: The "View Map" button on the home page is visible for admin users and links to `/map`.
 
-```typescript
-// Commented out in app/home/page.tsx
-{/* Commented out "View Map" button as requested
+```tsx
+// app/home/page.tsx (admin-only)
 {role === 'admin' && (
   <div className="flex justify-center mb-6">
     <Link href="/map">
@@ -288,7 +287,6 @@ if (handler_id && slp) {
     </Link>
   </div>
 )}
-*/}
 ```
 
 ```typescript

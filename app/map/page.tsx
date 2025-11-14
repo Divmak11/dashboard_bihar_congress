@@ -4,6 +4,12 @@ import dynamic from "next/dynamic";
 import { fetchSheetData, MeetingRow } from "../utils/fetchSheetData";
 import { fetchZones, fetchCumulativeMetrics } from "../utils/fetchHierarchicalData"; 
 import { CumulativeMetrics } from "../../models/hierarchicalTypes";
+import { getWhatsappMetricsForAssembly } from "@/app/utils/mapWhatsappAggregator";
+import type { WhatsappAssemblyMetrics } from "@/app/utils/mapWhatsappAggregator";
+import { getTrainingMetricsForAssembly } from "@/app/utils/mapTrainingAggregator";
+import type { TrainingAssemblyMetrics } from "@/app/utils/mapTrainingAggregator";
+import { getSlpTrainingMetricsForAssembly } from "@/app/utils/mapSlpTrainingAggregator";
+import type { SlpTrainingAssemblyMetrics } from "@/app/utils/mapSlpTrainingAggregator";
 
 // Dynamically import React-Leaflet components to avoid SSR issues
 // TypeScript: Cast to 'any' to suppress prop type errors due to dynamic import and ESM-only modules
@@ -89,6 +95,15 @@ export default function BiharMapPage() {
   const [metricsLoading, setMetricsLoading] = useState(false);
   // Cache for metrics keyed by assembly name (case-sensitive as stored)
   const [metricsCache, setMetricsCache] = useState<Record<string, CumulativeMetrics>>({});
+  // WhatsApp metrics (fuzzy matched) for selected assembly
+  const [whatsappMetrics, setWhatsappMetrics] = useState<WhatsappAssemblyMetrics | null>(null);
+  const [whatsappLoading, setWhatsappLoading] = useState(false);
+  // Training metrics (WTM + Shakti) for selected assembly
+  const [trainingMetrics, setTrainingMetrics] = useState<TrainingAssemblyMetrics | null>(null);
+  const [trainingLoading, setTrainingLoading] = useState(false);
+  // SLP Training metrics (slp_training) for selected assembly
+  const [slpTrainingMetrics, setSlpTrainingMetrics] = useState<SlpTrainingAssemblyMetrics | null>(null);
+  const [slpTrainingLoading, setSlpTrainingLoading] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -96,6 +111,9 @@ export default function BiharMapPage() {
   useEffect(() => {
     if (!selectedAssembly) {
       setCumulativeMetrics(null);
+      setWhatsappMetrics(null);
+      setTrainingMetrics(null);
+      setSlpTrainingMetrics(null);
       return;
     }
 
@@ -132,6 +150,42 @@ export default function BiharMapPage() {
     }
 
     loadMetrics();
+  }, [selectedAssembly]);
+
+  // Fetch WhatsApp metrics when assembly is selected (fuzzy match)
+  useEffect(() => {
+    if (!selectedAssembly) return;
+    let cancelled = false;
+    setWhatsappLoading(true);
+    getWhatsappMetricsForAssembly(selectedAssembly)
+      .then((m) => { if (!cancelled) setWhatsappMetrics(m); })
+      .catch((err) => { console.error('[MapPage] WhatsApp metrics error', err); if (!cancelled) setWhatsappMetrics(null); })
+      .finally(() => { if (!cancelled) setWhatsappLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedAssembly]);
+
+  // Fetch Training metrics (WTM + Shakti) when assembly is selected (fuzzy match)
+  useEffect(() => {
+    if (!selectedAssembly) return;
+    let cancelled = false;
+    setTrainingLoading(true);
+    getTrainingMetricsForAssembly(selectedAssembly)
+      .then((m) => { if (!cancelled) setTrainingMetrics(m); })
+      .catch((err) => { console.error('[MapPage] Training metrics error', err); if (!cancelled) setTrainingMetrics(null); })
+      .finally(() => { if (!cancelled) setTrainingLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedAssembly]);
+
+  // Fetch SLP Training metrics when assembly is selected (fuzzy match)
+  useEffect(() => {
+    if (!selectedAssembly) return;
+    let cancelled = false;
+    setSlpTrainingLoading(true);
+    getSlpTrainingMetricsForAssembly(selectedAssembly)
+      .then((m) => { if (!cancelled) setSlpTrainingMetrics(m); })
+      .catch((err) => { console.error('[MapPage] SLP Training metrics error', err); if (!cancelled) setSlpTrainingMetrics(null); })
+      .finally(() => { if (!cancelled) setSlpTrainingLoading(false); });
+    return () => { cancelled = true; };
   }, [selectedAssembly]);
 
 
@@ -373,16 +427,22 @@ export default function BiharMapPage() {
             </div>
             <div className="flex gap-2 mt-2 md:mt-0 flex-wrap">
               <button
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "hostel" ? "bg-purple-200 text-purple-900" : "bg-gray-100 text-gray-700"}`}
-                onClick={() => setSelectedTab("hostel")}
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "training" ? "bg-purple-200 text-purple-900" : "bg-gray-100 text-gray-700"}`}
+                onClick={() => setSelectedTab("training")}
               >
-                Hostel
+                Training
               </button>
               <button
                 className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "whatsapp" ? "bg-green-200 text-green-900" : "bg-gray-100 text-gray-700"}`}
                 onClick={() => setSelectedTab("whatsapp")}
               >
                 Whatsapp Groups
+              </button>
+              <button
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "slp-training" ? "bg-emerald-200 text-emerald-900" : "bg-gray-100 text-gray-700"}`}
+                onClick={() => setSelectedTab("slp-training")}
+              >
+                SLP Training
               </button>
               <button
                 className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "shakti" ? "bg-pink-200 text-pink-900" : "bg-gray-100 text-gray-700"}`}
@@ -400,32 +460,59 @@ export default function BiharMapPage() {
           </div>
           {/* Tab content */}
           <div className="mt-4">
-            {selectedTab === "hostel" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Metric label="Total Meetings" value={0} />
-                <div className="flex flex-col">
-                  <Metric label="Total Volunteers" value={0} />
-                  <div className="ml-4 mt-1 flex flex-col gap-1">
-                    <Metric label="Total SLPs" value={0} small />
-                    <Metric label="Total Non-SLPs" value={0} small />
+            {selectedTab === "training" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {trainingLoading ? (
+                  <div className="col-span-full text-center py-8">
+                    <div className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading Training metrics...
+                    </div>
                   </div>
-                </div>
-                <div className="flex flex-col">
-                  <Metric label="Total WA Groups" value={0} />
-                  <div className="ml-4 mt-1 flex flex-col gap-1">
-                    <Metric label="Number" value={0} small />
-                    <Metric label="Members" value={0} small />
+                ) : trainingMetrics ? (
+                  <>
+                    <Metric label="WTM Sessions" value={trainingMetrics.wtm.sessions} />
+                    <Metric label="WTM Attendees" value={trainingMetrics.wtm.attendees} />
+                    <Metric label="Shakti Sessions" value={trainingMetrics.shakti.sessions} />
+                    <Metric label="Shakti Attendees" value={trainingMetrics.shakti.attendees} />
+                    <Metric label="Total Sessions" value={trainingMetrics.totals.sessions} />
+                    <Metric label="Total Attendees" value={trainingMetrics.totals.attendees} />
+                  </>
+                ) : (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    No Training data available for this assembly
                   </div>
-                </div>
+                )}
               </div>
             )}
             {selectedTab === "whatsapp" && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Metric label="Total Members" value={0} />
-                <Metric label="Groups in Assembly" value={0} />
-                <Metric label="Members in Assembly" value={0} />
-                <Metric label="Panchayat Groups" value={0} />
-                <Metric label="Panchayat Members" value={0} />
+                {whatsappLoading ? (
+                  <div className="col-span-full text-center py-8">
+                    <div className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading WhatsApp metrics...
+                    </div>
+                  </div>
+                ) : whatsappMetrics ? (
+                  <>
+                    <Metric label="Groups in Assembly" value={whatsappMetrics.groupsInAssembly} />
+                    <Metric label="Members in Assembly" value={whatsappMetrics.membersInAssembly} />
+                    <Metric label="Shakti Groups" value={whatsappMetrics.byType?.shakti.groups ?? 0} />
+                    <Metric label="WTM Groups" value={whatsappMetrics.byType?.wtm.groups ?? 0} />
+                    <Metric label="Public Groups" value={whatsappMetrics.byType?.public.groups ?? 0} />
+                  </>
+                ) : (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    No WhatsApp data available for this assembly
+                  </div>
+                )}
               </div>
             )}
             {selectedTab === "shakti" && (
