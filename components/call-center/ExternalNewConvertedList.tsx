@@ -24,7 +24,14 @@ export default function ExternalNewConvertedList({ groups, loading, hasMore, onL
     const out: Array<{ date: string; name?: string; phone?: string; acName?: string }> = [];
     for (const g of groups) {
       for (const r of g.rows) {
-        out.push({ date: g.date, name: r.name, phone: r.phone, acName: r.acName });
+        // Handle object values and the literal string "[object Object]" in exports
+        const rawAc: any = r.acName;
+        const safeAcName = (rawAc && typeof rawAc === 'object')
+          ? '--'
+          : (typeof rawAc === 'string' && rawAc.trim().toLowerCase() === '[object object]')
+            ? '--'
+            : (rawAc || '--');
+        out.push({ date: g.date, name: r.name, phone: r.phone, acName: safeAcName });
       }
     }
     return out;
@@ -39,7 +46,8 @@ export default function ExternalNewConvertedList({ groups, loading, hasMore, onL
         rows: g.rows.filter((r) => {
           const name = (r.name || '').toLowerCase();
           const phone = (r.phone || '').toLowerCase();
-          const acName = (r.acName || '').toLowerCase();
+          // Use String() to avoid implicit object -> "[object Object]" surprises
+          const acName = String(r.acName ?? '').toLowerCase();
           return name.includes(q) || phone.includes(q) || acName.includes(q) || g.date.toLowerCase().includes(q);
         })
       }))
@@ -90,7 +98,12 @@ export default function ExternalNewConvertedList({ groups, loading, hasMore, onL
                 </div>
                 <div>
                   <div className="text-xs text-gray-500">AC Name</div>
-                  <div className="font-medium text-gray-900 dark:text-gray-100">{r.acName || '-'}</div>
+                  <div className="font-medium text-gray-900 dark:text-gray-100">{(() => {
+                    const v: any = r.acName;
+                    if (v && typeof v === 'object') return '--';
+                    if (typeof v === 'string' && v.trim().toLowerCase() === '[object object]') return '--';
+                    return v || '--';
+                  })()}</div>
                 </div>
               </div>
             ))}

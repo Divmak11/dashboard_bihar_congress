@@ -2,8 +2,18 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { fetchSheetData, MeetingRow } from "../utils/fetchSheetData";
-import { fetchZones, fetchCumulativeMetrics } from "../utils/fetchHierarchicalData"; 
+import { fetchZones, fetchCumulativeMetrics, fetchDetailedNukkadAc, fetchDetailedNukkadSlp } from "../utils/fetchHierarchicalData"; 
 import { CumulativeMetrics } from "../../models/hierarchicalTypes";
+import { getWhatsappMetricsForAssembly } from "@/app/utils/mapWhatsappAggregator";
+import type { WhatsappAssemblyMetrics } from "@/app/utils/mapWhatsappAggregator";
+import { getTrainingMetricsForAssembly } from "@/app/utils/mapTrainingAggregator";
+import type { TrainingAssemblyMetrics } from "@/app/utils/mapTrainingAggregator";
+import { getGgyMetricsForAssembly } from "@/app/utils/mapGgyAggregator";
+import type { GgyAssemblyMetrics } from "@/app/utils/mapGgyAggregator";
+import { getManifestoComplaintsMetricsForAssembly } from "@/app/utils/mapManifestoComplaintsAggregator";
+import type { ManifestoComplaintsAssemblyMetrics } from "@/app/utils/mapManifestoComplaintsAggregator";
+import { getCallCenterNewMetricsForAssembly } from "@/app/utils/mapCallCenterNewAggregator";
+import type { CallCenterNewAssemblyMetrics } from "@/app/utils/mapCallCenterNewAggregator";
 
 // Dynamically import React-Leaflet components to avoid SSR issues
 // TypeScript: Cast to 'any' to suppress prop type errors due to dynamic import and ESM-only modules
@@ -89,6 +99,24 @@ export default function BiharMapPage() {
   const [metricsLoading, setMetricsLoading] = useState(false);
   // Cache for metrics keyed by assembly name (case-sensitive as stored)
   const [metricsCache, setMetricsCache] = useState<Record<string, CumulativeMetrics>>({});
+  // WhatsApp metrics (fuzzy matched) for selected assembly
+  const [whatsappMetrics, setWhatsappMetrics] = useState<WhatsappAssemblyMetrics | null>(null);
+  const [whatsappLoading, setWhatsappLoading] = useState(false);
+  // Training metrics (WTM + Shakti) for selected assembly
+  const [trainingMetrics, setTrainingMetrics] = useState<TrainingAssemblyMetrics | null>(null);
+  const [trainingLoading, setTrainingLoading] = useState(false);
+  // GGY metrics for selected assembly
+  const [ggyMetrics, setGgyMetrics] = useState<GgyAssemblyMetrics | null>(null);
+  const [ggyLoading, setGgyLoading] = useState(false);
+  // Manifesto Complaints metrics (AC-level) for selected assembly
+  const [manifestoMetrics, setManifestoMetrics] = useState<ManifestoComplaintsAssemblyMetrics | null>(null);
+  const [manifestoLoading, setManifestoLoading] = useState(false);
+  // Call Center New conversions for selected assembly
+  const [callCenterNewMetrics, setCallCenterNewMetrics] = useState<CallCenterNewAssemblyMetrics | null>(null);
+  const [callCenterNewLoading, setCallCenterNewLoading] = useState(false);
+  // Nukkad Meetings combined (WTM-AC + WTM-SLP + Shakti-AC)
+  const [nukkadCount, setNukkadCount] = useState<number | null>(null);
+  const [nukkadLoading, setNukkadLoading] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -96,6 +124,12 @@ export default function BiharMapPage() {
   useEffect(() => {
     if (!selectedAssembly) {
       setCumulativeMetrics(null);
+      setWhatsappMetrics(null);
+      setTrainingMetrics(null);
+      setGgyMetrics(null);
+      setManifestoMetrics(null);
+      setCallCenterNewMetrics(null);
+      setNukkadCount(null);
       return;
     }
 
@@ -132,6 +166,94 @@ export default function BiharMapPage() {
     }
 
     loadMetrics();
+  }, [selectedAssembly]);
+
+  // Fetch WhatsApp metrics when assembly is selected (fuzzy match)
+  useEffect(() => {
+    if (!selectedAssembly) return;
+    let cancelled = false;
+    setWhatsappLoading(true);
+    getWhatsappMetricsForAssembly(selectedAssembly)
+      .then((m) => { if (!cancelled) setWhatsappMetrics(m); })
+      .catch((err) => { console.error('[MapPage] WhatsApp metrics error', err); if (!cancelled) setWhatsappMetrics(null); })
+      .finally(() => { if (!cancelled) setWhatsappLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedAssembly]);
+
+  // Fetch Training metrics (WTM + Shakti) when assembly is selected (fuzzy match)
+  useEffect(() => {
+    if (!selectedAssembly) return;
+    let cancelled = false;
+    setTrainingLoading(true);
+    getTrainingMetricsForAssembly(selectedAssembly)
+      .then((m) => { if (!cancelled) setTrainingMetrics(m); })
+      .catch((err) => { console.error('[MapPage] Training metrics error', err); if (!cancelled) setTrainingMetrics(null); })
+      .finally(() => { if (!cancelled) setTrainingLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedAssembly]);
+
+  // Fetch GGY metrics when assembly is selected (fuzzy match)
+  useEffect(() => {
+    if (!selectedAssembly) return;
+    let cancelled = false;
+    setGgyLoading(true);
+    getGgyMetricsForAssembly(selectedAssembly)
+      .then((m) => { if (!cancelled) setGgyMetrics(m); })
+      .catch((err) => { console.error('[MapPage] GGY metrics error', err); if (!cancelled) setGgyMetrics(null); })
+      .finally(() => { if (!cancelled) setGgyLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedAssembly]);
+
+  // Fetch Manifesto Complaints metrics when assembly is selected (fuzzy match)
+  useEffect(() => {
+    if (!selectedAssembly) return;
+    let cancelled = false;
+    setManifestoLoading(true);
+    getManifestoComplaintsMetricsForAssembly(selectedAssembly)
+      .then((m) => { if (!cancelled) setManifestoMetrics(m); })
+      .catch((err) => { console.error('[MapPage] Manifesto Complaints metrics error', err); if (!cancelled) setManifestoMetrics(null); })
+      .finally(() => { if (!cancelled) setManifestoLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedAssembly]);
+
+  // Fetch Call Center New conversions when assembly is selected (fuzzy match)
+  useEffect(() => {
+    if (!selectedAssembly) return;
+    let cancelled = false;
+    setCallCenterNewLoading(true);
+    getCallCenterNewMetricsForAssembly(selectedAssembly)
+      .then((m) => { if (!cancelled) setCallCenterNewMetrics(m); })
+      .catch((err) => { console.error('[MapPage] Call Center New metrics error', err); if (!cancelled) setCallCenterNewMetrics(null); })
+      .finally(() => { if (!cancelled) setCallCenterNewLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedAssembly]);
+
+  // Fetch Nukkad Meetings (WTM-AC + WTM-SLP + Shakti-AC) when assembly is selected (fuzzy match)
+  useEffect(() => {
+    if (!selectedAssembly) return;
+    let cancelled = false;
+    setNukkadLoading(true);
+    const assemblyVariations = [
+      selectedAssembly!,
+      selectedAssembly!.toLowerCase(),
+      selectedAssembly!.toUpperCase(),
+      `${selectedAssembly} (SC)`,
+      `${selectedAssembly} (ST)`,
+      `${selectedAssembly} (General)`
+    ];
+    Promise.all([
+      fetchDetailedNukkadAc({ level: 'assembly', assemblies: assemblyVariations, vertical: 'wtm' }),
+      fetchDetailedNukkadSlp({ level: 'assembly', assemblies: assemblyVariations }),
+      fetchDetailedNukkadAc({ level: 'assembly', assemblies: assemblyVariations, vertical: 'shakti-abhiyaan' })
+    ])
+      .then(([wtmAc, wtmSlp, shaktiAc]) => {
+        if (cancelled) return;
+        const total = (wtmAc?.length || 0) + (wtmSlp?.length || 0) + (shaktiAc?.length || 0);
+        setNukkadCount(total);
+      })
+      .catch((err) => { console.error('[MapPage] Nukkad metrics error', err); if (!cancelled) setNukkadCount(0); })
+      .finally(() => { if (!cancelled) setNukkadLoading(false); });
+    return () => { cancelled = true; };
   }, [selectedAssembly]);
 
 
@@ -373,10 +495,10 @@ export default function BiharMapPage() {
             </div>
             <div className="flex gap-2 mt-2 md:mt-0 flex-wrap">
               <button
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "hostel" ? "bg-purple-200 text-purple-900" : "bg-gray-100 text-gray-700"}`}
-                onClick={() => setSelectedTab("hostel")}
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "training" ? "bg-purple-200 text-purple-900" : "bg-gray-100 text-gray-700"}`}
+                onClick={() => setSelectedTab("training")}
               >
-                Hostel
+                Training
               </button>
               <button
                 className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "whatsapp" ? "bg-green-200 text-green-900" : "bg-gray-100 text-gray-700"}`}
@@ -385,10 +507,22 @@ export default function BiharMapPage() {
                 Whatsapp Groups
               </button>
               <button
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "shakti" ? "bg-pink-200 text-pink-900" : "bg-gray-100 text-gray-700"}`}
-                onClick={() => setSelectedTab("shakti")}
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "manifesto-complaints" ? "bg-indigo-200 text-indigo-900" : "bg-gray-100 text-gray-700"}`}
+                onClick={() => setSelectedTab("manifesto-complaints")}
               >
-                Shakti Professionals
+                Manifesto Complaints
+              </button>
+              <button
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "call-center-new" ? "bg-yellow-200 text-yellow-900" : "bg-gray-100 text-gray-700"}`}
+                onClick={() => setSelectedTab("call-center-new")}
+              >
+                Call Center New
+              </button>
+              <button
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "ggy" ? "bg-orange-200 text-orange-900" : "bg-gray-100 text-gray-700"}`}
+                onClick={() => setSelectedTab("ggy")}
+              >
+                Ghar Ghar Yatra
               </button>
               <button
                 className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "wt-slp" ? "bg-red-200 text-red-900" : "bg-gray-100 text-gray-700"}`}
@@ -400,58 +534,130 @@ export default function BiharMapPage() {
           </div>
           {/* Tab content */}
           <div className="mt-4">
-            {selectedTab === "hostel" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Metric label="Total Meetings" value={0} />
-                <div className="flex flex-col">
-                  <Metric label="Total Volunteers" value={0} />
-                  <div className="ml-4 mt-1 flex flex-col gap-1">
-                    <Metric label="Total SLPs" value={0} small />
-                    <Metric label="Total Non-SLPs" value={0} small />
-                  </div>
-                </div>
-                <div className="flex flex-col">
-                  <Metric label="Total WA Groups" value={0} />
-                  <div className="ml-4 mt-1 flex flex-col gap-1">
-                    <Metric label="Number" value={0} small />
-                    <Metric label="Members" value={0} small />
-                  </div>
-                </div>
-              </div>
-            )}
-            {selectedTab === "whatsapp" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Metric label="Total Members" value={0} />
-                <Metric label="Groups in Assembly" value={0} />
-                <Metric label="Members in Assembly" value={0} />
-                <Metric label="Panchayat Groups" value={0} />
-                <Metric label="Panchayat Members" value={0} />
-              </div>
-            )}
-            {selectedTab === "shakti" && (
+            {selectedTab === "training" && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {metricsLoading ? (
+                {trainingLoading ? (
                   <div className="col-span-full text-center py-8">
                     <div className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
                       <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Loading metrics...
+                      Loading Training metrics...
                     </div>
                   </div>
-                ) : cumulativeMetrics ? (
+                ) : trainingMetrics ? (
                   <>
-                    <Metric label="Shakti Leaders" value={cumulativeMetrics.shaktiLeaders} />
-                    <Metric label="Shakti Saathi" value={cumulativeMetrics.shaktiSaathi} />
-                    <Metric label="Shakti Clubs" value={cumulativeMetrics.shaktiClubs} />
-                    <Metric label="Shakti Mai-Bahin" value={cumulativeMetrics.shaktiForms} />
-                    <Metric label="Shakti Baithaks" value={cumulativeMetrics.shaktiBaithaks} />
-                    <Metric label="Shakti Local Issue Videos" value={cumulativeMetrics.shaktiVideos} />
+                    <Metric label="WTM Sessions" value={trainingMetrics.wtm.sessions} />
+                    <Metric label="WTM Attendees" value={trainingMetrics.wtm.attendees} />
+                    <Metric label="Shakti Sessions" value={trainingMetrics.shakti.sessions} />
+                    <Metric label="Shakti Attendees" value={trainingMetrics.shakti.attendees} />
+                    <Metric label="Total Sessions" value={trainingMetrics.totals.sessions} />
+                    <Metric label="Total Attendees" value={trainingMetrics.totals.attendees} />
                   </>
                 ) : (
                   <div className="col-span-full text-center py-8 text-gray-500">
-                    No data available for this assembly
+                    No Training data available for this assembly
+                  </div>
+                )}
+              </div>
+            )}
+            {selectedTab === "whatsapp" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {whatsappLoading ? (
+                  <div className="col-span-full text-center py-8">
+                    <div className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading WhatsApp metrics...
+                    </div>
+                  </div>
+                ) : whatsappMetrics ? (
+                  <>
+                    <Metric label="Groups in Assembly" value={whatsappMetrics.groupsInAssembly} />
+                    <Metric label="Members in Assembly" value={whatsappMetrics.membersInAssembly} />
+                    <Metric label="Shakti Groups" value={whatsappMetrics.byType?.shakti.groups ?? 0} />
+                    <Metric label="WTM Groups" value={whatsappMetrics.byType?.wtm.groups ?? 0} />
+                    <Metric label="Public Groups" value={whatsappMetrics.byType?.public.groups ?? 0} />
+                  </>
+                ) : (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    No WhatsApp data available for this assembly
+                  </div>
+                )}
+              </div>
+            )}
+            {selectedTab === "manifesto-complaints" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {manifestoLoading ? (
+                  <div className="col-span-full text-center py-8">
+                    <div className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading Manifesto Complaints...
+                    </div>
+                  </div>
+                ) : manifestoMetrics ? (
+                  <>
+                    <Metric label="Total Complaints" value={manifestoMetrics.totalComplaints} />
+                  </>
+                ) : (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    No Manifesto Complaints data available for this assembly
+                  </div>
+                )}
+              </div>
+            )}
+            {selectedTab === "call-center-new" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {callCenterNewLoading ? (
+                  <div className="col-span-full text-center py-8">
+                    <div className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading Call Center metrics...
+                    </div>
+                  </div>
+                ) : callCenterNewMetrics ? (
+                  <>
+                    <Metric label="Conversions" value={callCenterNewMetrics.conversions} />
+                  </>
+                ) : (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    No Call Center data available for this assembly
+                  </div>
+                )}
+              </div>
+            )}
+            {selectedTab === "ggy" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {ggyLoading ? (
+                  <div className="col-span-full text-center py-8">
+                    <div className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading Ghar Ghar Yatra metrics...
+                    </div>
+                  </div>
+                ) : ggyMetrics ? (
+                  <>
+                    <Metric label="Total Punches" value={ggyMetrics.totalPunches} />
+                    <Metric label="Unique Punches" value={ggyMetrics.uniquePunches} />
+                    {ggyMetrics.topMember && (
+                      <Metric label="Top Member" value={`${ggyMetrics.topMember.name} (${ggyMetrics.topMember.totalPunches})`} />
+                    )}
+                  </>
+                ) : (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    No GGY data available for this assembly
                   </div>
                 )}
               </div>
@@ -474,11 +680,10 @@ export default function BiharMapPage() {
                     <Metric label="Volunteers" value={cumulativeMetrics.volunteers} />
                     <Metric label="Samvidhan Leaders" value={cumulativeMetrics.slps} />
                     <Metric label="Samvidhan Saathi" value={cumulativeMetrics.saathi} />
-                    <Metric label="Samvidhan Clubs" value={cumulativeMetrics.clubs} />
+                    <Metric label="Nukkad Meetings" value={nukkadCount ?? 0} />
                     <Metric label="Mai-Bahin Forms" value={cumulativeMetrics.forms} />
                     <Metric label="Local Issue Videos" value={cumulativeMetrics.videos} />
                     <Metric label="AC Videos" value={cumulativeMetrics.acVideos} />
-                    <Metric label="Samvidhan Chaupals" value={cumulativeMetrics.chaupals} />
                     <Metric label="Central WA Groups" value={cumulativeMetrics.centralWaGroups} />
                     <Metric label="Assembly WA Groups" value={cumulativeMetrics.assemblyWaGroups} />
                   </>

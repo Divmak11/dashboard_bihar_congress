@@ -691,7 +691,7 @@ export default function HomePage() {
             className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-teal-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
           >
             <div className="flex flex-col items-center mb-2 gap-1">
-              <h2 className="text-xl font-bold text-center group-hover:text-teal-700 transition">Training Data</h2>
+              <h2 className="text-xl font-bold text-center group-hover:text-teal-700 transition">Club Training Data</h2>
               <span className="px-3 py-1 rounded-full bg-white/70 text-gray-800 text-xs font-semibold border border-gray-300 mt-1">
                 WTM & Shakti Sessions
               </span>
