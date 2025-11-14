@@ -14,6 +14,8 @@ import { getManifestoComplaintsMetricsForAssembly } from "@/app/utils/mapManifes
 import type { ManifestoComplaintsAssemblyMetrics } from "@/app/utils/mapManifestoComplaintsAggregator";
 import { getCallCenterNewMetricsForAssembly } from "@/app/utils/mapCallCenterNewAggregator";
 import type { CallCenterNewAssemblyMetrics } from "@/app/utils/mapCallCenterNewAggregator";
+import { getCombinedHoverMetricsForAssembly } from "@/app/utils/mapHoverCombinedAggregator";
+import type { CombinedHoverMetrics } from "@/app/utils/mapHoverCombinedAggregator";
 
 // Dynamically import React-Leaflet components to avoid SSR issues
 // TypeScript: Cast to 'any' to suppress prop type errors due to dynamic import and ESM-only modules
@@ -117,6 +119,8 @@ export default function BiharMapPage() {
   // Nukkad Meetings combined (WTM-AC + WTM-SLP + Shakti-AC)
   const [nukkadCount, setNukkadCount] = useState<number | null>(null);
   const [nukkadLoading, setNukkadLoading] = useState(false);
+  // Hover tooltip combined cache (multi-vertical snapshot)
+  const [hoverCombinedCache, setHoverCombinedCache] = useState<Record<string, CombinedHoverMetrics>>({});
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -320,14 +324,12 @@ export default function BiharMapPage() {
 
   // onEachFeature for hover highlight and tooltip
   // Helper to create tooltip HTML from metrics
-  const formatTooltipHtml = (name: string, m: CumulativeMetrics) => `
+  const formatCombinedTooltipHtml = (name: string, m: CombinedHoverMetrics) => `
     <div class='font-semibold text-base mb-1'>${name || "Constituency"}</div>
-    <div>Meetings: <b>${m.meetings}</b></div>
-    <div>Samvidhan Leaders: <b>${m.slps}</b></div>
-    <div>Shakti Leaders: <b>${m.shaktiLeaders}</b></div>
-    <div>Samvidhan Clubs: <b>${m.clubs}</b></div>
-    <div>Shakti Clubs: <b>${m.shaktiClubs}</b></div>
-    <div>Assembly WA Groups: <b>${m.assemblyWaGroups}</b></div>
+    <div>Nukkad Meetings: <b>${m.nukkadMeetings}</b></div>
+    <div>WhatsApp Groups: <b>${m.whatsappGroups}</b></div>
+    <div>Training Sessions: <b>${m.trainingSessions}</b></div>
+    <div>Manifesto Complaints: <b>${m.manifestoComplaints}</b></div>
   `;
 
   const onEachFeature = useCallback((feature: any, layer: any) => {
@@ -346,41 +348,27 @@ export default function BiharMapPage() {
         setHoveredId(id);
         layer.bringToFront();
 
-        // Check cache first
-        const cached = metricsCache[assemblyName];
-        if (cached) {
-          const html = formatTooltipHtml(assemblyName, cached);
+        // Check combined hover cache first
+        const cachedCombined = hoverCombinedCache[assemblyName];
+        if (cachedCombined) {
+          const html = formatCombinedTooltipHtml(assemblyName, cachedCombined);
           layer.setTooltipContent(html);
           return;
         }
 
-        // Show loading placeholder
+        // Show loading placeholder for aggregated metrics
         layer.setTooltipContent(`
           <div class='font-semibold text-base mb-1'>${assemblyName || "Constituency"}</div>
-          <div>Loading metrics...</div>
+          <div>Loading aggregated metrics...</div>
         `);
 
         try {
-          const assemblyVariations = [
-            assemblyName!,
-            assemblyName!.toLowerCase(),
-            assemblyName!.toUpperCase(),
-            `${assemblyName} (SC)`,
-            `${assemblyName} (ST)`,
-            `${assemblyName} (General)`
-          ];
-
-          const hoverMetrics = await fetchCumulativeMetrics({
-            level: 'assembly',
-            assemblies: assemblyVariations
-          });
-
-          setMetricsCache(prev => ({ ...prev, [assemblyName!]: hoverMetrics }));
-
-          const html = formatTooltipHtml(assemblyName, hoverMetrics);
+          const combined = await getCombinedHoverMetricsForAssembly(assemblyName!);
+          setHoverCombinedCache((prev) => ({ ...prev, [assemblyName!]: combined }));
+          const html = formatCombinedTooltipHtml(assemblyName!, combined);
           layer.setTooltipContent(html);
         } catch (err) {
-          console.error('[MapPage] hover fetch error', err);
+          console.error('[MapPage] hover combined fetch error', err);
           layer.setTooltipContent(`
             <div class='font-semibold text-base mb-1'>${assemblyName || "Constituency"}</div>
             <div>Error loading metrics</div>
@@ -409,7 +397,7 @@ export default function BiharMapPage() {
       sticky: true,
       className: "leaflet-tooltip leaflet-tooltip-custom",
     });
-  }, [enabledAssemblies, metricsCache, setHoveredId, setSelectedAssembly, setSelectedId, setSelectedTab]);
+  }, [enabledAssemblies, hoverCombinedCache, setHoveredId, setSelectedAssembly, setSelectedId, setSelectedTab]);
 
   // Memoize GeoJSON to prevent layer recreation on re-renders
   const geoJsonLayer = useMemo(() => {
