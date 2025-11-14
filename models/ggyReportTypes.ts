@@ -96,3 +96,12 @@ export interface GGYReportData {
   overall: GGYSegmentData; // Overall summary used for summary table and optionally overall assembly-wise/invalid
   segments?: GGYSegmentData[]; // Present only for split day/month
 }
+
+// Home card summary for GGY (aggregated across all dates)
+export interface GgyHomeSummary {
+  totalPunches: number;
+  totalUniqueEntries: number;
+  matchedCount: number;
+  totalParam2Values: number;
+  matchRate: number; // percentage value 0-100
+}

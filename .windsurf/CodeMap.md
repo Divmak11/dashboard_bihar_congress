@@ -116,6 +116,7 @@ Home Page Integration:
 - `app/home/page.tsx` adds an Admin-only "Migrant" card linking to `/migrant`
 - Card shows total surveys (Delhi + Other Districts) using auto-login summary
 - Grouped under "Connecting Dashboard Data" section with Manifesto card (admin-only section)
+ - NOTE (Nov 2025): Home-card uses a hard override to display fixed totals until API is stabilized. See `HOME_CARD_OVERRIDES` in `app/home/page.tsx` (Migrant = 3276). Vertical page `/migrant` still uses live API.
 
 Access Control:
 - Admin-only guard in `app/migrant/page.tsx` using Firebase `getCurrentAdminUser()` (non-admin redirected to `/wtm-slp-new`)
@@ -446,6 +447,63 @@ Call Center New Card (External dataset):
 7. Download triggered automatically on completion
 ```
 
+### Training Data Vertical (NEW)
+
+Location & Files:
+- UI:
+  - `app/verticals/training-data/page.tsx` → Training data dashboard with WTM and Shakti tabs showing Zone → Assembly grouped view
+  - `components/training/TrainingTabs.tsx` → Tab switcher for WTM vs Shakti data with counts
+  - `components/training/TrainingZoneGroupList.tsx` → Collapsible zone groups with assembly cards
+  - `components/training/TrainingAssemblyCard.tsx` → Assembly training sessions with date, SLP, coordinator, attendees
+  - `components/training/TrainingSkeleton.tsx` → Loading skeletons for zones and assemblies
+- Scripts:
+  - `scripts/wtm-training-upload-web.js` → Extracts WTM training data from `WTM_club.xlsx` to `scripts/wtm-training-data.json`
+    - Validation relaxed: rows with missing coordinator/SLP/date are kept with defaults ("Unknown" or empty date)
+    - Logs inconsistencies but does not drop completed rows
+  - `scripts/shakti-training-upload.js` → Extracts Shakti training data from `Shakti_club.xlsx` to `scripts/shakti-training-data.json`
+    - Validation relaxed similarly; keeps completed rows with defaults
+  - `scripts/upload-to-firebase.js` / `scripts/upload-shakti-to-firebase.js` → Upload extracted JSON via API with base URL fallback
+  - `scripts/upload-training-filtered.js` → Helper to incrementally upload only valid-completed rows with date normalization and correct `form_type`; chunks requests and relies on idempotent IDs (no purge needed)
+    - `fetchTrainingRecords(formType)` → Query training collection by form_type ('wtm' or 'shakti-data')
+    - `groupTrainingByZonal(records)` → Group by Zone → Assembly with sorting and totals
+    - `computeTotalAttendees(record)` → Sum attendees + attendeesOtherThanClub
+    - `parseTrainingDate(dateStr)` → Multi-format date parsing (YYYY-MM-DD, DD/MM/YYYY, etc.)
+    - `formatTrainingDate(dateStr)` → Display-friendly date formatting
+- Types:
+  - `models/trainingTypes.ts` → `TrainingRecord`, `TrainingAssemblyItem`, `TrainingZoneGroup`, `TrainingFormType`, etc.
+- Utilities:
+  - `app/utils/fetchTrainingData.ts` → Firestore queries, grouping logic, date parsing, edge case handling
+
+- API:
+  - `app/api/training/upload/route.ts` → Accepts `trainingData` array. Now validates `form_type` from input (`'wtm' | 'shakti-data'`), enforces completed-only guard, and writes documents with a deterministic ID
+    `formtype__zonal__assembly__date__slp` using `batch.set(..., { merge: true })` to make uploads idempotent and prevent duplicates on re-upload. When `dateOfTraining` or `slpName` is unknown, appends `__row-N` to the doc ID and stores `rowNumber` in the doc to avoid collisions.
+
+Current dataset counts after re-extraction (relaxed rules) and re-upload:
+- WTM: 84 records
+- Shakti: 112 records
+
+Firestore Data Model:
+- Collection: `training`
+- Document fields: `zonal`, `assembly`, `assemblyCoordinator`, `trainingStatus`, `dateOfTraining`, `slpName`, `attendees`, `attendeesOtherThanClub`, `form_type` ('wtm' | 'shakti-data'), timestamps
+- Query pattern: `where('form_type', '==', formType)` for tab separation
+
+UI Features:
+- Two tabs: "WTM" (80 records) and "Shakti" (107 records)
+- Hierarchical view: Zones → Assemblies → Training sessions
+- Collapsible zone sections with totals (sessions, attendees, assembly count)
+- Assembly cards show latest training date, SLP names, coordinators, total attendees
+- Multiple sessions per assembly displayed as expandable timeline
+- Edge case handling: missing dates/SLP/coordinator → fallback to "Unknown" values
+- Client-side sorting: zones/assemblies alphabetically, sessions by date desc
+
+Home Page Integration:
+- `app/home/page.tsx` → Added "Training Data" card in "Connecting Dashboard Data" section (admin-only)
+- Links to `/verticals/training-data`
+
+Performance Notes:
+- Client-side grouping and sorting (current dataset: 187 records total)
+- Future optimization: composite Firestore index for server-side ordering if needed
+
 ### Manifesto Vertical (NEW)
 
 Location & Files:
@@ -476,6 +534,7 @@ Home Page Integration:
 - `app/home/page.tsx` adds an Admin-only "Manifesto" card linking to `/manifesto`
 - Card shows Total Surveys using auto-login summary (util logs in if token missing)
 - Grouped under "Connecting Dashboard Data" section with Migrant card (admin-only section)
+ - NOTE (Nov 2025): Home-card uses a hard override to display a fixed total until API is stabilized. See `HOME_CARD_OVERRIDES` in `app/home/page.tsx` (Manifesto = 415). Vertical page `/manifesto` still uses live API.
 
 Access Control:
 - Admin-only guard in `app/manifesto/page.tsx` using Firebase `getCurrentAdminUser()` (non-admin redirected to `/wtm-slp-new`)
@@ -484,6 +543,39 @@ Notes:
 - Filters, charts and export columns mirror `ManifestoReportDashboard.js`
 - Date handling is timezone-safe (local YYYY-MM-DD strings)
 - Credentials for API login stored in `app/utils/fetchManifestoData.ts` per project directive
+
+---
+
+### Ghar-Ghar Yatra (GGY) Home Card (NEW)
+
+Location & Files:
+- Home Card UI:
+  - `app/home/page.tsx` → Admin-only "Ghar-Ghar Yatra Data" card displays aggregated, all-time metrics
+- Types:
+  - `models/ggyReportTypes.ts` → `GgyHomeSummary` (home card totals shape)
+- Utilities:
+  - `app/utils/fetchGharGharYatraData.ts`
+    - `fetchGgyOverallSummary(forceRefresh?)` → Aggregates across all `ghar_ghar_yatra` docs by summing `summary` fields
+      - `total_punches`
+      - `total_unique_entries` (fallback: `total_unique_punches`)
+      - `matched_count`
+      - `total_param2_values`
+      - Computes `matchRate = matched_count / total_param2_values * 100`
+
+Caching:
+- Home card summary cached via `homePageCache` with `CACHE_KEYS.GGY_OVERALL_SUMMARY` (TTL 15 min)
+
+Home Page Integration:
+- `app/home/page.tsx` shows three metrics:
+  - Total Punches (sum of summaries)
+  - Total Unique Entries (sum of summaries with safe fallbacks)
+  - Total Matched (percentage = matched_count / total_param2_values)
+- Data fetched in parallel with other home summaries using `Promise.all`
+- Force Refresh clears `GGY_OVERALL_SUMMARY` cache and refetches totals
+
+Notes:
+- Aggregation is resilient to legacy field names (`total_unique_punches`)
+- Uses local timezone-safe display with `toLocaleString()` formatting in UI
 
 ---
 

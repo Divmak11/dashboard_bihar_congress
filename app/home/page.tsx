@@ -7,10 +7,12 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db } from "../utils/firebase";
 import { getWtmSlpSummary, getCurrentAdminUser } from "../utils/fetchFirebaseData";
 import { fetchYoutubeSummary } from "../utils/fetchYoutubeData";
-import { fetchManifestoSummary } from "../utils/fetchManifestoData";
-import { fetchMigrantSummary } from "../utils/fetchMigrantData";
+// import { fetchManifestoSummary } from "../utils/fetchManifestoData"; // Disabled: using hardcoded home-card override
+// import { fetchMigrantSummary } from "../utils/fetchMigrantData";   // Disabled: using hardcoded home-card override
 import { getManifestoComplaintsCount } from "../utils/fetchManifestoComplaintsData";
 import { WtmSlpSummary } from "../../models/types";
+import { GgyHomeSummary } from "../../models/ggyReportTypes";
+import { fetchGgyOverallSummary } from "../utils/fetchGharGharYatraData";
 import { YoutubeSummaryMetrics } from "../../models/youtubeTypes";
 import { initializeCache, forceCacheRefresh, CACHE_KEYS } from "../utils/cacheUtils";
 import LogoutButton from "../../components/LogoutButton";
@@ -18,6 +20,13 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "fire
 import { doc, setDoc, serverTimestamp, collection, getDocs } from "firebase/firestore";
 import { initializeApp, deleteApp, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
+
+// Hardcoded overrides for home page cards (Manifesto & Migrant)
+// These ensure the home cards always display the expected totals regardless of API/cache state.
+const HOME_CARD_OVERRIDES = {
+  MANIFESTO_TOTAL_SURVEYS: 415,
+  MIGRANT_TOTAL_SURVEYS: 3276,
+} as const;
 
 // Interface for homepage card metrics
 interface DashboardCardMetrics {
@@ -27,6 +36,7 @@ interface DashboardCardMetrics {
   manifestoTotalSurveys: number | null;
   migrantTotalSurveys: number | null;
   manifestoComplaintsCount: number | null;
+  ggyHomeSummary: GgyHomeSummary | null;
 }
 
 export default function HomePage() {
@@ -38,7 +48,8 @@ export default function HomePage() {
     isLoading: true,
     manifestoTotalSurveys: null,
     migrantTotalSurveys: null,
-    manifestoComplaintsCount: null
+    manifestoComplaintsCount: null,
+    ggyHomeSummary: null
   });
   const [role, setRole] = useState<string | null>(null);
   const [cacheInitialized, setCacheInitialized] = useState(false);
@@ -125,17 +136,16 @@ export default function HomePage() {
       setMetrics(prev => ({ ...prev, isLoading: true }));
       
       // Fetch summaries in parallel with caching (auto-login if needed)
-      const [wtmSlpSummary, youtubeSummary, manifestoSummary, migrantSummary, manifestoComplaintsCount] = await Promise.all([
+      // Note: Manifesto/Migrant summaries are intentionally excluded to enforce hardcoded home-card values.
+      const [wtmSlpSummary, youtubeSummary, manifestoComplaintsCount, ggySummary] = await Promise.all([
         // Fetch WTM-SLP summary for all time (no date parameters) - uses caching for homepage
         getWtmSlpSummary(undefined, undefined, undefined),
         // Fetch YouTube summary for admin only - uses caching
         fetchYoutubeSummary(),
-        // Manifesto summary (auto-login inside util)
-        fetchManifestoSummary(),
-        // Migrant summary (auto-login inside util)
-        fetchMigrantSummary(),
         // Get manifesto complaints count
-        getManifestoComplaintsCount()
+        getManifestoComplaintsCount(),
+        // GGY overall home summary (cached)
+        fetchGgyOverallSummary()
       ]);
       
       console.log('[HomePage] WTM-SLP summary data:', wtmSlpSummary);
@@ -146,20 +156,24 @@ export default function HomePage() {
         wtmSlpMetrics: wtmSlpSummary,
         youtubeMetrics: youtubeSummary,
         isLoading: false,
-        manifestoTotalSurveys: manifestoSummary?.totalSurveys ?? 0,
-        migrantTotalSurveys: migrantSummary?.totalSurveys ?? 0,
-        manifestoComplaintsCount: manifestoComplaintsCount ?? 0
+        // Use hardcoded totals for home cards (not API values)
+        manifestoTotalSurveys: HOME_CARD_OVERRIDES.MANIFESTO_TOTAL_SURVEYS,
+        migrantTotalSurveys: HOME_CARD_OVERRIDES.MIGRANT_TOTAL_SURVEYS,
+        manifestoComplaintsCount: manifestoComplaintsCount ?? 0,
+        ggyHomeSummary: ggySummary ?? null
       });
       
     } catch (error) {
       console.error('[HomePage] Error in fetchDashboardData:', error);
+      // Even if other fetches fail, keep the hardcoded totals for Manifesto & Migrant
       setMetrics({
         wtmSlpMetrics: null,
         youtubeMetrics: null,
         isLoading: false,
-        manifestoTotalSurveys: null,
-        migrantTotalSurveys: null,
-        manifestoComplaintsCount: null
+        manifestoTotalSurveys: HOME_CARD_OVERRIDES.MANIFESTO_TOTAL_SURVEYS,
+        migrantTotalSurveys: HOME_CARD_OVERRIDES.MIGRANT_TOTAL_SURVEYS,
+        manifestoComplaintsCount: null,
+        ggyHomeSummary: null
       });
     }
   }, [user?.uid, router]);
@@ -184,25 +198,28 @@ export default function HomePage() {
         CACHE_KEYS.WTM_SLP_SUMMARY,
         CACHE_KEYS.YOUTUBE_SUMMARY,
         CACHE_KEYS.MANIFESTO_SUMMARY,
-        CACHE_KEYS.MIGRANT_SUMMARY
+        CACHE_KEYS.MIGRANT_SUMMARY,
+        CACHE_KEYS.GGY_OVERALL_SUMMARY
       ]);
       
-      // Fetch fresh data
-      const [wtmSlpSummary, youtubeSummary, manifestoSummary, migrantSummary, manifestoComplaintsCount] = await Promise.all([
+      // Fetch fresh data (Manifesto/Migrant excluded; use hardcoded values below)
+      const [wtmSlpSummary, youtubeSummary, manifestoComplaintsCount, ggySummary] = await Promise.all([
         getWtmSlpSummary(undefined, undefined, undefined, undefined, undefined, true), // forceRefresh = true
         fetchYoutubeSummary(true), // forceRefresh = true
-        fetchManifestoSummary(true),
-        fetchMigrantSummary(true),
-        getManifestoComplaintsCount()
+        getManifestoComplaintsCount(),
+        fetchGgyOverallSummary(true)
       ]);
+      
       
       setMetrics({
         wtmSlpMetrics: wtmSlpSummary,
         youtubeMetrics: youtubeSummary,
         isLoading: false,
-        manifestoTotalSurveys: manifestoSummary?.totalSurveys ?? 0,
-        migrantTotalSurveys: migrantSummary?.totalSurveys ?? 0,
-        manifestoComplaintsCount: manifestoComplaintsCount ?? 0
+        // Use hardcoded totals for home cards (not API values)
+        manifestoTotalSurveys: HOME_CARD_OVERRIDES.MANIFESTO_TOTAL_SURVEYS,
+        migrantTotalSurveys: HOME_CARD_OVERRIDES.MIGRANT_TOTAL_SURVEYS,
+        manifestoComplaintsCount: manifestoComplaintsCount ?? 0,
+        ggyHomeSummary: ggySummary ?? null
       });
       
       console.log('[HomePage] Force refresh completed');
@@ -553,18 +570,36 @@ export default function HomePage() {
               </span>
             </div>
             <div className="flex flex-col gap-2 mt-2">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-700">Total Calls Tracked:</span>
-                <span className="text-gray-900 dark:text-gray-100 font-bold">-</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-700">Active SLPs:</span>
-                <span className="text-gray-900 dark:text-gray-100 font-bold">-</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-700">Match Rate:</span>
-                <span className="text-gray-900 dark:text-gray-100 font-bold">-</span>
-              </div>
+              {metrics.isLoading ? (
+                <div className="flex justify-center items-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-indigo-500"></div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-gray-700">Total Punches:</span>
+                    <span className="text-gray-900 dark:text-gray-100 font-bold">
+                      {metrics.ggyHomeSummary ? metrics.ggyHomeSummary.totalPunches.toLocaleString() : '-'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-gray-700">Total Unique Entries:</span>
+                    <span className="text-gray-900 dark:text-gray-100 font-bold">
+                      {metrics.ggyHomeSummary ? metrics.ggyHomeSummary.totalUniqueEntries.toLocaleString() : '-'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-gray-700">Match Rate:</span>
+                    <span className="text-gray-900 dark:text-gray-100 font-bold">
+                      {metrics.ggyHomeSummary
+                        ? (metrics.ggyHomeSummary.totalParam2Values > 0
+                            ? `${metrics.ggyHomeSummary.matchRate.toFixed(1)}%`
+                            : '-')
+                        : '-'}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
             {/* Loading overlay for navigation */}
             {navigatingTo === '/verticals/ghar-ghar-yatra-analytics' && (
@@ -692,6 +727,36 @@ export default function HomePage() {
                   <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-emerald-500 border-t-transparent"></div>
                     <span className="text-gray-700 font-medium">Loading Migrant...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Training Data card */}
+            <div
+              onClick={() => {
+                setNavigatingTo('/verticals/training-data');
+                router.push('/verticals/training-data');
+              }}
+              className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-teal-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
+            >
+              <div className="flex flex-col items-center mb-2 gap-1">
+                <h2 className="text-xl font-bold text-center group-hover:text-teal-700 transition">Training Data</h2>
+                <span className="px-3 py-1 rounded-full bg-white/70 text-gray-800 text-xs font-semibold border border-gray-300 mt-1">
+                  WTM & Shakti Sessions
+                </span>
+              </div>
+              <div className="flex flex-col gap-2 mt-2">
+                <div className="text-sm text-gray-700 text-center">
+                  View WTM and Shakti training sessions organized by zones and assemblies
+                </div>
+              </div>
+              {/* Loading overlay for navigation */}
+              {navigatingTo === '/verticals/training-data' && (
+                <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-teal-500 border-t-transparent"></div>
+                    <span className="text-gray-700 font-medium">Loading Training Data...</span>
                   </div>
                 </div>
               )}

@@ -228,6 +228,7 @@ WTM_SLP_SUMMARY: 'wtm_slp_summary',
 YOUTUBE_SUMMARY: 'youtube_summary',
 MANIFESTO_SUMMARY: 'manifesto_summary',
 MIGRANT_SUMMARY: 'migrant_summary',
+GGY_OVERALL_SUMMARY: 'ggy_overall_summary',
 CALL_CENTER_EXTERNAL_NEW_SUMMARY: 'call_center_external_new_summary'
 } as const;
 
