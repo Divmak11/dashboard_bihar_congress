@@ -2,14 +2,18 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { fetchSheetData, MeetingRow } from "../utils/fetchSheetData";
-import { fetchZones, fetchCumulativeMetrics } from "../utils/fetchHierarchicalData"; 
+import { fetchZones, fetchCumulativeMetrics, fetchDetailedNukkadAc, fetchDetailedNukkadSlp } from "../utils/fetchHierarchicalData"; 
 import { CumulativeMetrics } from "../../models/hierarchicalTypes";
 import { getWhatsappMetricsForAssembly } from "@/app/utils/mapWhatsappAggregator";
 import type { WhatsappAssemblyMetrics } from "@/app/utils/mapWhatsappAggregator";
 import { getTrainingMetricsForAssembly } from "@/app/utils/mapTrainingAggregator";
 import type { TrainingAssemblyMetrics } from "@/app/utils/mapTrainingAggregator";
-import { getSlpTrainingMetricsForAssembly } from "@/app/utils/mapSlpTrainingAggregator";
-import type { SlpTrainingAssemblyMetrics } from "@/app/utils/mapSlpTrainingAggregator";
+import { getGgyMetricsForAssembly } from "@/app/utils/mapGgyAggregator";
+import type { GgyAssemblyMetrics } from "@/app/utils/mapGgyAggregator";
+import { getManifestoComplaintsMetricsForAssembly } from "@/app/utils/mapManifestoComplaintsAggregator";
+import type { ManifestoComplaintsAssemblyMetrics } from "@/app/utils/mapManifestoComplaintsAggregator";
+import { getCallCenterNewMetricsForAssembly } from "@/app/utils/mapCallCenterNewAggregator";
+import type { CallCenterNewAssemblyMetrics } from "@/app/utils/mapCallCenterNewAggregator";
 
 // Dynamically import React-Leaflet components to avoid SSR issues
 // TypeScript: Cast to 'any' to suppress prop type errors due to dynamic import and ESM-only modules
@@ -101,9 +105,18 @@ export default function BiharMapPage() {
   // Training metrics (WTM + Shakti) for selected assembly
   const [trainingMetrics, setTrainingMetrics] = useState<TrainingAssemblyMetrics | null>(null);
   const [trainingLoading, setTrainingLoading] = useState(false);
-  // SLP Training metrics (slp_training) for selected assembly
-  const [slpTrainingMetrics, setSlpTrainingMetrics] = useState<SlpTrainingAssemblyMetrics | null>(null);
-  const [slpTrainingLoading, setSlpTrainingLoading] = useState(false);
+  // GGY metrics for selected assembly
+  const [ggyMetrics, setGgyMetrics] = useState<GgyAssemblyMetrics | null>(null);
+  const [ggyLoading, setGgyLoading] = useState(false);
+  // Manifesto Complaints metrics (AC-level) for selected assembly
+  const [manifestoMetrics, setManifestoMetrics] = useState<ManifestoComplaintsAssemblyMetrics | null>(null);
+  const [manifestoLoading, setManifestoLoading] = useState(false);
+  // Call Center New conversions for selected assembly
+  const [callCenterNewMetrics, setCallCenterNewMetrics] = useState<CallCenterNewAssemblyMetrics | null>(null);
+  const [callCenterNewLoading, setCallCenterNewLoading] = useState(false);
+  // Nukkad Meetings combined (WTM-AC + WTM-SLP + Shakti-AC)
+  const [nukkadCount, setNukkadCount] = useState<number | null>(null);
+  const [nukkadLoading, setNukkadLoading] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -113,7 +126,10 @@ export default function BiharMapPage() {
       setCumulativeMetrics(null);
       setWhatsappMetrics(null);
       setTrainingMetrics(null);
-      setSlpTrainingMetrics(null);
+      setGgyMetrics(null);
+      setManifestoMetrics(null);
+      setCallCenterNewMetrics(null);
+      setNukkadCount(null);
       return;
     }
 
@@ -176,15 +192,67 @@ export default function BiharMapPage() {
     return () => { cancelled = true; };
   }, [selectedAssembly]);
 
-  // Fetch SLP Training metrics when assembly is selected (fuzzy match)
+  // Fetch GGY metrics when assembly is selected (fuzzy match)
   useEffect(() => {
     if (!selectedAssembly) return;
     let cancelled = false;
-    setSlpTrainingLoading(true);
-    getSlpTrainingMetricsForAssembly(selectedAssembly)
-      .then((m) => { if (!cancelled) setSlpTrainingMetrics(m); })
-      .catch((err) => { console.error('[MapPage] SLP Training metrics error', err); if (!cancelled) setSlpTrainingMetrics(null); })
-      .finally(() => { if (!cancelled) setSlpTrainingLoading(false); });
+    setGgyLoading(true);
+    getGgyMetricsForAssembly(selectedAssembly)
+      .then((m) => { if (!cancelled) setGgyMetrics(m); })
+      .catch((err) => { console.error('[MapPage] GGY metrics error', err); if (!cancelled) setGgyMetrics(null); })
+      .finally(() => { if (!cancelled) setGgyLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedAssembly]);
+
+  // Fetch Manifesto Complaints metrics when assembly is selected (fuzzy match)
+  useEffect(() => {
+    if (!selectedAssembly) return;
+    let cancelled = false;
+    setManifestoLoading(true);
+    getManifestoComplaintsMetricsForAssembly(selectedAssembly)
+      .then((m) => { if (!cancelled) setManifestoMetrics(m); })
+      .catch((err) => { console.error('[MapPage] Manifesto Complaints metrics error', err); if (!cancelled) setManifestoMetrics(null); })
+      .finally(() => { if (!cancelled) setManifestoLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedAssembly]);
+
+  // Fetch Call Center New conversions when assembly is selected (fuzzy match)
+  useEffect(() => {
+    if (!selectedAssembly) return;
+    let cancelled = false;
+    setCallCenterNewLoading(true);
+    getCallCenterNewMetricsForAssembly(selectedAssembly)
+      .then((m) => { if (!cancelled) setCallCenterNewMetrics(m); })
+      .catch((err) => { console.error('[MapPage] Call Center New metrics error', err); if (!cancelled) setCallCenterNewMetrics(null); })
+      .finally(() => { if (!cancelled) setCallCenterNewLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedAssembly]);
+
+  // Fetch Nukkad Meetings (WTM-AC + WTM-SLP + Shakti-AC) when assembly is selected (fuzzy match)
+  useEffect(() => {
+    if (!selectedAssembly) return;
+    let cancelled = false;
+    setNukkadLoading(true);
+    const assemblyVariations = [
+      selectedAssembly!,
+      selectedAssembly!.toLowerCase(),
+      selectedAssembly!.toUpperCase(),
+      `${selectedAssembly} (SC)`,
+      `${selectedAssembly} (ST)`,
+      `${selectedAssembly} (General)`
+    ];
+    Promise.all([
+      fetchDetailedNukkadAc({ level: 'assembly', assemblies: assemblyVariations, vertical: 'wtm' }),
+      fetchDetailedNukkadSlp({ level: 'assembly', assemblies: assemblyVariations }),
+      fetchDetailedNukkadAc({ level: 'assembly', assemblies: assemblyVariations, vertical: 'shakti-abhiyaan' })
+    ])
+      .then(([wtmAc, wtmSlp, shaktiAc]) => {
+        if (cancelled) return;
+        const total = (wtmAc?.length || 0) + (wtmSlp?.length || 0) + (shaktiAc?.length || 0);
+        setNukkadCount(total);
+      })
+      .catch((err) => { console.error('[MapPage] Nukkad metrics error', err); if (!cancelled) setNukkadCount(0); })
+      .finally(() => { if (!cancelled) setNukkadLoading(false); });
     return () => { cancelled = true; };
   }, [selectedAssembly]);
 
@@ -439,16 +507,22 @@ export default function BiharMapPage() {
                 Whatsapp Groups
               </button>
               <button
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "slp-training" ? "bg-emerald-200 text-emerald-900" : "bg-gray-100 text-gray-700"}`}
-                onClick={() => setSelectedTab("slp-training")}
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "manifesto-complaints" ? "bg-indigo-200 text-indigo-900" : "bg-gray-100 text-gray-700"}`}
+                onClick={() => setSelectedTab("manifesto-complaints")}
               >
-                SLP Training
+                Manifesto Complaints
               </button>
               <button
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "shakti" ? "bg-pink-200 text-pink-900" : "bg-gray-100 text-gray-700"}`}
-                onClick={() => setSelectedTab("shakti")}
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "call-center-new" ? "bg-yellow-200 text-yellow-900" : "bg-gray-100 text-gray-700"}`}
+                onClick={() => setSelectedTab("call-center-new")}
               >
-                Shakti Professionals
+                Call Center New
+              </button>
+              <button
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "ggy" ? "bg-orange-200 text-orange-900" : "bg-gray-100 text-gray-700"}`}
+                onClick={() => setSelectedTab("ggy")}
+              >
+                Ghar Ghar Yatra
               </button>
               <button
                 className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "wt-slp" ? "bg-red-200 text-red-900" : "bg-gray-100 text-gray-700"}`}
@@ -515,30 +589,75 @@ export default function BiharMapPage() {
                 )}
               </div>
             )}
-            {selectedTab === "shakti" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {metricsLoading ? (
+            {selectedTab === "manifesto-complaints" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {manifestoLoading ? (
                   <div className="col-span-full text-center py-8">
                     <div className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
                       <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Loading metrics...
+                      Loading Manifesto Complaints...
                     </div>
                   </div>
-                ) : cumulativeMetrics ? (
+                ) : manifestoMetrics ? (
                   <>
-                    <Metric label="Shakti Leaders" value={cumulativeMetrics.shaktiLeaders} />
-                    <Metric label="Shakti Saathi" value={cumulativeMetrics.shaktiSaathi} />
-                    <Metric label="Shakti Clubs" value={cumulativeMetrics.shaktiClubs} />
-                    <Metric label="Shakti Mai-Bahin" value={cumulativeMetrics.shaktiForms} />
-                    <Metric label="Shakti Baithaks" value={cumulativeMetrics.shaktiBaithaks} />
-                    <Metric label="Shakti Local Issue Videos" value={cumulativeMetrics.shaktiVideos} />
+                    <Metric label="Total Complaints" value={manifestoMetrics.totalComplaints} />
                   </>
                 ) : (
                   <div className="col-span-full text-center py-8 text-gray-500">
-                    No data available for this assembly
+                    No Manifesto Complaints data available for this assembly
+                  </div>
+                )}
+              </div>
+            )}
+            {selectedTab === "call-center-new" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {callCenterNewLoading ? (
+                  <div className="col-span-full text-center py-8">
+                    <div className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading Call Center metrics...
+                    </div>
+                  </div>
+                ) : callCenterNewMetrics ? (
+                  <>
+                    <Metric label="Conversions" value={callCenterNewMetrics.conversions} />
+                  </>
+                ) : (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    No Call Center data available for this assembly
+                  </div>
+                )}
+              </div>
+            )}
+            {selectedTab === "ggy" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {ggyLoading ? (
+                  <div className="col-span-full text-center py-8">
+                    <div className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading Ghar Ghar Yatra metrics...
+                    </div>
+                  </div>
+                ) : ggyMetrics ? (
+                  <>
+                    <Metric label="Total Punches" value={ggyMetrics.totalPunches} />
+                    <Metric label="Unique Punches" value={ggyMetrics.uniquePunches} />
+                    {ggyMetrics.topMember && (
+                      <Metric label="Top Member" value={`${ggyMetrics.topMember.name} (${ggyMetrics.topMember.totalPunches})`} />
+                    )}
+                  </>
+                ) : (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    No GGY data available for this assembly
                   </div>
                 )}
               </div>
@@ -561,11 +680,10 @@ export default function BiharMapPage() {
                     <Metric label="Volunteers" value={cumulativeMetrics.volunteers} />
                     <Metric label="Samvidhan Leaders" value={cumulativeMetrics.slps} />
                     <Metric label="Samvidhan Saathi" value={cumulativeMetrics.saathi} />
-                    <Metric label="Samvidhan Clubs" value={cumulativeMetrics.clubs} />
+                    <Metric label="Nukkad Meetings" value={nukkadCount ?? 0} />
                     <Metric label="Mai-Bahin Forms" value={cumulativeMetrics.forms} />
                     <Metric label="Local Issue Videos" value={cumulativeMetrics.videos} />
                     <Metric label="AC Videos" value={cumulativeMetrics.acVideos} />
-                    <Metric label="Samvidhan Chaupals" value={cumulativeMetrics.chaupals} />
                     <Metric label="Central WA Groups" value={cumulativeMetrics.centralWaGroups} />
                     <Metric label="Assembly WA Groups" value={cumulativeMetrics.assemblyWaGroups} />
                   </>
