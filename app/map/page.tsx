@@ -16,6 +16,8 @@ import { getCallCenterNewMetricsForAssembly } from "@/app/utils/mapCallCenterNew
 import type { CallCenterNewAssemblyMetrics } from "@/app/utils/mapCallCenterNewAggregator";
 import { getCombinedHoverMetricsForAssembly } from "@/app/utils/mapHoverCombinedAggregator";
 import type { CombinedHoverMetrics } from "@/app/utils/mapHoverCombinedAggregator";
+import { getSlpTrainingMetricsForAssembly } from "@/app/utils/mapSlpTrainingAggregator";
+import type { SlpTrainingAssemblyMetrics } from "@/app/utils/mapSlpTrainingAggregator";
 
 // Dynamically import React-Leaflet components to avoid SSR issues
 // TypeScript: Cast to 'any' to suppress prop type errors due to dynamic import and ESM-only modules
@@ -116,11 +118,125 @@ export default function BiharMapPage() {
   // Call Center New conversions for selected assembly
   const [callCenterNewMetrics, setCallCenterNewMetrics] = useState<CallCenterNewAssemblyMetrics | null>(null);
   const [callCenterNewLoading, setCallCenterNewLoading] = useState(false);
+  // SLP Training metrics for selected assembly
+  const [slpTrainingMetrics, setSlpTrainingMetrics] = useState<SlpTrainingAssemblyMetrics | null>(null);
+  const [slpTrainingLoading, setSlpTrainingLoading] = useState(false);
   // Nukkad Meetings combined (WTM-AC + WTM-SLP + Shakti-AC)
   const [nukkadCount, setNukkadCount] = useState<number | null>(null);
   const [nukkadLoading, setNukkadLoading] = useState(false);
   // Hover tooltip combined cache (multi-vertical snapshot)
   const [hoverCombinedCache, setHoverCombinedCache] = useState<Record<string, CombinedHoverMetrics>>({});
+
+  // --- Helpers for dynamic show/hide of metrics and tabs ---
+  const valueOrZero = useCallback((v: unknown): number => {
+    if (typeof v === 'number' && Number.isFinite(v)) return v;
+    const parsed = typeof v === 'string' ? parseFloat(v as string) : NaN;
+    return Number.isFinite(parsed) ? parsed : 0;
+  }, []);
+
+  const hasAnyPositive = useCallback((vals: Array<unknown>): boolean => {
+    return vals.some((v) => valueOrZero(v) > 0);
+  }, [valueOrZero]);
+
+  // Compute per-tab visibility (hide tab if all its metrics are 0). While loading/unknown, keep tab visible.
+  const showTrainingTab = useMemo(() => {
+    if (!trainingMetrics) return true; // unknown -> keep visible
+    const vals = [
+      trainingMetrics.wtm?.sessions,
+      trainingMetrics.wtm?.attendees,
+      trainingMetrics.shakti?.sessions,
+      trainingMetrics.shakti?.attendees,
+      trainingMetrics.totals?.sessions,
+      trainingMetrics.totals?.attendees,
+    ];
+    return hasAnyPositive(vals);
+  }, [trainingMetrics, hasAnyPositive]);
+
+  const showWhatsappTab = useMemo(() => {
+    if (!whatsappMetrics) return true; // unknown -> keep visible
+    const vals = [
+      whatsappMetrics.groupsInAssembly,
+      whatsappMetrics.membersInAssembly,
+      whatsappMetrics.byType?.shakti?.groups,
+      whatsappMetrics.byType?.wtm?.groups,
+      whatsappMetrics.byType?.public?.groups,
+    ];
+    return hasAnyPositive(vals);
+  }, [whatsappMetrics, hasAnyPositive]);
+
+  const showManifestoTab = useMemo(() => {
+    if (!manifestoMetrics) return true; // unknown -> keep visible
+    const vals = [manifestoMetrics.totalComplaints];
+    return hasAnyPositive(vals);
+  }, [manifestoMetrics, hasAnyPositive]);
+
+  const showCallCenterNewTab = useMemo(() => {
+    if (!callCenterNewMetrics) return true; // unknown -> keep visible
+    const vals = [callCenterNewMetrics.conversions];
+    return hasAnyPositive(vals);
+  }, [callCenterNewMetrics, hasAnyPositive]);
+
+  const showGgyTab = useMemo(() => {
+    if (!ggyMetrics) return true; // unknown -> keep visible
+    const vals = [ggyMetrics.totalPunches, ggyMetrics.uniquePunches];
+    return hasAnyPositive(vals);
+  }, [ggyMetrics, hasAnyPositive]);
+
+  const showWtSlpTab = useMemo(() => {
+    // If unknown (still loading), keep visible. Hide only when we know all are 0
+    if (!cumulativeMetrics && nukkadCount == null) return true;
+    const vals = [
+      cumulativeMetrics?.meetings,
+      cumulativeMetrics?.volunteers,
+      cumulativeMetrics?.slps,
+      cumulativeMetrics?.saathi,
+      cumulativeMetrics?.forms,
+      cumulativeMetrics?.videos,
+      cumulativeMetrics?.acVideos,
+      cumulativeMetrics?.centralWaGroups,
+      cumulativeMetrics?.assemblyWaGroups,
+      nukkadCount ?? 0,
+    ];
+    return hasAnyPositive(vals);
+  }, [cumulativeMetrics, nukkadCount, hasAnyPositive]);
+
+  const showSlpTrainingTab = useMemo(() => {
+    if (!slpTrainingMetrics) return true; // unknown -> keep visible
+    const vals = [
+      slpTrainingMetrics.totalSlps,
+      slpTrainingMetrics.trainedCount,
+      slpTrainingMetrics.pendingCount,
+      slpTrainingMetrics.inProgressCount,
+    ];
+    return hasAnyPositive(vals);
+  }, [slpTrainingMetrics, hasAnyPositive]);
+
+  // If current tab becomes hidden (all zeros), auto-switch to first visible tab
+  useEffect(() => {
+    if (!selectedAssembly) return;
+    const order: string[] = [
+      'wt-slp',
+      'training',
+      'whatsapp',
+      'manifesto-complaints',
+      'call-center-new',
+      'ggy',
+      'slp-training',
+    ];
+    const visibility: Record<string, boolean> = {
+      'wt-slp': showWtSlpTab,
+      'training': showTrainingTab,
+      'whatsapp': showWhatsappTab,
+      'manifesto-complaints': showManifestoTab,
+      'call-center-new': showCallCenterNewTab,
+      'ggy': showGgyTab,
+      'slp-training': showSlpTrainingTab,
+    };
+    const visibleTabs = order.filter((k) => visibility[k]);
+    if (visibleTabs.length > 0 && !visibility[selectedTab]) {
+      setSelectedTab(visibleTabs[0]);
+    }
+  }, [selectedAssembly, selectedTab, showWtSlpTab, showTrainingTab, showWhatsappTab, showManifestoTab, showCallCenterNewTab, showGgyTab, showSlpTrainingTab]);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -133,6 +249,7 @@ export default function BiharMapPage() {
       setGgyMetrics(null);
       setManifestoMetrics(null);
       setCallCenterNewMetrics(null);
+      setSlpTrainingMetrics(null);
       setNukkadCount(null);
       return;
     }
@@ -229,6 +346,18 @@ export default function BiharMapPage() {
       .then((m) => { if (!cancelled) setCallCenterNewMetrics(m); })
       .catch((err) => { console.error('[MapPage] Call Center New metrics error', err); if (!cancelled) setCallCenterNewMetrics(null); })
       .finally(() => { if (!cancelled) setCallCenterNewLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedAssembly]);
+
+  // Fetch SLP Training metrics when assembly is selected (fuzzy match)
+  useEffect(() => {
+    if (!selectedAssembly) return;
+    let cancelled = false;
+    setSlpTrainingLoading(true);
+    getSlpTrainingMetricsForAssembly(selectedAssembly)
+      .then((m) => { if (!cancelled) setSlpTrainingMetrics(m); })
+      .catch((err) => { console.error('[MapPage] SLP Training metrics error', err); if (!cancelled) setSlpTrainingMetrics(null); })
+      .finally(() => { if (!cancelled) setSlpTrainingLoading(false); });
     return () => { cancelled = true; };
   }, [selectedAssembly]);
 
@@ -330,6 +459,7 @@ export default function BiharMapPage() {
     <div>WhatsApp Groups: <b>${m.whatsappGroups}</b></div>
     <div>Training Sessions: <b>${m.trainingSessions}</b></div>
     <div>Manifesto Complaints: <b>${m.manifestoComplaints}</b></div>
+    <div>SLP Training: <b>${m.slpTraining}</b></div>
   `;
 
   const onEachFeature = useCallback((feature: any, layer: any) => {
@@ -482,47 +612,67 @@ export default function BiharMapPage() {
               <div className="text-sm text-gray-500">Detailed Metrics</div>
             </div>
             <div className="flex gap-2 mt-2 md:mt-0 flex-wrap">
-              <button
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "training" ? "bg-purple-200 text-purple-900" : "bg-gray-100 text-gray-700"}`}
-                onClick={() => setSelectedTab("training")}
-              >
-                Training
-              </button>
-              <button
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "whatsapp" ? "bg-green-200 text-green-900" : "bg-gray-100 text-gray-700"}`}
-                onClick={() => setSelectedTab("whatsapp")}
-              >
-                Whatsapp Groups
-              </button>
-              <button
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "manifesto-complaints" ? "bg-indigo-200 text-indigo-900" : "bg-gray-100 text-gray-700"}`}
-                onClick={() => setSelectedTab("manifesto-complaints")}
-              >
-                Manifesto Complaints
-              </button>
-              <button
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "call-center-new" ? "bg-yellow-200 text-yellow-900" : "bg-gray-100 text-gray-700"}`}
-                onClick={() => setSelectedTab("call-center-new")}
-              >
-                Call Center New
-              </button>
-              <button
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "ggy" ? "bg-orange-200 text-orange-900" : "bg-gray-100 text-gray-700"}`}
-                onClick={() => setSelectedTab("ggy")}
-              >
-                Ghar Ghar Yatra
-              </button>
-              <button
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "wt-slp" ? "bg-red-200 text-red-900" : "bg-gray-100 text-gray-700"}`}
-                onClick={() => setSelectedTab("wt-slp")}
-              >
-                WT-SLP Professionals
-              </button>
+              {showTrainingTab && (
+                <button
+                  className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "training" ? "bg-purple-200 text-purple-900" : "bg-gray-100 text-gray-700"}`}
+                  onClick={() => setSelectedTab("training")}
+                >
+                  Training
+                </button>
+              )}
+              {showWhatsappTab && (
+                <button
+                  className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "whatsapp" ? "bg-green-200 text-green-900" : "bg-gray-100 text-gray-700"}`}
+                  onClick={() => setSelectedTab("whatsapp")}
+                >
+                  Whatsapp Groups
+                </button>
+              )}
+              {showManifestoTab && (
+                <button
+                  className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "manifesto-complaints" ? "bg-indigo-200 text-indigo-900" : "bg-gray-100 text-gray-700"}`}
+                  onClick={() => setSelectedTab("manifesto-complaints")}
+                >
+                  Manifesto Complaints
+                </button>
+              )}
+              {showCallCenterNewTab && (
+                <button
+                  className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "call-center-new" ? "bg-yellow-200 text-yellow-900" : "bg-gray-100 text-gray-700"}`}
+                  onClick={() => setSelectedTab("call-center-new")}
+                >
+                  Call Center New
+                </button>
+              )}
+              {showGgyTab && (
+                <button
+                  className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "ggy" ? "bg-orange-200 text-orange-900" : "bg-gray-100 text-gray-700"}`}
+                  onClick={() => setSelectedTab("ggy")}
+                >
+                  Ghar Ghar Yatra
+                </button>
+              )}
+              {showWtSlpTab && (
+                <button
+                  className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "wt-slp" ? "bg-red-200 text-red-900" : "bg-gray-100 text-gray-700"}`}
+                  onClick={() => setSelectedTab("wt-slp")}
+                >
+                  WT-SLP Professionals
+                </button>
+              )}
+              {showSlpTrainingTab && (
+                <button
+                  className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "slp-training" ? "bg-emerald-200 text-emerald-900" : "bg-gray-100 text-gray-700"}`}
+                  onClick={() => setSelectedTab("slp-training")}
+                >
+                  SLP Training
+                </button>
+              )}
             </div>
           </div>
           {/* Tab content */}
           <div className="mt-4">
-            {selectedTab === "training" && (
+            {selectedTab === "training" && showTrainingTab && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {trainingLoading ? (
                   <div className="col-span-full text-center py-8">
@@ -536,12 +686,26 @@ export default function BiharMapPage() {
                   </div>
                 ) : trainingMetrics ? (
                   <>
-                    <Metric label="WTM Sessions" value={trainingMetrics.wtm.sessions} />
-                    <Metric label="WTM Attendees" value={trainingMetrics.wtm.attendees} />
-                    <Metric label="Shakti Sessions" value={trainingMetrics.shakti.sessions} />
-                    <Metric label="Shakti Attendees" value={trainingMetrics.shakti.attendees} />
-                    <Metric label="Total Sessions" value={trainingMetrics.totals.sessions} />
-                    <Metric label="Total Attendees" value={trainingMetrics.totals.attendees} />
+                    {(() => {
+                      const cards = [
+                        { label: 'WTM Sessions', value: trainingMetrics.wtm?.sessions },
+                        { label: 'WTM Attendees', value: trainingMetrics.wtm?.attendees },
+                        { label: 'Shakti Sessions', value: trainingMetrics.shakti?.sessions },
+                        { label: 'Shakti Attendees', value: trainingMetrics.shakti?.attendees },
+                        { label: 'Total Sessions', value: trainingMetrics.totals?.sessions },
+                        { label: 'Total Attendees', value: trainingMetrics.totals?.attendees },
+                      ].filter((c) => valueOrZero(c.value) > 0);
+                      if (cards.length === 0) {
+                        return (
+                          <div className="col-span-full text-center py-8 text-gray-500">
+                            No Training data available for this assembly
+                          </div>
+                        );
+                      }
+                      return cards.map((c) => (
+                        <Metric key={c.label} label={c.label} value={c.value as number} />
+                      ));
+                    })()}
                   </>
                 ) : (
                   <div className="col-span-full text-center py-8 text-gray-500">
@@ -550,7 +714,7 @@ export default function BiharMapPage() {
                 )}
               </div>
             )}
-            {selectedTab === "whatsapp" && (
+            {selectedTab === "whatsapp" && showWhatsappTab && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {whatsappLoading ? (
                   <div className="col-span-full text-center py-8">
@@ -564,11 +728,25 @@ export default function BiharMapPage() {
                   </div>
                 ) : whatsappMetrics ? (
                   <>
-                    <Metric label="Groups in Assembly" value={whatsappMetrics.groupsInAssembly} />
-                    <Metric label="Members in Assembly" value={whatsappMetrics.membersInAssembly} />
-                    <Metric label="Shakti Groups" value={whatsappMetrics.byType?.shakti.groups ?? 0} />
-                    <Metric label="WTM Groups" value={whatsappMetrics.byType?.wtm.groups ?? 0} />
-                    <Metric label="Public Groups" value={whatsappMetrics.byType?.public.groups ?? 0} />
+                    {(() => {
+                      const cards = [
+                        { label: 'Groups in Assembly', value: whatsappMetrics.groupsInAssembly },
+                        { label: 'Members in Assembly', value: whatsappMetrics.membersInAssembly },
+                        { label: 'Shakti Groups', value: whatsappMetrics.byType?.shakti?.groups ?? 0 },
+                        { label: 'WTM Groups', value: whatsappMetrics.byType?.wtm?.groups ?? 0 },
+                        { label: 'Public Groups', value: whatsappMetrics.byType?.public?.groups ?? 0 },
+                      ].filter((c) => valueOrZero(c.value) > 0);
+                      if (cards.length === 0) {
+                        return (
+                          <div className="col-span-full text-center py-8 text-gray-500">
+                            No WhatsApp data available for this assembly
+                          </div>
+                        );
+                      }
+                      return cards.map((c) => (
+                        <Metric key={c.label} label={c.label} value={c.value as number} />
+                      ));
+                    })()}
                   </>
                 ) : (
                   <div className="col-span-full text-center py-8 text-gray-500">
@@ -577,7 +755,7 @@ export default function BiharMapPage() {
                 )}
               </div>
             )}
-            {selectedTab === "manifesto-complaints" && (
+            {selectedTab === "manifesto-complaints" && showManifestoTab && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {manifestoLoading ? (
                   <div className="col-span-full text-center py-8">
@@ -591,7 +769,13 @@ export default function BiharMapPage() {
                   </div>
                 ) : manifestoMetrics ? (
                   <>
-                    <Metric label="Total Complaints" value={manifestoMetrics.totalComplaints} />
+                    {valueOrZero(manifestoMetrics.totalComplaints) > 0 ? (
+                      <Metric label="Total Complaints" value={manifestoMetrics.totalComplaints} />
+                    ) : (
+                      <div className="col-span-full text-center py-8 text-gray-500">
+                        No Manifesto Complaints data available for this assembly
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="col-span-full text-center py-8 text-gray-500">
@@ -600,7 +784,7 @@ export default function BiharMapPage() {
                 )}
               </div>
             )}
-            {selectedTab === "call-center-new" && (
+            {selectedTab === "call-center-new" && showCallCenterNewTab && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {callCenterNewLoading ? (
                   <div className="col-span-full text-center py-8">
@@ -614,7 +798,13 @@ export default function BiharMapPage() {
                   </div>
                 ) : callCenterNewMetrics ? (
                   <>
-                    <Metric label="Conversions" value={callCenterNewMetrics.conversions} />
+                    {valueOrZero(callCenterNewMetrics.conversions) > 0 ? (
+                      <Metric label="Conversions" value={callCenterNewMetrics.conversions} />
+                    ) : (
+                      <div className="col-span-full text-center py-8 text-gray-500">
+                        No Call Center data available for this assembly
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="col-span-full text-center py-8 text-gray-500">
@@ -623,7 +813,7 @@ export default function BiharMapPage() {
                 )}
               </div>
             )}
-            {selectedTab === "ggy" && (
+            {selectedTab === "ggy" && showGgyTab && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {ggyLoading ? (
                   <div className="col-span-full text-center py-8">
@@ -637,11 +827,30 @@ export default function BiharMapPage() {
                   </div>
                 ) : ggyMetrics ? (
                   <>
-                    <Metric label="Total Punches" value={ggyMetrics.totalPunches} />
-                    <Metric label="Unique Punches" value={ggyMetrics.uniquePunches} />
-                    {ggyMetrics.topMember && (
-                      <Metric label="Top Member" value={`${ggyMetrics.topMember.name} (${ggyMetrics.topMember.totalPunches})`} />
-                    )}
+                    {(() => {
+                      const cards = [
+                        { label: 'Total Punches', value: ggyMetrics.totalPunches },
+                        { label: 'Unique Punches', value: ggyMetrics.uniquePunches },
+                      ].filter((c) => valueOrZero(c.value) > 0);
+                      const top = ggyMetrics.topMember && valueOrZero(ggyMetrics.topMember.totalPunches) > 0
+                        ? { label: 'Top Member', value: `${ggyMetrics.topMember.name} (${ggyMetrics.topMember.totalPunches})` }
+                        : null;
+                      if (cards.length === 0 && !top) {
+                        return (
+                          <div className="col-span-full text-center py-8 text-gray-500">
+                            No GGY data available for this assembly
+                          </div>
+                        );
+                      }
+                      return (
+                        <>
+                          {cards.map((c) => (
+                            <Metric key={c.label} label={c.label} value={c.value as number} />
+                          ))}
+                          {top && <Metric label={top.label} value={top.value} />}
+                        </>
+                      );
+                    })()}
                   </>
                 ) : (
                   <div className="col-span-full text-center py-8 text-gray-500">
@@ -650,7 +859,7 @@ export default function BiharMapPage() {
                 )}
               </div>
             )}
-            {selectedTab === "wt-slp" && (
+            {selectedTab === "wt-slp" && showWtSlpTab && (
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {metricsLoading ? (
                   <div className="col-span-full text-center py-8">
@@ -664,20 +873,91 @@ export default function BiharMapPage() {
                   </div>
                 ) : cumulativeMetrics ? (
                   <>
-                    <Metric label="Meetings" value={cumulativeMetrics.meetings} />
-                    <Metric label="Volunteers" value={cumulativeMetrics.volunteers} />
-                    <Metric label="Samvidhan Leaders" value={cumulativeMetrics.slps} />
-                    <Metric label="Samvidhan Saathi" value={cumulativeMetrics.saathi} />
-                    <Metric label="Nukkad Meetings" value={nukkadCount ?? 0} />
-                    <Metric label="Mai-Bahin Forms" value={cumulativeMetrics.forms} />
-                    <Metric label="Local Issue Videos" value={cumulativeMetrics.videos} />
-                    <Metric label="AC Videos" value={cumulativeMetrics.acVideos} />
-                    <Metric label="Central WA Groups" value={cumulativeMetrics.centralWaGroups} />
-                    <Metric label="Assembly WA Groups" value={cumulativeMetrics.assemblyWaGroups} />
+                    {(() => {
+                      const cards = [
+                        { label: 'Meetings', value: cumulativeMetrics.meetings },
+                        { label: 'Volunteers', value: cumulativeMetrics.volunteers },
+                        { label: 'Samvidhan Leaders', value: cumulativeMetrics.slps },
+                        { label: 'Samvidhan Saathi', value: cumulativeMetrics.saathi },
+                        { label: 'Nukkad Meetings', value: nukkadCount ?? 0 },
+                        { label: 'Mai-Bahin Forms', value: cumulativeMetrics.forms },
+                        { label: 'Local Issue Videos', value: cumulativeMetrics.videos },
+                        { label: 'AC Videos', value: cumulativeMetrics.acVideos },
+                        { label: 'Central WA Groups', value: cumulativeMetrics.centralWaGroups },
+                        { label: 'Assembly WA Groups', value: cumulativeMetrics.assemblyWaGroups },
+                      ].filter((c) => valueOrZero(c.value) > 0);
+                      if (cards.length === 0) {
+                        return (
+                          <div className="col-span-full text-center py-8 text-gray-500">
+                            No data available for this assembly
+                          </div>
+                        );
+                      }
+                      return cards.map((c) => (
+                        <Metric key={c.label} label={c.label} value={c.value as number} />
+                      ));
+                    })()}
                   </>
                 ) : (
                   <div className="col-span-full text-center py-8 text-gray-500">
                     No data available for this assembly
+                  </div>
+                )}
+              </div>
+            )}
+            {selectedTab === "slp-training" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {slpTrainingLoading ? (
+                  <div className="col-span-full text-center py-8">
+                    <div className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading SLP Training metrics...
+                    </div>
+                  </div>
+                ) : slpTrainingMetrics ? (
+                  <>
+                    {(() => {
+                      const cards = [
+                        { label: 'Total SLPs', value: slpTrainingMetrics.totalSlps },
+                        { label: 'Trained', value: slpTrainingMetrics.trainedCount },
+                        { label: 'Pending', value: slpTrainingMetrics.pendingCount },
+                        { label: 'In Progress', value: slpTrainingMetrics.inProgressCount },
+                      ].filter((c) => valueOrZero(c.value) > 0);
+                      const info = slpTrainingMetrics.match.confidence !== 'high'
+                        ? (
+                          <div className="col-span-full mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <div className="flex items-center gap-2 text-sm text-yellow-800">
+                              <span className="font-medium">Match Confidence: {slpTrainingMetrics.match.confidence}</span>
+                              {slpTrainingMetrics.match.matchAssembly && (
+                                <span className="text-yellow-600">(Matched to: {slpTrainingMetrics.match.matchAssembly})</span>
+                              )}
+                            </div>
+                          </div>
+                        )
+                        : null;
+                      if (cards.length === 0) {
+                        return (
+                          <div className="col-span-full text-center py-8 text-gray-500">
+                            No SLP Training data available for this assembly
+                          </div>
+                        );
+                      }
+                      return (
+                        <>
+                          {cards.map((c) => (
+                            <Metric key={c.label} label={c.label} value={c.value as number} />
+                          ))}
+                          {info}
+                        </>
+                      );
+                    })()}
+                  </>
+                ) : (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    No SLP Training data available for this assembly
                   </div>
                 )}
               </div>
@@ -697,4 +977,4 @@ function Metric({ label, value, small }: { label: string; value: string | number
       <span className={`text-lg font-bold text-gray-800 ${small ? 'text-base' : ''}`}>{value}</span>
     </div>
   );
-} 
+}
