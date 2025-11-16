@@ -14,8 +14,10 @@ import { WtmSlpSummary } from "../../models/types";
 import { GgyHomeSummary } from "../../models/ggyReportTypes";
 import { fetchGgyOverallSummary } from "../utils/fetchGharGharYatraData";
 import { fetchSlpTrainingSummary } from "../utils/fetchSlpTrainingData";
+import { fetchTrainingHomeSummary } from "../utils/fetchTrainingData";
 import { YoutubeSummaryMetrics } from "../../models/youtubeTypes";
 import { SlpTrainingSummary } from "../../models/slpTrainingTypes";
+import { TrainingHomeSummary } from "../../models/trainingTypes";
 import { initializeCache, forceCacheRefresh, CACHE_KEYS } from "../utils/cacheUtils";
 import { fetchWhatsappHomeSummary } from "../utils/fetchWhatsappData";
 import LogoutButton from "../../components/LogoutButton";
@@ -42,6 +44,7 @@ interface DashboardCardMetrics {
   ggyHomeSummary: GgyHomeSummary | null;
   slpTrainingSummary: SlpTrainingSummary | null;
   whatsappHomeSummary: { totalGroups: number; totalAssemblies: number } | null;
+  trainingHomeSummary: TrainingHomeSummary | null;
 }
 
 export default function HomePage() {
@@ -56,7 +59,8 @@ export default function HomePage() {
     manifestoComplaintsCount: null,
     ggyHomeSummary: null,
     slpTrainingSummary: null,
-    whatsappHomeSummary: null
+    whatsappHomeSummary: null,
+    trainingHomeSummary: null
   });
   const [role, setRole] = useState<string | null>(null);
   const [cacheInitialized, setCacheInitialized] = useState(false);
@@ -144,7 +148,7 @@ export default function HomePage() {
       
       // Fetch summaries in parallel with caching (auto-login if needed)
       // Note: Manifesto/Migrant summaries are intentionally excluded to enforce hardcoded home-card values.
-      const [wtmSlpSummary, youtubeSummary, manifestoComplaintsCount, ggySummary, slpTrainingSummary, whatsappSummary] = await Promise.all([
+      const [wtmSlpSummary, youtubeSummary, manifestoComplaintsCount, ggySummary, slpTrainingSummary, whatsappSummary, trainingHomeSummary] = await Promise.all([
         // Fetch WTM-SLP summary for all time (no date parameters) - uses caching for homepage
         getWtmSlpSummary(undefined, undefined, undefined),
         // Fetch YouTube summary for admin only - uses caching
@@ -156,7 +160,9 @@ export default function HomePage() {
         // SLP Training summary
         fetchSlpTrainingSummary(),
         // WhatsApp Data summary (single-field reads; no composite indexes)
-        fetchWhatsappHomeSummary()
+        fetchWhatsappHomeSummary(),
+        // Training (WTM + Shakti) lightweight summary for home card
+        fetchTrainingHomeSummary()
       ]);
       
       console.log('[HomePage] WTM-SLP summary data:', wtmSlpSummary);
@@ -173,7 +179,8 @@ export default function HomePage() {
         manifestoComplaintsCount: manifestoComplaintsCount ?? 0,
         ggyHomeSummary: ggySummary ?? null,
         slpTrainingSummary: slpTrainingSummary,
-        whatsappHomeSummary: whatsappSummary ?? null
+        whatsappHomeSummary: whatsappSummary ?? null,
+        trainingHomeSummary: trainingHomeSummary ?? null
       });
       
     } catch (error) {
@@ -188,7 +195,8 @@ export default function HomePage() {
         manifestoComplaintsCount: null,
         ggyHomeSummary: null,
         slpTrainingSummary: null,
-        whatsappHomeSummary: null
+        whatsappHomeSummary: null,
+        trainingHomeSummary: null
       });
     }
   }, [user?.uid, router]);
@@ -214,17 +222,19 @@ export default function HomePage() {
         CACHE_KEYS.YOUTUBE_SUMMARY,
         CACHE_KEYS.MANIFESTO_SUMMARY,
         CACHE_KEYS.MIGRANT_SUMMARY,
-        CACHE_KEYS.GGY_OVERALL_SUMMARY
+        CACHE_KEYS.GGY_OVERALL_SUMMARY,
+        CACHE_KEYS.TRAINING_HOME_SUMMARY
       ]);
       
       // Fetch fresh data (Manifesto/Migrant excluded; use hardcoded values below)
-      const [wtmSlpSummary, youtubeSummary, manifestoComplaintsCount, ggySummary, slpTrainingSummary, whatsappSummary] = await Promise.all([
+      const [wtmSlpSummary, youtubeSummary, manifestoComplaintsCount, ggySummary, slpTrainingSummary, whatsappSummary, trainingHomeSummary] = await Promise.all([
         getWtmSlpSummary(undefined, undefined, undefined, undefined, undefined, true), // forceRefresh = true
         fetchYoutubeSummary(true), // forceRefresh = true
         getManifestoComplaintsCount(),
         fetchGgyOverallSummary(true),
         fetchSlpTrainingSummary(),
-        fetchWhatsappHomeSummary()
+        fetchWhatsappHomeSummary(),
+        fetchTrainingHomeSummary(true)
       ]);
       
       
@@ -238,7 +248,8 @@ export default function HomePage() {
         manifestoComplaintsCount: manifestoComplaintsCount ?? 0,
         ggyHomeSummary: ggySummary ?? null,
         slpTrainingSummary: slpTrainingSummary,
-        whatsappHomeSummary: whatsappSummary ?? null
+        whatsappHomeSummary: whatsappSummary ?? null,
+        trainingHomeSummary: trainingHomeSummary ?? null
       });
       
       console.log('[HomePage] Force refresh completed');
@@ -697,9 +708,42 @@ export default function HomePage() {
               </span>
             </div>
             <div className="flex flex-col gap-2 mt-2">
-              <div className="text-sm text-gray-700 text-center">
-                View WTM and Shakti training sessions organized by zones and assemblies
-              </div>
+              {metrics.isLoading ? (
+                <div className="flex justify-center items-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-teal-500"></div>
+                </div>
+              ) : metrics.trainingHomeSummary ? (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-gray-700">Total Sessions</span>
+                    <span className="text-gray-900 font-bold">{metrics.trainingHomeSummary.totalSessions}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-gray-700">Attendees</span>
+                    <span className="text-gray-900 font-bold">{metrics.trainingHomeSummary.totalAttendees.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-gray-700">Assemblies</span>
+                    <span className="text-gray-900 font-bold">{metrics.trainingHomeSummary.totalAssemblies}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-gray-700">Zones</span>
+                    <span className="text-gray-900 font-bold">{metrics.trainingHomeSummary.totalZones}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-gray-700">WTM Sessions</span>
+                    <span className="text-gray-900 font-bold">{metrics.trainingHomeSummary.wtmSessions}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-gray-700">Shakti Sessions</span>
+                    <span className="text-gray-900 font-bold">{metrics.trainingHomeSummary.shaktiSessions}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-gray-700 text-center">
+                  View WTM and Shakti training sessions organized by zones and assemblies
+                </div>
+              )}
             </div>
             {/* Loading overlay for navigation */}
             {navigatingTo === '/verticals/training-data' && (

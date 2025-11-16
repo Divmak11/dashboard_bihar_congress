@@ -5,8 +5,10 @@ import {
   TrainingFormType,
   TrainingAssemblyItem,
   TrainingZoneGroup,
-  TrainingTabCounts 
+  TrainingTabCounts,
+  TrainingHomeSummary 
 } from '../../models/trainingTypes';
+import { homePageCache, CACHE_KEYS } from './cacheUtils';
 
 /**
  * Fetch training records from Firestore filtered by form_type
@@ -36,7 +38,7 @@ export async function fetchTrainingRecords(formType: TrainingFormType): Promise<
           trainingStatus: data.trainingStatus
         });
       }
-      
+ 
       // Ensure required fields exist and are properly typed
       const record: TrainingRecord = {
         id: doc.id,
@@ -160,6 +162,57 @@ export function groupTrainingByZonal(records: TrainingRecord[]): TrainingZoneGro
   result.sort((a, b) => a.zonal.localeCompare(b.zonal));
   
   return result;
+}
+
+/**
+ * Fetch lightweight Training summary for Home card with caching
+ */
+export async function fetchTrainingHomeSummary(forceRefresh?: boolean): Promise<TrainingHomeSummary> {
+  try {
+    if (forceRefresh) {
+      homePageCache.delete(CACHE_KEYS.TRAINING_HOME_SUMMARY);
+    }
+
+    return await homePageCache.getOrSet(CACHE_KEYS.TRAINING_HOME_SUMMARY, async () => {
+      // Fetch both forms in parallel
+      const [wtmRecords, shaktiRecords] = await Promise.all([
+        fetchTrainingRecords('wtm'),
+        fetchTrainingRecords('shakti-data')
+      ]);
+
+      const all = [...wtmRecords, ...shaktiRecords];
+
+      // Aggregate metrics
+      const totalSessions = all.length;
+      const wtmSessions = wtmRecords.length;
+      const shaktiSessions = shaktiRecords.length;
+      const totalAttendees = all.reduce((sum, r) => sum + computeTotalAttendees(r), 0);
+      const totalAssemblies = new Set(all.map(r => (r.assembly || 'Unknown Assembly'))).size;
+      const totalZones = new Set(all.map(r => (r.zonal || 'Unknown Zone'))).size;
+
+      const summary: TrainingHomeSummary = {
+        totalSessions,
+        wtmSessions,
+        shaktiSessions,
+        totalAttendees,
+        totalAssemblies,
+        totalZones
+      };
+
+      console.log('[fetchTrainingHomeSummary] Fresh data:', summary);
+      return summary;
+    });
+  } catch (error) {
+    console.error('[fetchTrainingHomeSummary] Error:', error);
+    return {
+      totalSessions: 0,
+      wtmSessions: 0,
+      shaktiSessions: 0,
+      totalAttendees: 0,
+      totalAssemblies: 0,
+      totalZones: 0
+    };
+  }
 }
 
 /**

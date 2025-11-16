@@ -47,3 +47,13 @@ export interface TrainingTabCounts {
   wtm: number;
   shakti: number;
 }
+
+// Lightweight summary for the Home card
+export interface TrainingHomeSummary {
+  totalSessions: number;
+  wtmSessions: number;
+  shaktiSessions: number;
+  totalAttendees: number;
+  totalAssemblies: number;
+  totalZones: number;
+}

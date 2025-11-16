@@ -224,18 +224,19 @@ export const homePageCache = new DataCache({
 
 // Cache keys for vertical cards
 export const CACHE_KEYS = {
-WTM_SLP_SUMMARY: 'wtm_slp_summary',
-YOUTUBE_SUMMARY: 'youtube_summary',
-MANIFESTO_SUMMARY: 'manifesto_summary',
-MIGRANT_SUMMARY: 'migrant_summary',
-GGY_OVERALL_SUMMARY: 'ggy_overall_summary',
-CALL_CENTER_EXTERNAL_NEW_SUMMARY: 'call_center_external_new_summary'
+  WTM_SLP_SUMMARY: 'wtm_slp_summary',
+  YOUTUBE_SUMMARY: 'youtube_summary',
+  MANIFESTO_SUMMARY: 'manifesto_summary',
+  MIGRANT_SUMMARY: 'migrant_summary',
+  GGY_OVERALL_SUMMARY: 'ggy_overall_summary',
+  CALL_CENTER_EXTERNAL_NEW_SUMMARY: 'call_center_external_new_summary',
+  TRAINING_HOME_SUMMARY: 'training_home_summary'
 } as const;
 
 // GGY cache instance and helpers (for Analytics)
 export const ggyCache = new DataCache({
-keyPrefix: 'ggy_',
-ttl: 10 * 60 * 1000 // 10 minutes default TTL
+  keyPrefix: 'ggy_',
+  ttl: 10 * 60 * 1000 // 10 minutes default TTL
 });
 
 export function makeGGYRangeKey(prefix: 'sum' | 'slp', startDate: string, endDate: string): string {

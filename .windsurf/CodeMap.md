@@ -106,5 +106,8 @@ Use this snippet for the Short Log below:
 - [2025-11-14 18:36 IST] Change: Added Manifesto Complaints map integration (AC-level) using fuzzy assembly matching. New tab: "Manifesto Complaints". Files: `app/utils/mapManifestoComplaintsAggregator.ts`, `app/map/page.tsx`. Notes: Reads from `manifesto-complaints` (Firebase); supports legacy discriminator fields.
 - [2025-11-14 18:36 IST] Change: Added Call Center New conversions map integration using fuzzy assembly matching. New tab: "Call Center New". Files: `app/utils/mapCallCenterNewAggregator.ts`, `app/map/page.tsx`. Notes: Aggregates by `convertedList[].acName` from `call-center-external`.
 - [2025-11-14 18:54 IST] Change: Removed "Shakti Professionals" and "SLP Training" tabs from Map data card. Added "Ghar Ghar Yatra" tab with fuzzy assembly matching. Files: `app/utils/mapGgyAggregator.ts`, `app/map/page.tsx`. Notes: Uses `buildGGYSegmentData()` to derive per-assembly totals and top member.
+- [2025-11-14 19:56 IST] Change: Map hover tooltip now shows combined multi-vertical metrics (Nukkad Meetings, WhatsApp Groups, Training Sessions, Manifesto Complaints). Files: `app/utils/mapHoverCombinedAggregator.ts` (NEW), `app/map/page.tsx`. Notes: Aggregates Nukkad from WTM AC + WTM SLP + Shakti AC; uses fuzzy assembly variations and in-memory TTL cache.
+
+- [2025-11-14 20:03 IST] Change: Added Training home-card summary metrics with caching (sessions, attendees, assemblies, zones, WTM vs Shakti). Files: `app/home/page.tsx`, `app/utils/fetchTrainingData.ts`, `app/utils/cacheUtils.ts`, `models/trainingTypes.ts`. Docs: [Verticals.md](../Verticals.md#training-data-vertical), [Architecture.md](../Architecture.md#home-cards--caching).
 
 ---
