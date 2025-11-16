@@ -316,16 +316,18 @@ Dashboard for the Shakti Abhiyaan vertical, sharing structure with WTM-SLP but w
 
 **Location & Files:**
 - API:
-  - `app/api/slp-training/upload/route.ts` → Accepts `{ slpTrainingData }` and writes to `slp_training` using deterministic IDs.
-- Scripts:
-  - `scripts/upload-slp-training.js` → Reads `extracted_assembly_data.json` and POSTs to the API (tries :3000/:3001 or env API_BASE_URL).
+  - `app/api/slp-training/route.ts` → Handles CSV upload and Firestore batch writes
+  - `scripts/upload-slp-training.js` → Standalone script to upload CSV data (uses Firebase Admin SDK)
+  - `scripts/extract-slp-training.py` → Python script to extract SLP data from Excel files
 - Models:
-  - `models/slpTrainingTypes.ts` → `SlpTrainingRecord`, `SlpTrainingAssemblyGroup`, `SlpTrainingSummary`, `SlpTrainingPageData`.
+  - `models/slpTrainingTypes.ts` → `SlpTrainingRecord`, `SlpTrainingAssemblyGroup`, `SlpTrainingSummary`, `SlpTrainingPageData`
 - Utilities:
   - `app/utils/fetchSlpTrainingData.ts` → Fetch all records, group by assembly, summary calculators. Avoids composite indexes (no multi-field orderBy; sorts in memory).
+  - `app/utils/mapSlpTrainingAggregator.ts` → Assembly-level aggregation with fuzzy matching for map integration. Uses in-memory cache and Jaro-Winkler similarity scoring.
 - UI:
   - `app/slp-training/page.tsx` → Admin-only page listing trained SLPs grouped by Assembly with search and expand/collapse. Uses an `isAdmin` guard (calls `getCurrentAdminUser(user.uid)`), summary cards, and responsive grid.
   - `app/home/page.tsx` → Adds "SLP Training" card (emerald theme) alongside the general verticals grid (admin-only); displays total SLPs, assemblies, trained count via `fetchSlpTrainingSummary()`.
+  - `app/map/page.tsx` → Integrated as a tab in assembly detail panel; shows Total SLPs, Trained, Pending, In Progress counts with fuzzy match confidence indicator.
 
 **Firestore Data Model:**
 - Collection: `slp_training`
@@ -342,6 +344,13 @@ Dashboard for the Shakti Abhiyaan vertical, sharing structure with WTM-SLP but w
 - `fetchAllSlpTrainingRecords()` fetches the whole collection then sorts in memory by `assembly` then `name` to avoid composite index prompts.
 - `fetchSlpTrainingByAssembly(assembly)` uses `where('assembly','==', assembly)` and sorts by `name` in memory.
 - Rationale: Current dataset (~621 docs) is small; removing multi-field `orderBy` prevents composite index requirements while keeping UI fast and simple.
+
+**Map Integration:**
+- Uses `getSlpTrainingMetricsForAssembly(assemblyName)` for fuzzy assembly matching (same pattern as Training/GGY verticals)
+- Returns: `{ totalSlps, trainedCount, pendingCount, inProgressCount, match: { matchAssembly, confidence, score } }`
+- Confidence thresholds: high ≥0.93, medium ≥0.88, low ≥0.82, else unmatched
+- Included in hover tooltip via `mapHoverCombinedAggregator.ts` (shows total SLPs count)
+- Display in assembly detail panel with emerald color theme matching home card
 
 **Access Control:**
 - SLP Training page is admin-only. Guard calls `getCurrentAdminUser(user.uid)`; non-admins redirect to `/wtm-slp-new`.

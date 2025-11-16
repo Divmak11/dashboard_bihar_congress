@@ -9,6 +9,7 @@
 import { getWhatsappMetricsForAssembly } from '@/app/utils/mapWhatsappAggregator';
 import { getTrainingMetricsForAssembly } from '@/app/utils/mapTrainingAggregator';
 import { getManifestoComplaintsMetricsForAssembly } from '@/app/utils/mapManifestoComplaintsAggregator';
+import { getSlpTrainingMetricsForAssembly } from '@/app/utils/mapSlpTrainingAggregator';
 import { fetchDetailedNukkadAc, fetchDetailedNukkadSlp } from '@/app/utils/fetchHierarchicalData';
 
 export interface CombinedHoverMetrics {
@@ -16,6 +17,7 @@ export interface CombinedHoverMetrics {
   whatsappGroups: number;
   trainingSessions: number;
   manifestoComplaints: number;
+  slpTraining: number;
 }
 
 // Simple in-memory cache with TTL
@@ -47,15 +49,17 @@ export async function getCombinedHoverMetricsForAssembly(assembly: string): Prom
   let whatsappGroups = 0;
   let trainingSessions = 0;
   let manifestoComplaints = 0;
+  let slpTraining = 0;
 
   const variations = makeAssemblyVariations(assembly);
 
   try {
     // Parallel fetches for non-Nukkad metrics (these already do matching internally)
-    const [wa, training, manifesto] = await Promise.all([
+    const [wa, training, manifesto, slpTrainingMetrics] = await Promise.all([
       getWhatsappMetricsForAssembly(assembly).catch(() => null),
       getTrainingMetricsForAssembly(assembly).catch(() => null),
       getManifestoComplaintsMetricsForAssembly(assembly).catch(() => null),
+      getSlpTrainingMetricsForAssembly(assembly).catch(() => null),
     ]);
 
     if (wa) {
@@ -69,6 +73,9 @@ export async function getCombinedHoverMetricsForAssembly(assembly: string): Prom
     }
     if (manifesto) {
       manifestoComplaints = Number((manifesto as any).totalComplaints || 0);
+    }
+    if (slpTrainingMetrics) {
+      slpTraining = Number(slpTrainingMetrics.totalSlps || 0);
     }
 
     // Nukkad (WTM AC + WTM SLP + Shakti AC)
@@ -88,6 +95,7 @@ export async function getCombinedHoverMetricsForAssembly(assembly: string): Prom
     whatsappGroups,
     trainingSessions,
     manifestoComplaints,
+    slpTraining,
   };
   cache.set(key, { data, ts: now });
   return data;

@@ -1,0 +1,873 @@
+{
+  "timestamp": "2025-11-16T15:59:00.065Z",
+  "summary": {
+    "totalRows": 587,
+    "extracted": 492,
+    "unique": 492,
+    "skipped": 95
+  },
+  "assemblyMatchStats": {
+    "high": 482,
+    "medium": 0,
+    "low": 10,
+    "unmatched": 0
+  },
+  "unmatchedAssemblies": [],
+  "skippedRecords": [
+    {
+      "rowIndex": 74,
+      "reason": "Invalid mobile number: 89861448868877300000",
+      "data": {
+        "name": "Ajay Kumar",
+        "rawContact": "89861448868877300000",
+        "rawAssembly": "142-Bachhwara"
+      }
+    },
+    {
+      "rowIndex": 134,
+      "reason": "Invalid mobile number: 70612411649576258488",
+      "data": {
+        "name": "Pushpa Kumari",
+        "rawContact": "70612411649576258488",
+        "rawAssembly": "170-Barbigha"
+      }
+    },
+    {
+      "rowIndex": 139,
+      "reason": "Invalid mobile number: 73197350878298589584",
+      "data": {
+        "name": "Sulochana Kumari",
+        "rawContact": "73197350878298589584",
+        "rawAssembly": "170-Barbigha"
+      }
+    },
+    {
+      "rowIndex": 147,
+      "reason": "Invalid mobile number: 93395257099798950009",
+      "data": {
+        "name": "Amarjeet Paswan",
+        "rawContact": "93395257099798950009",
+        "rawAssembly": "170-Barbigha"
+      }
+    },
+    {
+      "rowIndex": 217,
+      "reason": "Invalid mobile number: 62203022669",
+      "data": {
+        "name": "Chandan kumar Ram",
+        "rawContact": "62203022669",
+        "rawAssembly": "202-Rajpur"
+      }
+    },
+    {
+      "rowIndex": 260,
+      "reason": "Invalid mobile number: 98017782447759866541",
+      "data": {
+        "name": "Janki Devi",
+        "rawContact": "98017782447759866541",
+        "rawAssembly": "209-Kargahar"
+      }
+    },
+    {
+      "rowIndex": 269,
+      "reason": "Invalid mobile number: 92413929509241136093",
+      "data": {
+        "name": "Munna Ram",
+        "rawContact": "92413929509241136093",
+        "rawAssembly": "209-Kargahar"
+      }
+    },
+    {
+      "rowIndex": 334,
+      "reason": "Missing required field",
+      "data": {
+        "name": "Anshu Kumar",
+        "rawContact": "",
+        "rawAssembly": "240-Sikandra"
+      }
+    },
+    {
+      "rowIndex": 345,
+      "reason": "Invalid mobile number: 922970363",
+      "data": {
+        "name": "sita devi",
+        "rawContact": "922970363",
+        "rawAssembly": "31-Harlakhi"
+      }
+    },
+    {
+      "rowIndex": 423,
+      "reason": "Invalid mobile number: 957051699",
+      "data": {
+        "name": "MD Ashfaqullah",
+        "rawContact": "957051699",
+        "rawAssembly": "69-Korha"
+      }
+    },
+    {
+      "rowIndex": 439,
+      "reason": "Invalid mobile number: 92299223921",
+      "data": {
+        "name": "Darilal Sada",
+        "rawContact": "92299223921",
+        "rawAssembly": "74-Sonbarsha"
+      }
+    },
+    {
+      "rowIndex": 504,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 506,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 507,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 508,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 509,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 510,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 511,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 512,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 513,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 514,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 515,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 516,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 517,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 518,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 519,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 520,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 521,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 522,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 523,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 524,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 525,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 526,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 527,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 528,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 529,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 530,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 531,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 532,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 533,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 534,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 535,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 536,
+      "reason": "Invalid mobile number: ",
+      "data": {
+        "name": "-",
+        "rawContact": "",
+        "rawAssembly": "-"
+      }
+    },
+    {
+      "rowIndex": 537,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 538,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 539,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 540,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 541,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 542,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 543,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 544,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 545,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 546,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 547,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 548,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 549,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 550,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 551,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 552,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 553,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 554,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 555,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 556,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 557,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 558,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 559,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 560,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 561,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 562,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 563,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 564,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 565,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 566,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 567,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 568,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 569,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 570,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 571,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 572,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 573,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 574,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 575,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 576,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 577,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 578,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 579,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 580,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 581,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 582,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 583,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 584,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 585,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 586,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 587,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    },
+    {
+      "rowIndex": 588,
+      "reason": "Missing required field",
+      "data": {
+        "name": "",
+        "rawContact": "",
+        "rawAssembly": ""
+      }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "timestamp": "2025-11-16T16:02:16.977Z",
+  "recordsUploaded": 401,
+  "sourceFile": "/Users/divyammakar/workspace/Projects/my-dashboard/filtered_new_slp_training.json",
+  "apiResponse": {
+    "success": true,
+    "message": "Successfully uploaded 401 SLP training records",
+    "totalRecords": 401
+  }
+}

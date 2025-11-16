@@ -1,0 +1,5414 @@
+[
+  {
+    "name": "Muraad Ali",
+    "mobile_number": "9060919658",
+    "assembly": "Maharajganj",
+    "_metadata": {
+      "originalAssembly": "112-Maharajganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 2
+    }
+  },
+  {
+    "name": "Abhimanyu Kumar",
+    "mobile_number": "9973304024",
+    "assembly": "Maharajganj",
+    "_metadata": {
+      "originalAssembly": "112-Maharajganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 3
+    }
+  },
+  {
+    "name": "Meraj Ansari",
+    "mobile_number": "7209031543",
+    "assembly": "Maharajganj",
+    "_metadata": {
+      "originalAssembly": "112-Maharajganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 4
+    }
+  },
+  {
+    "name": "Pramood Sahni",
+    "mobile_number": "9708717286",
+    "assembly": "Maharajganj",
+    "_metadata": {
+      "originalAssembly": "112-Maharajganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 5
+    }
+  },
+  {
+    "name": "Vikas Yadav",
+    "mobile_number": "7633937820",
+    "assembly": "Maharajganj",
+    "_metadata": {
+      "originalAssembly": "112-Maharajganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 6
+    }
+  },
+  {
+    "name": "Dinesh Kumar Manjhi",
+    "mobile_number": "9625271421",
+    "assembly": "baniyapur",
+    "_metadata": {
+      "originalAssembly": "115-Baniapur",
+      "matchScore": 0.9777777777777777,
+      "matchConfidence": "high",
+      "rowIndex": 7
+    }
+  },
+  {
+    "name": "Brajesh Yadav",
+    "mobile_number": "9973255223",
+    "assembly": "baniyapur",
+    "_metadata": {
+      "originalAssembly": "115-Baniapur",
+      "matchScore": 0.9777777777777777,
+      "matchConfidence": "high",
+      "rowIndex": 8
+    }
+  },
+  {
+    "name": "Arvind Kumar Pandit",
+    "mobile_number": "8873399521",
+    "assembly": "baniyapur",
+    "_metadata": {
+      "originalAssembly": "115-Baniapur",
+      "matchScore": 0.9777777777777777,
+      "matchConfidence": "high",
+      "rowIndex": 9
+    }
+  },
+  {
+    "name": "Junaid Khan",
+    "mobile_number": "7004901095",
+    "assembly": "baniyapur",
+    "_metadata": {
+      "originalAssembly": "115-Baniapur",
+      "matchScore": 0.9777777777777777,
+      "matchConfidence": "high",
+      "rowIndex": 10
+    }
+  },
+  {
+    "name": "Raju Ray",
+    "mobile_number": "9934781442",
+    "assembly": "baniyapur",
+    "_metadata": {
+      "originalAssembly": "115-Baniapur",
+      "matchScore": 0.9777777777777777,
+      "matchConfidence": "high",
+      "rowIndex": 11
+    }
+  },
+  {
+    "name": "Brajesh kumar",
+    "mobile_number": "7463041130",
+    "assembly": "baniyapur",
+    "_metadata": {
+      "originalAssembly": "115-Baniapur",
+      "matchScore": 0.9777777777777777,
+      "matchConfidence": "high",
+      "rowIndex": 12
+    }
+  },
+  {
+    "name": "Javed Alam",
+    "mobile_number": "7635059168",
+    "assembly": "baniyapur",
+    "_metadata": {
+      "originalAssembly": "115-Baniapur",
+      "matchScore": 0.9777777777777777,
+      "matchConfidence": "high",
+      "rowIndex": 13
+    }
+  },
+  {
+    "name": "Vinod Ram",
+    "mobile_number": "9576885460",
+    "assembly": "baniyapur",
+    "_metadata": {
+      "originalAssembly": "115-Baniapur",
+      "matchScore": 0.9777777777777777,
+      "matchConfidence": "high",
+      "rowIndex": 14
+    }
+  },
+  {
+    "name": "Beauty Rani",
+    "mobile_number": "7462032415",
+    "assembly": "baniyapur",
+    "_metadata": {
+      "originalAssembly": "115-Baniapur",
+      "matchScore": 0.9777777777777777,
+      "matchConfidence": "high",
+      "rowIndex": 15
+    }
+  },
+  {
+    "name": "Ankit Manjhi",
+    "mobile_number": "9871062066",
+    "assembly": "baniyapur",
+    "_metadata": {
+      "originalAssembly": "115-Baniapur",
+      "matchScore": 0.9777777777777777,
+      "matchConfidence": "high",
+      "rowIndex": 16
+    }
+  },
+  {
+    "name": "Dinanath Ram",
+    "mobile_number": "9504233976",
+    "assembly": "Lalganj",
+    "_metadata": {
+      "originalAssembly": "124-Lalganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 17
+    }
+  },
+  {
+    "name": "Sonu Khan",
+    "mobile_number": "9135971922",
+    "assembly": "Lalganj",
+    "_metadata": {
+      "originalAssembly": "124-Lalganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 18
+    }
+  },
+  {
+    "name": "Puneet Ram",
+    "mobile_number": "9931203486",
+    "assembly": "Lalganj",
+    "_metadata": {
+      "originalAssembly": "124-Lalganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 19
+    }
+  },
+  {
+    "name": "Usha Kumari",
+    "mobile_number": "9708538581",
+    "assembly": "Lalganj",
+    "_metadata": {
+      "originalAssembly": "124-Lalganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 20
+    }
+  },
+  {
+    "name": "Shankar Shah",
+    "mobile_number": "9060057983",
+    "assembly": "Lalganj",
+    "_metadata": {
+      "originalAssembly": "124-Lalganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 21
+    }
+  },
+  {
+    "name": "Jahangir",
+    "mobile_number": "7250133786",
+    "assembly": "Lalganj",
+    "_metadata": {
+      "originalAssembly": "124-Lalganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 22
+    }
+  },
+  {
+    "name": "Ranvijay Ram",
+    "mobile_number": "7562056843",
+    "assembly": "Lalganj",
+    "_metadata": {
+      "originalAssembly": "124-Lalganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 23
+    }
+  },
+  {
+    "name": "Rakesh",
+    "mobile_number": "9507673367",
+    "assembly": "Lalganj",
+    "_metadata": {
+      "originalAssembly": "124-Lalganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 24
+    }
+  },
+  {
+    "name": "Sanjeev",
+    "mobile_number": "9525517839",
+    "assembly": "Lalganj",
+    "_metadata": {
+      "originalAssembly": "124-Lalganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 25
+    }
+  },
+  {
+    "name": "Laxman Ray",
+    "mobile_number": "9973595104",
+    "assembly": "Lalganj",
+    "_metadata": {
+      "originalAssembly": "124-Lalganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 26
+    }
+  },
+  {
+    "name": "Chand kumar",
+    "mobile_number": "6203301916",
+    "assembly": "Lalganj",
+    "_metadata": {
+      "originalAssembly": "124-Lalganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 27
+    }
+  },
+  {
+    "name": "Avinash Kumar Yadav",
+    "mobile_number": "7631102738",
+    "assembly": "Raja Pakar (SC)",
+    "_metadata": {
+      "originalAssembly": "127-Rajapakar",
+      "matchScore": 0.98,
+      "matchConfidence": "high",
+      "rowIndex": 28
+    }
+  },
+  {
+    "name": "Amarjeet Yadav",
+    "mobile_number": "7549224155",
+    "assembly": "Raja Pakar (SC)",
+    "_metadata": {
+      "originalAssembly": "127-Rajapakar",
+      "matchScore": 0.98,
+      "matchConfidence": "high",
+      "rowIndex": 29
+    }
+  },
+  {
+    "name": "Gaurav Kumar",
+    "mobile_number": "6205900025",
+    "assembly": "Raja Pakar (SC)",
+    "_metadata": {
+      "originalAssembly": "127-Rajapakar",
+      "matchScore": 0.98,
+      "matchConfidence": "high",
+      "rowIndex": 30
+    }
+  },
+  {
+    "name": "Shankar Ram",
+    "mobile_number": "7808182292",
+    "assembly": "Raja Pakar (SC)",
+    "_metadata": {
+      "originalAssembly": "127-Rajapakar",
+      "matchScore": 0.98,
+      "matchConfidence": "high",
+      "rowIndex": 31
+    }
+  },
+  {
+    "name": "Surendra Ram",
+    "mobile_number": "7783002092",
+    "assembly": "Raja Pakar (SC)",
+    "_metadata": {
+      "originalAssembly": "127-Rajapakar",
+      "matchScore": 0.98,
+      "matchConfidence": "high",
+      "rowIndex": 32
+    }
+  },
+  {
+    "name": "Raja Kumar",
+    "mobile_number": "9534385290",
+    "assembly": "Raja Pakar (SC)",
+    "_metadata": {
+      "originalAssembly": "127-Rajapakar",
+      "matchScore": 0.98,
+      "matchConfidence": "high",
+      "rowIndex": 33
+    }
+  },
+  {
+    "name": "Md. Haider",
+    "mobile_number": "9570036277",
+    "assembly": "Raja Pakar (SC)",
+    "_metadata": {
+      "originalAssembly": "127-Rajapakar",
+      "matchScore": 0.98,
+      "matchConfidence": "high",
+      "rowIndex": 34
+    }
+  },
+  {
+    "name": "Nitesh Kumar",
+    "mobile_number": "9576042659",
+    "assembly": "Raja Pakar (SC)",
+    "_metadata": {
+      "originalAssembly": "127-Rajapakar",
+      "matchScore": 0.98,
+      "matchConfidence": "high",
+      "rowIndex": 35
+    }
+  },
+  {
+    "name": "Ratnesh Singh",
+    "mobile_number": "9110049892",
+    "assembly": "Raja Pakar (SC)",
+    "_metadata": {
+      "originalAssembly": "127-Rajapakar",
+      "matchScore": 0.98,
+      "matchConfidence": "high",
+      "rowIndex": 36
+    }
+  },
+  {
+    "name": "Sakaldev Yadav",
+    "mobile_number": "9470044154",
+    "assembly": "Raja Pakar (SC)",
+    "_metadata": {
+      "originalAssembly": "127-Rajapakar",
+      "matchScore": 0.98,
+      "matchConfidence": "high",
+      "rowIndex": 37
+    }
+  },
+  {
+    "name": "Ganesh Kumar Yadav",
+    "mobile_number": "9931452326",
+    "assembly": "Kalyanpur",
+    "_metadata": {
+      "originalAssembly": "131-Kalyanpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 38
+    }
+  },
+  {
+    "name": "Md. Saqib",
+    "mobile_number": "7349570533",
+    "assembly": "Kalyanpur",
+    "_metadata": {
+      "originalAssembly": "131-Kalyanpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 39
+    }
+  },
+  {
+    "name": "Ayush Kumar",
+    "mobile_number": "8825364330",
+    "assembly": "Kalyanpur",
+    "_metadata": {
+      "originalAssembly": "131-Kalyanpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 40
+    }
+  },
+  {
+    "name": "Sanjiv Kumar",
+    "mobile_number": "8340335473",
+    "assembly": "Kalyanpur",
+    "_metadata": {
+      "originalAssembly": "131-Kalyanpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 41
+    }
+  },
+  {
+    "name": "Santosh Kumar",
+    "mobile_number": "7520831920",
+    "assembly": "Kalyanpur",
+    "_metadata": {
+      "originalAssembly": "131-Kalyanpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 42
+    }
+  },
+  {
+    "name": "Nitish Kumar",
+    "mobile_number": "7970932821",
+    "assembly": "Kalyanpur",
+    "_metadata": {
+      "originalAssembly": "131-Kalyanpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 43
+    }
+  },
+  {
+    "name": "Abhay Raj",
+    "mobile_number": "7485852728",
+    "assembly": "Kalyanpur",
+    "_metadata": {
+      "originalAssembly": "131-Kalyanpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 44
+    }
+  },
+  {
+    "name": "Ajay Kumar",
+    "mobile_number": "8862983173",
+    "assembly": "Kalyanpur",
+    "_metadata": {
+      "originalAssembly": "131-Kalyanpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 45
+    }
+  },
+  {
+    "name": "Bipin Kumar",
+    "mobile_number": "7370981710",
+    "assembly": "Rosera (SC)",
+    "_metadata": {
+      "originalAssembly": "139-Rosera",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 46
+    }
+  },
+  {
+    "name": "Nandini Kumari",
+    "mobile_number": "9263476415",
+    "assembly": "Rosera (SC)",
+    "_metadata": {
+      "originalAssembly": "139-Rosera",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 47
+    }
+  },
+  {
+    "name": "Tanuja Kumari",
+    "mobile_number": "9525930962",
+    "assembly": "Rosera (SC)",
+    "_metadata": {
+      "originalAssembly": "139-Rosera",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 48
+    }
+  },
+  {
+    "name": "Umashankar Roy",
+    "mobile_number": "9507689463",
+    "assembly": "Rosera (SC)",
+    "_metadata": {
+      "originalAssembly": "139-Rosera",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 49
+    }
+  },
+  {
+    "name": "Nitish Kumar",
+    "mobile_number": "9135100301",
+    "assembly": "Rosera (SC)",
+    "_metadata": {
+      "originalAssembly": "139-Rosera",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 50
+    }
+  },
+  {
+    "name": "Amrita Bharti",
+    "mobile_number": "7352854652",
+    "assembly": "Rosera (SC)",
+    "_metadata": {
+      "originalAssembly": "139-Rosera",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 51
+    }
+  },
+  {
+    "name": "Pankaj jha",
+    "mobile_number": "7779860284",
+    "assembly": "Rosera (SC)",
+    "_metadata": {
+      "originalAssembly": "139-Rosera",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 52
+    }
+  },
+  {
+    "name": "Rishu Raman",
+    "mobile_number": "8298316114",
+    "assembly": "Rosera (SC)",
+    "_metadata": {
+      "originalAssembly": "139-Rosera",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 53
+    }
+  },
+  {
+    "name": "Punam Devi",
+    "mobile_number": "9525556194",
+    "assembly": "Rosera (SC)",
+    "_metadata": {
+      "originalAssembly": "139-Rosera",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 54
+    }
+  },
+  {
+    "name": "Afak Alam",
+    "mobile_number": "9142341901",
+    "assembly": "Govindganj",
+    "_metadata": {
+      "originalAssembly": "14-Govindganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 55
+    }
+  },
+  {
+    "name": "Khursheed Alam",
+    "mobile_number": "9934209607",
+    "assembly": "Govindganj",
+    "_metadata": {
+      "originalAssembly": "14-Govindganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 56
+    }
+  },
+  {
+    "name": "Jairam Kumar",
+    "mobile_number": "9525313845",
+    "assembly": "Govindganj",
+    "_metadata": {
+      "originalAssembly": "14-Govindganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 57
+    }
+  },
+  {
+    "name": "Abdul Kalam",
+    "mobile_number": "8113990366",
+    "assembly": "Govindganj",
+    "_metadata": {
+      "originalAssembly": "14-Govindganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 58
+    }
+  },
+  {
+    "name": "Aftab Alam",
+    "mobile_number": "9931510786",
+    "assembly": "Govindganj",
+    "_metadata": {
+      "originalAssembly": "14-Govindganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 59
+    }
+  },
+  {
+    "name": "Anissurrahman Ansari",
+    "mobile_number": "8789344886",
+    "assembly": "Govindganj",
+    "_metadata": {
+      "originalAssembly": "14-Govindganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 60
+    }
+  },
+  {
+    "name": "Zahir Hussain",
+    "mobile_number": "9955161629",
+    "assembly": "Govindganj",
+    "_metadata": {
+      "originalAssembly": "14-Govindganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 61
+    }
+  },
+  {
+    "name": "Neyaz Alam",
+    "mobile_number": "9810208394",
+    "assembly": "Govindganj",
+    "_metadata": {
+      "originalAssembly": "14-Govindganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 62
+    }
+  },
+  {
+    "name": "Sunil Ram",
+    "mobile_number": "9507519092",
+    "assembly": "Govindganj",
+    "_metadata": {
+      "originalAssembly": "14-Govindganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 63
+    }
+  },
+  {
+    "name": "Mantu Ram",
+    "mobile_number": "9955453905",
+    "assembly": "Govindganj",
+    "_metadata": {
+      "originalAssembly": "14-Govindganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 64
+    }
+  },
+  {
+    "name": "Gandhi Sah",
+    "mobile_number": "8406089070",
+    "assembly": "Bachhwara",
+    "_metadata": {
+      "originalAssembly": "142-Bachhwara",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 65
+    }
+  },
+  {
+    "name": "Anil Kumar",
+    "mobile_number": "8877199919",
+    "assembly": "Bachhwara",
+    "_metadata": {
+      "originalAssembly": "142-Bachhwara",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 66
+    }
+  },
+  {
+    "name": "Ashok Kumar",
+    "mobile_number": "9525169081",
+    "assembly": "Bachhwara",
+    "_metadata": {
+      "originalAssembly": "142-Bachhwara",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 67
+    }
+  },
+  {
+    "name": "Aashutosh Kumar",
+    "mobile_number": "8307226816",
+    "assembly": "Bachhwara",
+    "_metadata": {
+      "originalAssembly": "142-Bachhwara",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 68
+    }
+  },
+  {
+    "name": "Avdhesh Kumar",
+    "mobile_number": "6200838371",
+    "assembly": "Bachhwara",
+    "_metadata": {
+      "originalAssembly": "142-Bachhwara",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 69
+    }
+  },
+  {
+    "name": "Aadarsh Kumar (Rahul Kumar)",
+    "mobile_number": "8877594860",
+    "assembly": "Bachhwara",
+    "_metadata": {
+      "originalAssembly": "142-Bachhwara",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 70
+    }
+  },
+  {
+    "name": "Raju Kumar",
+    "mobile_number": "8271784711",
+    "assembly": "Bachhwara",
+    "_metadata": {
+      "originalAssembly": "142-Bachhwara",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 71
+    }
+  },
+  {
+    "name": "Shayam Sundar Paswan",
+    "mobile_number": "8877881295",
+    "assembly": "Bachhwara",
+    "_metadata": {
+      "originalAssembly": "142-Bachhwara",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 72
+    }
+  },
+  {
+    "name": "Md. Sadiq",
+    "mobile_number": "8777859920",
+    "assembly": "Bachhwara",
+    "_metadata": {
+      "originalAssembly": "142-Bachhwara",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 73
+    }
+  },
+  {
+    "name": "Santosh Kumar Sharma",
+    "mobile_number": "6202378204",
+    "assembly": "Begusarai",
+    "_metadata": {
+      "originalAssembly": "146-Begusarai",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 75
+    }
+  },
+  {
+    "name": "Raja Kumar",
+    "mobile_number": "8298683562",
+    "assembly": "Begusarai",
+    "_metadata": {
+      "originalAssembly": "146-Begusarai",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 76
+    }
+  },
+  {
+    "name": "Lalbabu Kumar",
+    "mobile_number": "6205850429",
+    "assembly": "Begusarai",
+    "_metadata": {
+      "originalAssembly": "146-Begusarai",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 77
+    }
+  },
+  {
+    "name": "Santu Kumar",
+    "mobile_number": "9155157023",
+    "assembly": "Begusarai",
+    "_metadata": {
+      "originalAssembly": "146-Begusarai",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 78
+    }
+  },
+  {
+    "name": "Amrit Raj",
+    "mobile_number": "7547090256",
+    "assembly": "Begusarai",
+    "_metadata": {
+      "originalAssembly": "146-Begusarai",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 79
+    }
+  },
+  {
+    "name": "Niraj Kumar",
+    "mobile_number": "7631805303",
+    "assembly": "Begusarai",
+    "_metadata": {
+      "originalAssembly": "146-Begusarai",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 80
+    }
+  },
+  {
+    "name": "Tejo Kumar Paswan",
+    "mobile_number": "7603867357",
+    "assembly": "Begusarai",
+    "_metadata": {
+      "originalAssembly": "146-Begusarai",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 81
+    }
+  },
+  {
+    "name": "Md.Iqabal",
+    "mobile_number": "7370092752",
+    "assembly": "Begusarai",
+    "_metadata": {
+      "originalAssembly": "146-Begusarai",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 82
+    }
+  },
+  {
+    "name": "Mukesh Kumar",
+    "mobile_number": "6207925596",
+    "assembly": "Begusarai",
+    "_metadata": {
+      "originalAssembly": "146-Begusarai",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 83
+    }
+  },
+  {
+    "name": "Kedar Sah",
+    "mobile_number": "8709772710",
+    "assembly": "Begusarai",
+    "_metadata": {
+      "originalAssembly": "146-Begusarai",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 84
+    }
+  },
+  {
+    "name": "Gautam Kumar",
+    "mobile_number": "8340280067",
+    "assembly": "Khagaria",
+    "_metadata": {
+      "originalAssembly": "149-Khagaria",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 85
+    }
+  },
+  {
+    "name": "Bhupendra Rai",
+    "mobile_number": "8825344927",
+    "assembly": "Khagaria",
+    "_metadata": {
+      "originalAssembly": "149-Khagaria",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 86
+    }
+  },
+  {
+    "name": "Ramvilash Yadav",
+    "mobile_number": "8252708295",
+    "assembly": "Khagaria",
+    "_metadata": {
+      "originalAssembly": "149-Khagaria",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 87
+    }
+  },
+  {
+    "name": "Ramsevak Kumar",
+    "mobile_number": "7061511041",
+    "assembly": "Khagaria",
+    "_metadata": {
+      "originalAssembly": "149-Khagaria",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 88
+    }
+  },
+  {
+    "name": "Siko Ram",
+    "mobile_number": "6352506127",
+    "assembly": "Khagaria",
+    "_metadata": {
+      "originalAssembly": "149-Khagaria",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 89
+    }
+  },
+  {
+    "name": "Ranvir Yadav",
+    "mobile_number": "9430235440",
+    "assembly": "Khagaria",
+    "_metadata": {
+      "originalAssembly": "149-Khagaria",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 90
+    }
+  },
+  {
+    "name": "Mukesh Kumar.",
+    "mobile_number": "7759076718",
+    "assembly": "Khagaria",
+    "_metadata": {
+      "originalAssembly": "149-Khagaria",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 91
+    }
+  },
+  {
+    "name": "Vishnu Kumar Verma",
+    "mobile_number": "7667144607",
+    "assembly": "Kahalgaon",
+    "_metadata": {
+      "originalAssembly": "155-Kahalgaon",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 92
+    }
+  },
+  {
+    "name": "Sangeeta Kumar",
+    "mobile_number": "9693680804",
+    "assembly": "Kahalgaon",
+    "_metadata": {
+      "originalAssembly": "155-Kahalgaon",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 93
+    }
+  },
+  {
+    "name": "Shekhar Suman",
+    "mobile_number": "9122036200",
+    "assembly": "Kahalgaon",
+    "_metadata": {
+      "originalAssembly": "155-Kahalgaon",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 94
+    }
+  },
+  {
+    "name": "Jaya Preety",
+    "mobile_number": "7542002246",
+    "assembly": "Kahalgaon",
+    "_metadata": {
+      "originalAssembly": "155-Kahalgaon",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 95
+    }
+  },
+  {
+    "name": "Adarsh Ankur",
+    "mobile_number": "8298014227",
+    "assembly": "Kahalgaon",
+    "_metadata": {
+      "originalAssembly": "155-Kahalgaon",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 96
+    }
+  },
+  {
+    "name": "Adarsh Raunak",
+    "mobile_number": "7372872439",
+    "assembly": "Kahalgaon",
+    "_metadata": {
+      "originalAssembly": "155-Kahalgaon",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 97
+    }
+  },
+  {
+    "name": "Yudhishtir Kumar",
+    "mobile_number": "7520154067",
+    "assembly": "Kahalgaon",
+    "_metadata": {
+      "originalAssembly": "155-Kahalgaon",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 98
+    }
+  },
+  {
+    "name": "Raju Ranjana",
+    "mobile_number": "6201361489",
+    "assembly": "Kahalgaon",
+    "_metadata": {
+      "originalAssembly": "155-Kahalgaon",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 99
+    }
+  },
+  {
+    "name": "Badal Kumar",
+    "mobile_number": "8340645622",
+    "assembly": "Kahalgaon",
+    "_metadata": {
+      "originalAssembly": "155-Kahalgaon",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 100
+    }
+  },
+  {
+    "name": "Sanjay Kisku",
+    "mobile_number": "9065032392",
+    "assembly": "Kahalgaon",
+    "_metadata": {
+      "originalAssembly": "155-Kahalgaon",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 101
+    }
+  },
+  {
+    "name": "Zaid Iqbal",
+    "mobile_number": "9031967797",
+    "assembly": "Bhagalpur",
+    "_metadata": {
+      "originalAssembly": "156-Bhagalpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 102
+    }
+  },
+  {
+    "name": "Sanjeev Kumar",
+    "mobile_number": "9572654613",
+    "assembly": "Bhagalpur",
+    "_metadata": {
+      "originalAssembly": "156-Bhagalpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 103
+    }
+  },
+  {
+    "name": "Rashmi Prabha",
+    "mobile_number": "9546756478",
+    "assembly": "Bhagalpur",
+    "_metadata": {
+      "originalAssembly": "156-Bhagalpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 104
+    }
+  },
+  {
+    "name": "Shiromani Kumar",
+    "mobile_number": "8709251213",
+    "assembly": "Sultanganj",
+    "_metadata": {
+      "originalAssembly": "157-Sultanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 105
+    }
+  },
+  {
+    "name": "Manohar Pal",
+    "mobile_number": "7320863217",
+    "assembly": "Sultanganj",
+    "_metadata": {
+      "originalAssembly": "157-Sultanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 106
+    }
+  },
+  {
+    "name": "Balmiki Tanti",
+    "mobile_number": "7667929175",
+    "assembly": "Sultanganj",
+    "_metadata": {
+      "originalAssembly": "157-Sultanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 107
+    }
+  },
+  {
+    "name": "Rupesh Kumar",
+    "mobile_number": "6299359790",
+    "assembly": "Sultanganj",
+    "_metadata": {
+      "originalAssembly": "157-Sultanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 108
+    }
+  },
+  {
+    "name": "Rajiv Kumar",
+    "mobile_number": "7480068745",
+    "assembly": "Sultanganj",
+    "_metadata": {
+      "originalAssembly": "157-Sultanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 109
+    }
+  },
+  {
+    "name": "Vipin Singh",
+    "mobile_number": "9661015858",
+    "assembly": "Sultanganj",
+    "_metadata": {
+      "originalAssembly": "157-Sultanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 110
+    }
+  },
+  {
+    "name": "Raj Raman",
+    "mobile_number": "6201786468",
+    "assembly": "Sultanganj",
+    "_metadata": {
+      "originalAssembly": "157-Sultanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 111
+    }
+  },
+  {
+    "name": "Vikas Kumar",
+    "mobile_number": "9973468451",
+    "assembly": "Sultanganj",
+    "_metadata": {
+      "originalAssembly": "157-Sultanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 112
+    }
+  },
+  {
+    "name": "Balbodh Kumar",
+    "mobile_number": "9708727609",
+    "assembly": "Sultanganj",
+    "_metadata": {
+      "originalAssembly": "157-Sultanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 113
+    }
+  },
+  {
+    "name": "Nandkishor Yadav",
+    "mobile_number": "7563079663",
+    "assembly": "Sultanganj",
+    "_metadata": {
+      "originalAssembly": "157-Sultanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 114
+    }
+  },
+  {
+    "name": "Anuj Kumar Akela",
+    "mobile_number": "9973679233",
+    "assembly": "Sultanganj",
+    "_metadata": {
+      "originalAssembly": "157-Sultanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 115
+    }
+  },
+  {
+    "name": "Subodh Kumar",
+    "mobile_number": "9431096257",
+    "assembly": "Sultanganj",
+    "_metadata": {
+      "originalAssembly": "157-Sultanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 116
+    }
+  },
+  {
+    "name": "Sudhakar Kumar",
+    "mobile_number": "9360433756",
+    "assembly": "Jamalpur",
+    "_metadata": {
+      "originalAssembly": "166-Jamalpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 117
+    }
+  },
+  {
+    "name": "Md Siraj Ansari",
+    "mobile_number": "6207778019",
+    "assembly": "Jamalpur",
+    "_metadata": {
+      "originalAssembly": "166-Jamalpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 118
+    }
+  },
+  {
+    "name": "Kundan Kumar",
+    "mobile_number": "7004888767",
+    "assembly": "Jamalpur",
+    "_metadata": {
+      "originalAssembly": "166-Jamalpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 119
+    }
+  },
+  {
+    "name": "Upendra Mahto",
+    "mobile_number": "7004798726",
+    "assembly": "Jamalpur",
+    "_metadata": {
+      "originalAssembly": "166-Jamalpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 120
+    }
+  },
+  {
+    "name": "Rikesh Kumar",
+    "mobile_number": "9123111454",
+    "assembly": "Jamalpur",
+    "_metadata": {
+      "originalAssembly": "166-Jamalpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 121
+    }
+  },
+  {
+    "name": "Ravikishan Kumar",
+    "mobile_number": "6203685497",
+    "assembly": "Jamalpur",
+    "_metadata": {
+      "originalAssembly": "166-Jamalpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 122
+    }
+  },
+  {
+    "name": "Gopal Yadav",
+    "mobile_number": "9113522430",
+    "assembly": "Jamalpur",
+    "_metadata": {
+      "originalAssembly": "166-Jamalpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 123
+    }
+  },
+  {
+    "name": "Amarjeet Kumar",
+    "mobile_number": "9304960034",
+    "assembly": "Jamalpur",
+    "_metadata": {
+      "originalAssembly": "166-Jamalpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 124
+    }
+  },
+  {
+    "name": "Ritesh Yadav",
+    "mobile_number": "9117128196",
+    "assembly": "Jamalpur",
+    "_metadata": {
+      "originalAssembly": "166-Jamalpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 125
+    }
+  },
+  {
+    "name": "Parveen Kumar",
+    "mobile_number": "6200773885",
+    "assembly": "Jamalpur",
+    "_metadata": {
+      "originalAssembly": "166-Jamalpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 126
+    }
+  },
+  {
+    "name": "Mamta Kumari",
+    "mobile_number": "9507715363",
+    "assembly": "Lakhisarai",
+    "_metadata": {
+      "originalAssembly": "168-Lakhisarai",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 127
+    }
+  },
+  {
+    "name": "Rajeev Kahar",
+    "mobile_number": "9097447464",
+    "assembly": "Lakhisarai",
+    "_metadata": {
+      "originalAssembly": "168-Lakhisarai",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 128
+    }
+  },
+  {
+    "name": "Rekha Devi",
+    "mobile_number": "8292547763",
+    "assembly": "Lakhisarai",
+    "_metadata": {
+      "originalAssembly": "168-Lakhisarai",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 129
+    }
+  },
+  {
+    "name": "Ganga Rajak",
+    "mobile_number": "7970406319",
+    "assembly": "Lakhisarai",
+    "_metadata": {
+      "originalAssembly": "168-Lakhisarai",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 130
+    }
+  },
+  {
+    "name": "Pintu Thakur",
+    "mobile_number": "6204476435",
+    "assembly": "Lakhisarai",
+    "_metadata": {
+      "originalAssembly": "168-Lakhisarai",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 131
+    }
+  },
+  {
+    "name": "Sunil Gupta",
+    "mobile_number": "7870221640",
+    "assembly": "Lakhisarai",
+    "_metadata": {
+      "originalAssembly": "168-Lakhisarai",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 132
+    }
+  },
+  {
+    "name": "Afsana Khatoon",
+    "mobile_number": "6202892987",
+    "assembly": "barbigha",
+    "_metadata": {
+      "originalAssembly": "170-Barbigha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 133
+    }
+  },
+  {
+    "name": "Phulo Devi",
+    "mobile_number": "9798467660",
+    "assembly": "barbigha",
+    "_metadata": {
+      "originalAssembly": "170-Barbigha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 135
+    }
+  },
+  {
+    "name": "Malti Devi",
+    "mobile_number": "8651288676",
+    "assembly": "barbigha",
+    "_metadata": {
+      "originalAssembly": "170-Barbigha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 136
+    }
+  },
+  {
+    "name": "Basant Paswan",
+    "mobile_number": "8235103426",
+    "assembly": "barbigha",
+    "_metadata": {
+      "originalAssembly": "170-Barbigha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 137
+    }
+  },
+  {
+    "name": "Rajendra Kumar",
+    "mobile_number": "7217781490",
+    "assembly": "barbigha",
+    "_metadata": {
+      "originalAssembly": "170-Barbigha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 138
+    }
+  },
+  {
+    "name": "Prakash Kumar",
+    "mobile_number": "6299278792",
+    "assembly": "barbigha",
+    "_metadata": {
+      "originalAssembly": "170-Barbigha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 140
+    }
+  },
+  {
+    "name": "Ajit Paswan",
+    "mobile_number": "9122637028",
+    "assembly": "barbigha",
+    "_metadata": {
+      "originalAssembly": "170-Barbigha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 141
+    }
+  },
+  {
+    "name": "Munna Kumar",
+    "mobile_number": "8340371344",
+    "assembly": "barbigha",
+    "_metadata": {
+      "originalAssembly": "170-Barbigha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 142
+    }
+  },
+  {
+    "name": "Baby Kumari",
+    "mobile_number": "8102242835",
+    "assembly": "barbigha",
+    "_metadata": {
+      "originalAssembly": "170-Barbigha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 143
+    }
+  },
+  {
+    "name": "Neetu Devi",
+    "mobile_number": "9155559071",
+    "assembly": "barbigha",
+    "_metadata": {
+      "originalAssembly": "170-Barbigha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 144
+    }
+  },
+  {
+    "name": "Umashankar Ram",
+    "mobile_number": "9540136292",
+    "assembly": "barbigha",
+    "_metadata": {
+      "originalAssembly": "170-Barbigha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 145
+    }
+  },
+  {
+    "name": "Mangru Ram",
+    "mobile_number": "7050465482",
+    "assembly": "barbigha",
+    "_metadata": {
+      "originalAssembly": "170-Barbigha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 146
+    }
+  },
+  {
+    "name": "Veer Bahadur Manjhi",
+    "mobile_number": "7320820657",
+    "assembly": "Rajgir (SC)",
+    "_metadata": {
+      "originalAssembly": "173-Rajgir",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 148
+    }
+  },
+  {
+    "name": "Vikas Chaudhary",
+    "mobile_number": "9766331850",
+    "assembly": "Rajgir (SC)",
+    "_metadata": {
+      "originalAssembly": "173-Rajgir",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 149
+    }
+  },
+  {
+    "name": "Parmod Kumar",
+    "mobile_number": "9304402589",
+    "assembly": "Rajgir (SC)",
+    "_metadata": {
+      "originalAssembly": "173-Rajgir",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 150
+    }
+  },
+  {
+    "name": "Saukhin Kumar",
+    "mobile_number": "8651959441",
+    "assembly": "Rajgir (SC)",
+    "_metadata": {
+      "originalAssembly": "173-Rajgir",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 151
+    }
+  },
+  {
+    "name": "Mohit Kumar",
+    "mobile_number": "6203886223",
+    "assembly": "Rajgir (SC)",
+    "_metadata": {
+      "originalAssembly": "173-Rajgir",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 152
+    }
+  },
+  {
+    "name": "Anuj Kumar",
+    "mobile_number": "8226834984",
+    "assembly": "Rajgir (SC)",
+    "_metadata": {
+      "originalAssembly": "173-Rajgir",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 153
+    }
+  },
+  {
+    "name": "Umesh Kumar",
+    "mobile_number": "7488727175",
+    "assembly": "Rajgir (SC)",
+    "_metadata": {
+      "originalAssembly": "173-Rajgir",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 154
+    }
+  },
+  {
+    "name": "Akash Kumar Manjhi",
+    "mobile_number": "6299995262",
+    "assembly": "Rajgir (SC)",
+    "_metadata": {
+      "originalAssembly": "173-Rajgir",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 155
+    }
+  },
+  {
+    "name": "Vishvendar Kumar",
+    "mobile_number": "9006333024",
+    "assembly": "Rajgir (SC)",
+    "_metadata": {
+      "originalAssembly": "173-Rajgir",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 156
+    }
+  },
+  {
+    "name": "Mukesh Paswan",
+    "mobile_number": "6205372009",
+    "assembly": "Rajgir (SC)",
+    "_metadata": {
+      "originalAssembly": "173-Rajgir",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 157
+    }
+  },
+  {
+    "name": "Sanjay Prasad",
+    "mobile_number": "6206650407",
+    "assembly": "Rajgir (SC)",
+    "_metadata": {
+      "originalAssembly": "173-Rajgir",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 158
+    }
+  },
+  {
+    "name": "Sudhir Kumar Sinha",
+    "mobile_number": "7462042160",
+    "assembly": "Nalanda",
+    "_metadata": {
+      "originalAssembly": "176-Nalanda",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 159
+    }
+  },
+  {
+    "name": "Surendra Paswan",
+    "mobile_number": "8084009248",
+    "assembly": "Nalanda",
+    "_metadata": {
+      "originalAssembly": "176-Nalanda",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 160
+    }
+  },
+  {
+    "name": "Manish Kumar",
+    "mobile_number": "8873024149",
+    "assembly": "Nalanda",
+    "_metadata": {
+      "originalAssembly": "176-Nalanda",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 161
+    }
+  },
+  {
+    "name": "Awdesh Kushwaha",
+    "mobile_number": "6203582812",
+    "assembly": "Nalanda",
+    "_metadata": {
+      "originalAssembly": "176-Nalanda",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 162
+    }
+  },
+  {
+    "name": "Mahesh Ravidas",
+    "mobile_number": "9019175641",
+    "assembly": "Nalanda",
+    "_metadata": {
+      "originalAssembly": "176-Nalanda",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 163
+    }
+  },
+  {
+    "name": "Priya Ranjan Patel",
+    "mobile_number": "9905069997",
+    "assembly": "Nalanda",
+    "_metadata": {
+      "originalAssembly": "176-Nalanda",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 164
+    }
+  },
+  {
+    "name": "Dinesh Manjhi",
+    "mobile_number": "9006206247",
+    "assembly": "Nalanda",
+    "_metadata": {
+      "originalAssembly": "176-Nalanda",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 165
+    }
+  },
+  {
+    "name": "Abhishek Kumar",
+    "mobile_number": "8540040020",
+    "assembly": "Nalanda",
+    "_metadata": {
+      "originalAssembly": "176-Nalanda",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 166
+    }
+  },
+  {
+    "name": "Sanju Ravidas",
+    "mobile_number": "9835565028",
+    "assembly": "Nalanda",
+    "_metadata": {
+      "originalAssembly": "176-Nalanda",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 167
+    }
+  },
+  {
+    "name": "Blmiki Ravidas",
+    "mobile_number": "8969399747",
+    "assembly": "Nalanda",
+    "_metadata": {
+      "originalAssembly": "176-Nalanda",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 168
+    }
+  },
+  {
+    "name": "Preeti Sahu",
+    "mobile_number": "7294097838",
+    "assembly": "Nalanda",
+    "_metadata": {
+      "originalAssembly": "176-Nalanda",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 169
+    }
+  },
+  {
+    "name": "Subodh Pandit",
+    "mobile_number": "9798286274",
+    "assembly": "Nalanda",
+    "_metadata": {
+      "originalAssembly": "176-Nalanda",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 170
+    }
+  },
+  {
+    "name": "Sambhu Chaudhry",
+    "mobile_number": "9835561499",
+    "assembly": "Nalanda",
+    "_metadata": {
+      "originalAssembly": "176-Nalanda",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 171
+    }
+  },
+  {
+    "name": "Sonu Kumar",
+    "mobile_number": "9801562016",
+    "assembly": "Nalanda",
+    "_metadata": {
+      "originalAssembly": "176-Nalanda",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 172
+    }
+  },
+  {
+    "name": "Anuja Kumari",
+    "mobile_number": "7903156069",
+    "assembly": "Harnaut",
+    "_metadata": {
+      "originalAssembly": "177-Harnaut",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 173
+    }
+  },
+  {
+    "name": "Dinesh Jamadar",
+    "mobile_number": "7633948045",
+    "assembly": "Harnaut",
+    "_metadata": {
+      "originalAssembly": "177-Harnaut",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 174
+    }
+  },
+  {
+    "name": "Shrikant Paswan",
+    "mobile_number": "7091445796",
+    "assembly": "Harnaut",
+    "_metadata": {
+      "originalAssembly": "177-Harnaut",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 175
+    }
+  },
+  {
+    "name": "Rambabu Sharma",
+    "mobile_number": "9905487919",
+    "assembly": "Harnaut",
+    "_metadata": {
+      "originalAssembly": "177-Harnaut",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 176
+    }
+  },
+  {
+    "name": "Arun malakar",
+    "mobile_number": "9931815900",
+    "assembly": "Harnaut",
+    "_metadata": {
+      "originalAssembly": "177-Harnaut",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 177
+    }
+  },
+  {
+    "name": "Amarnaath",
+    "mobile_number": "7549440176",
+    "assembly": "Harnaut",
+    "_metadata": {
+      "originalAssembly": "177-Harnaut",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 178
+    }
+  },
+  {
+    "name": "Anil manjhi",
+    "mobile_number": "8002438548",
+    "assembly": "Harnaut",
+    "_metadata": {
+      "originalAssembly": "177-Harnaut",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 179
+    }
+  },
+  {
+    "name": "shippu kumar sharma",
+    "mobile_number": "6200549536",
+    "assembly": "Harnaut",
+    "_metadata": {
+      "originalAssembly": "177-Harnaut",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 180
+    }
+  },
+  {
+    "name": "Ajeet kumar ram",
+    "mobile_number": "9934272087",
+    "assembly": "Harnaut",
+    "_metadata": {
+      "originalAssembly": "177-Harnaut",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 181
+    }
+  },
+  {
+    "name": "Naushad Ali",
+    "mobile_number": "9835249375",
+    "assembly": "Ramnagar (SC)",
+    "_metadata": {
+      "originalAssembly": "2-Ramnagar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 182
+    }
+  },
+  {
+    "name": "Md.Naeem",
+    "mobile_number": "9801105962",
+    "assembly": "Ramnagar (SC)",
+    "_metadata": {
+      "originalAssembly": "2-Ramnagar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 183
+    }
+  },
+  {
+    "name": "Madan Ram",
+    "mobile_number": "8084625677",
+    "assembly": "Ramnagar (SC)",
+    "_metadata": {
+      "originalAssembly": "2-Ramnagar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 184
+    }
+  },
+  {
+    "name": "Firoj Akhtar",
+    "mobile_number": "9142685885",
+    "assembly": "Ramnagar (SC)",
+    "_metadata": {
+      "originalAssembly": "2-Ramnagar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 185
+    }
+  },
+  {
+    "name": "Ashika Devi",
+    "mobile_number": "8434012578",
+    "assembly": "Ramnagar (SC)",
+    "_metadata": {
+      "originalAssembly": "2-Ramnagar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 186
+    }
+  },
+  {
+    "name": "Md. Imran",
+    "mobile_number": "9771378459",
+    "assembly": "Ramnagar (SC)",
+    "_metadata": {
+      "originalAssembly": "2-Ramnagar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 187
+    }
+  },
+  {
+    "name": "Arjun Ram",
+    "mobile_number": "7079008815",
+    "assembly": "Ramnagar (SC)",
+    "_metadata": {
+      "originalAssembly": "2-Ramnagar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 188
+    }
+  },
+  {
+    "name": "Shivnath Yadav",
+    "mobile_number": "9931261711",
+    "assembly": "Ramnagar (SC)",
+    "_metadata": {
+      "originalAssembly": "2-Ramnagar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 189
+    }
+  },
+  {
+    "name": "Aftab Ansari",
+    "mobile_number": "7070406500",
+    "assembly": "Ramnagar (SC)",
+    "_metadata": {
+      "originalAssembly": "2-Ramnagar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 190
+    }
+  },
+  {
+    "name": "Nazir Hussain",
+    "mobile_number": "9006484536",
+    "assembly": "Ramnagar (SC)",
+    "_metadata": {
+      "originalAssembly": "2-Ramnagar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 191
+    }
+  },
+  {
+    "name": "Bittu Kumar",
+    "mobile_number": "9135540877",
+    "assembly": "Chiraia",
+    "_metadata": {
+      "originalAssembly": "20-Chiraiya",
+      "matchScore": 0.975,
+      "matchConfidence": "high",
+      "rowIndex": 192
+    }
+  },
+  {
+    "name": "Dippu Yadav",
+    "mobile_number": "9097001811",
+    "assembly": "Chiraia",
+    "_metadata": {
+      "originalAssembly": "20-Chiraiya",
+      "matchScore": 0.975,
+      "matchConfidence": "high",
+      "rowIndex": 193
+    }
+  },
+  {
+    "name": "Devbrat Kumar",
+    "mobile_number": "9128145915",
+    "assembly": "Chiraia",
+    "_metadata": {
+      "originalAssembly": "20-Chiraiya",
+      "matchScore": 0.975,
+      "matchConfidence": "high",
+      "rowIndex": 194
+    }
+  },
+  {
+    "name": "Mani Kumar",
+    "mobile_number": "9625914789",
+    "assembly": "Chiraia",
+    "_metadata": {
+      "originalAssembly": "20-Chiraiya",
+      "matchScore": 0.975,
+      "matchConfidence": "high",
+      "rowIndex": 195
+    }
+  },
+  {
+    "name": "Arshad Alam",
+    "mobile_number": "8209823203",
+    "assembly": "Chiraia",
+    "_metadata": {
+      "originalAssembly": "20-Chiraiya",
+      "matchScore": 0.975,
+      "matchConfidence": "high",
+      "rowIndex": 196
+    }
+  },
+  {
+    "name": "Triloki Yadav",
+    "mobile_number": "8210032428",
+    "assembly": "Chiraia",
+    "_metadata": {
+      "originalAssembly": "20-Chiraiya",
+      "matchScore": 0.975,
+      "matchConfidence": "high",
+      "rowIndex": 197
+    }
+  },
+  {
+    "name": "Abhishek Kumar",
+    "mobile_number": "9798072478",
+    "assembly": "Chiraia",
+    "_metadata": {
+      "originalAssembly": "20-Chiraiya",
+      "matchScore": 0.975,
+      "matchConfidence": "high",
+      "rowIndex": 198
+    }
+  },
+  {
+    "name": "Ranjan Kumar",
+    "mobile_number": "7808360317",
+    "assembly": "Chiraia",
+    "_metadata": {
+      "originalAssembly": "20-Chiraiya",
+      "matchScore": 0.975,
+      "matchConfidence": "high",
+      "rowIndex": 199
+    }
+  },
+  {
+    "name": "Md Kalim",
+    "mobile_number": "9507341485",
+    "assembly": "Chiraia",
+    "_metadata": {
+      "originalAssembly": "20-Chiraiya",
+      "matchScore": 0.975,
+      "matchConfidence": "high",
+      "rowIndex": 200
+    }
+  },
+  {
+    "name": "Jaikaran Yadav",
+    "mobile_number": "7654803054",
+    "assembly": "Chiraia",
+    "_metadata": {
+      "originalAssembly": "20-Chiraiya",
+      "matchScore": 0.975,
+      "matchConfidence": "high",
+      "rowIndex": 201
+    }
+  },
+  {
+    "name": "Suresh Kumar",
+    "mobile_number": "9128958081",
+    "assembly": "buxar",
+    "_metadata": {
+      "originalAssembly": "200-Buxar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 202
+    }
+  },
+  {
+    "name": "Roshani Kumari",
+    "mobile_number": "8651371623",
+    "assembly": "buxar",
+    "_metadata": {
+      "originalAssembly": "200-Buxar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 203
+    }
+  },
+  {
+    "name": "Shoba Kumari",
+    "mobile_number": "9852232932",
+    "assembly": "buxar",
+    "_metadata": {
+      "originalAssembly": "200-Buxar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 204
+    }
+  },
+  {
+    "name": "Markandey Yadav",
+    "mobile_number": "7091688001",
+    "assembly": "buxar",
+    "_metadata": {
+      "originalAssembly": "200-Buxar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 205
+    }
+  },
+  {
+    "name": "Jai Prakash Ram",
+    "mobile_number": "9097800905",
+    "assembly": "buxar",
+    "_metadata": {
+      "originalAssembly": "200-Buxar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 206
+    }
+  },
+  {
+    "name": "Shahnawaz Khan",
+    "mobile_number": "7488574340",
+    "assembly": "buxar",
+    "_metadata": {
+      "originalAssembly": "200-Buxar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 207
+    }
+  },
+  {
+    "name": "Upendra Kumar Sharma",
+    "mobile_number": "8877787010",
+    "assembly": "buxar",
+    "_metadata": {
+      "originalAssembly": "200-Buxar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 208
+    }
+  },
+  {
+    "name": "Karan Ram",
+    "mobile_number": "8271074973",
+    "assembly": "buxar",
+    "_metadata": {
+      "originalAssembly": "200-Buxar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 209
+    }
+  },
+  {
+    "name": "Tej Kumar Ram",
+    "mobile_number": "9199793452",
+    "assembly": "buxar",
+    "_metadata": {
+      "originalAssembly": "200-Buxar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 210
+    }
+  },
+  {
+    "name": "Surendra Kumar Ram",
+    "mobile_number": "9472622435",
+    "assembly": "buxar",
+    "_metadata": {
+      "originalAssembly": "200-Buxar",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 211
+    }
+  },
+  {
+    "name": "Pritam Kumar Ram",
+    "mobile_number": "9229727223",
+    "assembly": "Rajpur (SC)",
+    "_metadata": {
+      "originalAssembly": "202-Rajpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 212
+    }
+  },
+  {
+    "name": "Ramita Kumari",
+    "mobile_number": "6207454894",
+    "assembly": "Rajpur (SC)",
+    "_metadata": {
+      "originalAssembly": "202-Rajpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 213
+    }
+  },
+  {
+    "name": "Priyanka kumari yadav",
+    "mobile_number": "8210491569",
+    "assembly": "Rajpur (SC)",
+    "_metadata": {
+      "originalAssembly": "202-Rajpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 214
+    }
+  },
+  {
+    "name": "Gita Devi yadav",
+    "mobile_number": "9135260543",
+    "assembly": "Rajpur (SC)",
+    "_metadata": {
+      "originalAssembly": "202-Rajpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 215
+    }
+  },
+  {
+    "name": "Manji Singh yadav",
+    "mobile_number": "6205343229",
+    "assembly": "Rajpur (SC)",
+    "_metadata": {
+      "originalAssembly": "202-Rajpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 216
+    }
+  },
+  {
+    "name": "Rishikesh kumar",
+    "mobile_number": "6206647097",
+    "assembly": "Rajpur (SC)",
+    "_metadata": {
+      "originalAssembly": "202-Rajpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 218
+    }
+  },
+  {
+    "name": "Rahul Kumar",
+    "mobile_number": "8298048212",
+    "assembly": "Rajpur (SC)",
+    "_metadata": {
+      "originalAssembly": "202-Rajpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 219
+    }
+  },
+  {
+    "name": "Anand Yadav",
+    "mobile_number": "9771521591",
+    "assembly": "Rajpur (SC)",
+    "_metadata": {
+      "originalAssembly": "202-Rajpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 220
+    }
+  },
+  {
+    "name": "Arvind Yadav",
+    "mobile_number": "7485883223",
+    "assembly": "Rajpur (SC)",
+    "_metadata": {
+      "originalAssembly": "202-Rajpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 221
+    }
+  },
+  {
+    "name": "Prince Kumar",
+    "mobile_number": "7562827966",
+    "assembly": "Rajpur (SC)",
+    "_metadata": {
+      "originalAssembly": "202-Rajpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 222
+    }
+  },
+  {
+    "name": "Nandan Yadav",
+    "mobile_number": "8409150892",
+    "assembly": "Mohania (SC)",
+    "_metadata": {
+      "originalAssembly": "204-Mohania",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 223
+    }
+  },
+  {
+    "name": "Lokesh Shrivastava",
+    "mobile_number": "9939091680",
+    "assembly": "Mohania (SC)",
+    "_metadata": {
+      "originalAssembly": "204-Mohania",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 224
+    }
+  },
+  {
+    "name": "Suman Kumari",
+    "mobile_number": "6205879354",
+    "assembly": "Mohania (SC)",
+    "_metadata": {
+      "originalAssembly": "204-Mohania",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 225
+    }
+  },
+  {
+    "name": "Kumari Gunjan",
+    "mobile_number": "9939399246",
+    "assembly": "Mohania (SC)",
+    "_metadata": {
+      "originalAssembly": "204-Mohania",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 226
+    }
+  },
+  {
+    "name": "Saurabh Kumar",
+    "mobile_number": "7281881851",
+    "assembly": "Mohania (SC)",
+    "_metadata": {
+      "originalAssembly": "204-Mohania",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 227
+    }
+  },
+  {
+    "name": "Prince Kumar",
+    "mobile_number": "9631852322",
+    "assembly": "Mohania (SC)",
+    "_metadata": {
+      "originalAssembly": "204-Mohania",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 228
+    }
+  },
+  {
+    "name": "Chitranjan Rajak",
+    "mobile_number": "9931399116",
+    "assembly": "Mohania (SC)",
+    "_metadata": {
+      "originalAssembly": "204-Mohania",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 229
+    }
+  },
+  {
+    "name": "Nur Mohammad Ali",
+    "mobile_number": "8210452064",
+    "assembly": "Mohania (SC)",
+    "_metadata": {
+      "originalAssembly": "204-Mohania",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 230
+    }
+  },
+  {
+    "name": "Devendra Singh",
+    "mobile_number": "9973706409",
+    "assembly": "Mohania (SC)",
+    "_metadata": {
+      "originalAssembly": "204-Mohania",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 231
+    }
+  },
+  {
+    "name": "Sunita Devi",
+    "mobile_number": "6206925003",
+    "assembly": "Mohania (SC)",
+    "_metadata": {
+      "originalAssembly": "204-Mohania",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 232
+    }
+  },
+  {
+    "name": "Ramesh Pandey",
+    "mobile_number": "8252077316",
+    "assembly": "Mohania (SC)",
+    "_metadata": {
+      "originalAssembly": "204-Mohania",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 233
+    }
+  },
+  {
+    "name": "Dasharath Mallah",
+    "mobile_number": "9973146038",
+    "assembly": "Mohania (SC)",
+    "_metadata": {
+      "originalAssembly": "204-Mohania",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 234
+    }
+  },
+  {
+    "name": "Gulam Peer Mohammad",
+    "mobile_number": "8541820430",
+    "assembly": "Mohania (SC)",
+    "_metadata": {
+      "originalAssembly": "204-Mohania",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 235
+    }
+  },
+  {
+    "name": "Sonu Lal Yadav",
+    "mobile_number": "8294126758",
+    "assembly": "Chainpur",
+    "_metadata": {
+      "originalAssembly": "206-Chainpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 236
+    }
+  },
+  {
+    "name": "Bechan Ram",
+    "mobile_number": "9572987036",
+    "assembly": "Chainpur",
+    "_metadata": {
+      "originalAssembly": "206-Chainpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 237
+    }
+  },
+  {
+    "name": "Seraj Khan",
+    "mobile_number": "8757568718",
+    "assembly": "Chainpur",
+    "_metadata": {
+      "originalAssembly": "206-Chainpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 238
+    }
+  },
+  {
+    "name": "Sonu Yadav",
+    "mobile_number": "9523542972",
+    "assembly": "Chainpur",
+    "_metadata": {
+      "originalAssembly": "206-Chainpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 239
+    }
+  },
+  {
+    "name": "Pramod Kumar",
+    "mobile_number": "9608148557",
+    "assembly": "Chainpur",
+    "_metadata": {
+      "originalAssembly": "206-Chainpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 240
+    }
+  },
+  {
+    "name": "Bhanu Kumar",
+    "mobile_number": "7258947557",
+    "assembly": "Chainpur",
+    "_metadata": {
+      "originalAssembly": "206-Chainpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 241
+    }
+  },
+  {
+    "name": "Rahul Singh",
+    "mobile_number": "8299121502",
+    "assembly": "Chainpur",
+    "_metadata": {
+      "originalAssembly": "206-Chainpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 242
+    }
+  },
+  {
+    "name": "Dinesh Giri",
+    "mobile_number": "7905178481",
+    "assembly": "Chainpur",
+    "_metadata": {
+      "originalAssembly": "206-Chainpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 243
+    }
+  },
+  {
+    "name": "Shri Mushahar",
+    "mobile_number": "9835728763",
+    "assembly": "Chainpur",
+    "_metadata": {
+      "originalAssembly": "206-Chainpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 244
+    }
+  },
+  {
+    "name": "Shri Chhohada Yadav",
+    "mobile_number": "7068612133",
+    "assembly": "Chainpur",
+    "_metadata": {
+      "originalAssembly": "206-Chainpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 245
+    }
+  },
+  {
+    "name": "Shri Mulai Bind",
+    "mobile_number": "8521016956",
+    "assembly": "Chainpur",
+    "_metadata": {
+      "originalAssembly": "206-Chainpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 246
+    }
+  },
+  {
+    "name": "Birbal Kumar",
+    "mobile_number": "8873524038",
+    "assembly": "Chenari (SC)",
+    "_metadata": {
+      "originalAssembly": "207-Chenari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 247
+    }
+  },
+  {
+    "name": "Chinta Devi",
+    "mobile_number": "9523746527",
+    "assembly": "Chenari (SC)",
+    "_metadata": {
+      "originalAssembly": "207-Chenari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 248
+    }
+  },
+  {
+    "name": "Ajaykumar",
+    "mobile_number": "9973151183",
+    "assembly": "Chenari (SC)",
+    "_metadata": {
+      "originalAssembly": "207-Chenari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 249
+    }
+  },
+  {
+    "name": "Raja Babu",
+    "mobile_number": "9128010020",
+    "assembly": "Chenari (SC)",
+    "_metadata": {
+      "originalAssembly": "207-Chenari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 250
+    }
+  },
+  {
+    "name": "Mushtaq Ansari",
+    "mobile_number": "9334127167",
+    "assembly": "Chenari (SC)",
+    "_metadata": {
+      "originalAssembly": "207-Chenari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 251
+    }
+  },
+  {
+    "name": "Ramkishun Paswan",
+    "mobile_number": "6203274869",
+    "assembly": "Chenari (SC)",
+    "_metadata": {
+      "originalAssembly": "207-Chenari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 252
+    }
+  },
+  {
+    "name": "Brijkishor Paswan",
+    "mobile_number": "9934293836",
+    "assembly": "Chenari (SC)",
+    "_metadata": {
+      "originalAssembly": "207-Chenari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 253
+    }
+  },
+  {
+    "name": "Bihari Ram",
+    "mobile_number": "9852407231",
+    "assembly": "Chenari (SC)",
+    "_metadata": {
+      "originalAssembly": "207-Chenari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 254
+    }
+  },
+  {
+    "name": "Rinu Devi",
+    "mobile_number": "7781878379",
+    "assembly": "Chenari (SC)",
+    "_metadata": {
+      "originalAssembly": "207-Chenari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 255
+    }
+  },
+  {
+    "name": "Ayodhya Baitha",
+    "mobile_number": "8521959822",
+    "assembly": "Chenari (SC)",
+    "_metadata": {
+      "originalAssembly": "207-Chenari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 256
+    }
+  },
+  {
+    "name": "Ravi Bind",
+    "mobile_number": "8877872109",
+    "assembly": "Chenari (SC)",
+    "_metadata": {
+      "originalAssembly": "207-Chenari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 257
+    }
+  },
+  {
+    "name": "Aslam Rain",
+    "mobile_number": "7903361092",
+    "assembly": "Karghar",
+    "_metadata": {
+      "originalAssembly": "209-Kargahar",
+      "matchScore": 0.9464285714285714,
+      "matchConfidence": "high",
+      "rowIndex": 258
+    }
+  },
+  {
+    "name": "Drapati Devi",
+    "mobile_number": "9229249846",
+    "assembly": "Karghar",
+    "_metadata": {
+      "originalAssembly": "209-Kargahar",
+      "matchScore": 0.9464285714285714,
+      "matchConfidence": "high",
+      "rowIndex": 259
+    }
+  },
+  {
+    "name": "Shivkailash Ji",
+    "mobile_number": "9006879593",
+    "assembly": "Karghar",
+    "_metadata": {
+      "originalAssembly": "209-Kargahar",
+      "matchScore": 0.9464285714285714,
+      "matchConfidence": "high",
+      "rowIndex": 261
+    }
+  },
+  {
+    "name": "Akshaywar Singh",
+    "mobile_number": "8292308911",
+    "assembly": "Karghar",
+    "_metadata": {
+      "originalAssembly": "209-Kargahar",
+      "matchScore": 0.9464285714285714,
+      "matchConfidence": "high",
+      "rowIndex": 262
+    }
+  },
+  {
+    "name": "Usha Devi",
+    "mobile_number": "7250067154",
+    "assembly": "Karghar",
+    "_metadata": {
+      "originalAssembly": "209-Kargahar",
+      "matchScore": 0.9464285714285714,
+      "matchConfidence": "high",
+      "rowIndex": 263
+    }
+  },
+  {
+    "name": "Vikas Kumar",
+    "mobile_number": "9341452450",
+    "assembly": "Karghar",
+    "_metadata": {
+      "originalAssembly": "209-Kargahar",
+      "matchScore": 0.9464285714285714,
+      "matchConfidence": "high",
+      "rowIndex": 264
+    }
+  },
+  {
+    "name": "Vishal Ji",
+    "mobile_number": "7323020457",
+    "assembly": "Karghar",
+    "_metadata": {
+      "originalAssembly": "209-Kargahar",
+      "matchScore": 0.9464285714285714,
+      "matchConfidence": "high",
+      "rowIndex": 265
+    }
+  },
+  {
+    "name": "Manish Ji",
+    "mobile_number": "9546690088",
+    "assembly": "Karghar",
+    "_metadata": {
+      "originalAssembly": "209-Kargahar",
+      "matchScore": 0.9464285714285714,
+      "matchConfidence": "high",
+      "rowIndex": 266
+    }
+  },
+  {
+    "name": "Jahir Ansari",
+    "mobile_number": "6202061291",
+    "assembly": "Karghar",
+    "_metadata": {
+      "originalAssembly": "209-Kargahar",
+      "matchScore": 0.9464285714285714,
+      "matchConfidence": "high",
+      "rowIndex": 267
+    }
+  },
+  {
+    "name": "Jitu Kumar Gautam",
+    "mobile_number": "9801106838",
+    "assembly": "Karghar",
+    "_metadata": {
+      "originalAssembly": "209-Kargahar",
+      "matchScore": 0.9464285714285714,
+      "matchConfidence": "high",
+      "rowIndex": 268
+    }
+  },
+  {
+    "name": "Jugnu Ram",
+    "mobile_number": "9905067274",
+    "assembly": "Karghar",
+    "_metadata": {
+      "originalAssembly": "209-Kargahar",
+      "matchScore": 0.9464285714285714,
+      "matchConfidence": "high",
+      "rowIndex": 270
+    }
+  },
+  {
+    "name": "Gautam Kumar",
+    "mobile_number": "9801969116",
+    "assembly": "Karghar",
+    "_metadata": {
+      "originalAssembly": "209-Kargahar",
+      "matchScore": 0.9464285714285714,
+      "matchConfidence": "high",
+      "rowIndex": 271
+    }
+  },
+  {
+    "name": "Ram Kuber Ram",
+    "mobile_number": "9939421939",
+    "assembly": "Karghar",
+    "_metadata": {
+      "originalAssembly": "209-Kargahar",
+      "matchScore": 0.9464285714285714,
+      "matchConfidence": "high",
+      "rowIndex": 272
+    }
+  },
+  {
+    "name": "Sonu Kumar",
+    "mobile_number": "8969296378",
+    "assembly": "Arwal",
+    "_metadata": {
+      "originalAssembly": "214-Arwal",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 273
+    }
+  },
+  {
+    "name": "Sunny Kumar",
+    "mobile_number": "7461973611",
+    "assembly": "Arwal",
+    "_metadata": {
+      "originalAssembly": "214-Arwal",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 274
+    }
+  },
+  {
+    "name": "Raushan Kumar",
+    "mobile_number": "9973870891",
+    "assembly": "Arwal",
+    "_metadata": {
+      "originalAssembly": "214-Arwal",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 275
+    }
+  },
+  {
+    "name": "Shaurabh Kumar",
+    "mobile_number": "9110060467",
+    "assembly": "Arwal",
+    "_metadata": {
+      "originalAssembly": "214-Arwal",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 276
+    }
+  },
+  {
+    "name": "Ravindra Ram",
+    "mobile_number": "7781863873",
+    "assembly": "Kutumba (SC)",
+    "_metadata": {
+      "originalAssembly": "222-Kutumba",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 277
+    }
+  },
+  {
+    "name": "Surender Ram",
+    "mobile_number": "8797615093",
+    "assembly": "Kutumba (SC)",
+    "_metadata": {
+      "originalAssembly": "222-Kutumba",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 278
+    }
+  },
+  {
+    "name": "Dhananjay Kumar",
+    "mobile_number": "9304214924",
+    "assembly": "Kutumba (SC)",
+    "_metadata": {
+      "originalAssembly": "222-Kutumba",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 279
+    }
+  },
+  {
+    "name": "Md. Jabbar Ansari",
+    "mobile_number": "9931883951",
+    "assembly": "Kutumba (SC)",
+    "_metadata": {
+      "originalAssembly": "222-Kutumba",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 280
+    }
+  },
+  {
+    "name": "Babar Ansari",
+    "mobile_number": "9939121885",
+    "assembly": "Kutumba (SC)",
+    "_metadata": {
+      "originalAssembly": "222-Kutumba",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 281
+    }
+  },
+  {
+    "name": "Aftab Alam",
+    "mobile_number": "6291009048",
+    "assembly": "Kutumba (SC)",
+    "_metadata": {
+      "originalAssembly": "222-Kutumba",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 282
+    }
+  },
+  {
+    "name": "Rani Devi",
+    "mobile_number": "7488826034",
+    "assembly": "Kutumba (SC)",
+    "_metadata": {
+      "originalAssembly": "222-Kutumba",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 283
+    }
+  },
+  {
+    "name": "Vikas Kumar Bharti",
+    "mobile_number": "9835427440",
+    "assembly": "Kutumba (SC)",
+    "_metadata": {
+      "originalAssembly": "222-Kutumba",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 284
+    }
+  },
+  {
+    "name": "Ramkesh Ram",
+    "mobile_number": "6299385891",
+    "assembly": "Kutumba (SC)",
+    "_metadata": {
+      "originalAssembly": "222-Kutumba",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 285
+    }
+  },
+  {
+    "name": "Ankit Chandravanshi",
+    "mobile_number": "6205430154",
+    "assembly": "Kutumba (SC)",
+    "_metadata": {
+      "originalAssembly": "222-Kutumba",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 286
+    }
+  },
+  {
+    "name": "Md. Asgar",
+    "mobile_number": "8777674850",
+    "assembly": "Aurangabad",
+    "_metadata": {
+      "originalAssembly": "223-Aurangabad",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 287
+    }
+  },
+  {
+    "name": "Ziauddin Khan",
+    "mobile_number": "9852787878",
+    "assembly": "Aurangabad",
+    "_metadata": {
+      "originalAssembly": "223-Aurangabad",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 288
+    }
+  },
+  {
+    "name": "Aman Khan",
+    "mobile_number": "9031265117",
+    "assembly": "Aurangabad",
+    "_metadata": {
+      "originalAssembly": "223-Aurangabad",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 289
+    }
+  },
+  {
+    "name": "Munna Yadav",
+    "mobile_number": "8084475513",
+    "assembly": "Aurangabad",
+    "_metadata": {
+      "originalAssembly": "223-Aurangabad",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 290
+    }
+  },
+  {
+    "name": "Sudhir Chandravanshi",
+    "mobile_number": "9939312926",
+    "assembly": "Aurangabad",
+    "_metadata": {
+      "originalAssembly": "223-Aurangabad",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 291
+    }
+  },
+  {
+    "name": "Raju Kumar",
+    "mobile_number": "9102927676",
+    "assembly": "Aurangabad",
+    "_metadata": {
+      "originalAssembly": "223-Aurangabad",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 292
+    }
+  },
+  {
+    "name": "Chandrashekhar",
+    "mobile_number": "6204785007",
+    "assembly": "Aurangabad",
+    "_metadata": {
+      "originalAssembly": "223-Aurangabad",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 293
+    }
+  },
+  {
+    "name": "Gunjan",
+    "mobile_number": "8935821307",
+    "assembly": "Aurangabad",
+    "_metadata": {
+      "originalAssembly": "223-Aurangabad",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 294
+    }
+  },
+  {
+    "name": "Kaushal Kumar",
+    "mobile_number": "9798943515",
+    "assembly": "Aurangabad",
+    "_metadata": {
+      "originalAssembly": "223-Aurangabad",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 295
+    }
+  },
+  {
+    "name": "Sharique",
+    "mobile_number": "8581985565",
+    "assembly": "Aurangabad",
+    "_metadata": {
+      "originalAssembly": "223-Aurangabad",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 296
+    }
+  },
+  {
+    "name": "Rohan Kumar",
+    "mobile_number": "9304400427",
+    "assembly": "riga",
+    "_metadata": {
+      "originalAssembly": "23-Riga",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 297
+    }
+  },
+  {
+    "name": "Prakash Kumar",
+    "mobile_number": "7322025749",
+    "assembly": "riga",
+    "_metadata": {
+      "originalAssembly": "23-Riga",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 298
+    }
+  },
+  {
+    "name": "Saksham Kumar",
+    "mobile_number": "9523856416",
+    "assembly": "riga",
+    "_metadata": {
+      "originalAssembly": "23-Riga",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 299
+    }
+  },
+  {
+    "name": "Samir Kumar",
+    "mobile_number": "9341479230",
+    "assembly": "riga",
+    "_metadata": {
+      "originalAssembly": "23-Riga",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 300
+    }
+  },
+  {
+    "name": "Anshu Kumar",
+    "mobile_number": "9334624907",
+    "assembly": "riga",
+    "_metadata": {
+      "originalAssembly": "23-Riga",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 301
+    }
+  },
+  {
+    "name": "Sahil Raj",
+    "mobile_number": "9153568288",
+    "assembly": "riga",
+    "_metadata": {
+      "originalAssembly": "23-Riga",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 302
+    }
+  },
+  {
+    "name": "Md Nasim",
+    "mobile_number": "9304218322",
+    "assembly": "riga",
+    "_metadata": {
+      "originalAssembly": "23-Riga",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 303
+    }
+  },
+  {
+    "name": "Md Sharique",
+    "mobile_number": "9525881501",
+    "assembly": "riga",
+    "_metadata": {
+      "originalAssembly": "23-Riga",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 304
+    }
+  },
+  {
+    "name": "Aditya Kumar",
+    "mobile_number": "9263990487",
+    "assembly": "riga",
+    "_metadata": {
+      "originalAssembly": "23-Riga",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 305
+    }
+  },
+  {
+    "name": "Ghanshyam Kumar",
+    "mobile_number": "9708851744",
+    "assembly": "riga",
+    "_metadata": {
+      "originalAssembly": "23-Riga",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 306
+    }
+  },
+  {
+    "name": "Ritish Kumar Rahi",
+    "mobile_number": "9798581150",
+    "assembly": "Tikri",
+    "_metadata": {
+      "originalAssembly": "231-Tikari",
+      "matchScore": 0.9611111111111111,
+      "matchConfidence": "high",
+      "rowIndex": 307
+    }
+  },
+  {
+    "name": "Manju Devi",
+    "mobile_number": "7766875105",
+    "assembly": "Tikri",
+    "_metadata": {
+      "originalAssembly": "231-Tikari",
+      "matchScore": 0.9611111111111111,
+      "matchConfidence": "high",
+      "rowIndex": 308
+    }
+  },
+  {
+    "name": "Sakina Parveen",
+    "mobile_number": "7050291787",
+    "assembly": "Tikri",
+    "_metadata": {
+      "originalAssembly": "231-Tikari",
+      "matchScore": 0.9611111111111111,
+      "matchConfidence": "high",
+      "rowIndex": 309
+    }
+  },
+  {
+    "name": "Shudesh Kumar",
+    "mobile_number": "8789964573",
+    "assembly": "Tikri",
+    "_metadata": {
+      "originalAssembly": "231-Tikari",
+      "matchScore": 0.9611111111111111,
+      "matchConfidence": "high",
+      "rowIndex": 310
+    }
+  },
+  {
+    "name": "Omprey Kr Yadav",
+    "mobile_number": "9631649075",
+    "assembly": "Tikri",
+    "_metadata": {
+      "originalAssembly": "231-Tikari",
+      "matchScore": 0.9611111111111111,
+      "matchConfidence": "high",
+      "rowIndex": 311
+    }
+  },
+  {
+    "name": "Pinki Devi",
+    "mobile_number": "7763893108",
+    "assembly": "Tikri",
+    "_metadata": {
+      "originalAssembly": "231-Tikari",
+      "matchScore": 0.9611111111111111,
+      "matchConfidence": "high",
+      "rowIndex": 312
+    }
+  },
+  {
+    "name": "Chitranjan Kumar Das",
+    "mobile_number": "6200141584",
+    "assembly": "Tikri",
+    "_metadata": {
+      "originalAssembly": "231-Tikari",
+      "matchScore": 0.9611111111111111,
+      "matchConfidence": "high",
+      "rowIndex": 313
+    }
+  },
+  {
+    "name": "Anuj Kumar",
+    "mobile_number": "7488920676",
+    "assembly": "Tikri",
+    "_metadata": {
+      "originalAssembly": "231-Tikari",
+      "matchScore": 0.9611111111111111,
+      "matchConfidence": "high",
+      "rowIndex": 314
+    }
+  },
+  {
+    "name": "Upender Kr Das",
+    "mobile_number": "9771297370",
+    "assembly": "Tikri",
+    "_metadata": {
+      "originalAssembly": "231-Tikari",
+      "matchScore": 0.9611111111111111,
+      "matchConfidence": "high",
+      "rowIndex": 315
+    }
+  },
+  {
+    "name": "Meera Devi",
+    "mobile_number": "9661600389",
+    "assembly": "Tikri",
+    "_metadata": {
+      "originalAssembly": "231-Tikari",
+      "matchScore": 0.9611111111111111,
+      "matchConfidence": "high",
+      "rowIndex": 316
+    }
+  },
+  {
+    "name": "Gopal Kumar",
+    "mobile_number": "9431272007",
+    "assembly": "hisua",
+    "_metadata": {
+      "originalAssembly": "236-Hisua",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 317
+    }
+  },
+  {
+    "name": "Divakar",
+    "mobile_number": "9334231538",
+    "assembly": "hisua",
+    "_metadata": {
+      "originalAssembly": "236-Hisua",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 318
+    }
+  },
+  {
+    "name": "Pradeep Chaudhry",
+    "mobile_number": "7250423639",
+    "assembly": "hisua",
+    "_metadata": {
+      "originalAssembly": "236-Hisua",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 319
+    }
+  },
+  {
+    "name": "Utpalkant",
+    "mobile_number": "9934971757",
+    "assembly": "hisua",
+    "_metadata": {
+      "originalAssembly": "236-Hisua",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 320
+    }
+  },
+  {
+    "name": "Kaulesh",
+    "mobile_number": "8757476065",
+    "assembly": "hisua",
+    "_metadata": {
+      "originalAssembly": "236-Hisua",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 321
+    }
+  },
+  {
+    "name": "Sudhir Singh",
+    "mobile_number": "9801282243",
+    "assembly": "hisua",
+    "_metadata": {
+      "originalAssembly": "236-Hisua",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 322
+    }
+  },
+  {
+    "name": "Eshan",
+    "mobile_number": "9973160864",
+    "assembly": "hisua",
+    "_metadata": {
+      "originalAssembly": "236-Hisua",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 323
+    }
+  },
+  {
+    "name": "Jeetu",
+    "mobile_number": "7978250971",
+    "assembly": "hisua",
+    "_metadata": {
+      "originalAssembly": "236-Hisua",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 324
+    }
+  },
+  {
+    "name": "Sarik Raja",
+    "mobile_number": "8486667723",
+    "assembly": "hisua",
+    "_metadata": {
+      "originalAssembly": "236-Hisua",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 325
+    }
+  },
+  {
+    "name": "Ram Swarup Raj",
+    "mobile_number": "9771863606",
+    "assembly": "hisua",
+    "_metadata": {
+      "originalAssembly": "236-Hisua",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 326
+    }
+  },
+  {
+    "name": "Gulshan",
+    "mobile_number": "9931855046",
+    "assembly": "hisua",
+    "_metadata": {
+      "originalAssembly": "236-Hisua",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 327
+    }
+  },
+  {
+    "name": "Nasimuddin",
+    "mobile_number": "9576473207",
+    "assembly": "hisua",
+    "_metadata": {
+      "originalAssembly": "236-Hisua",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 328
+    }
+  },
+  {
+    "name": "Golu",
+    "mobile_number": "8579949663",
+    "assembly": "hisua",
+    "_metadata": {
+      "originalAssembly": "236-Hisua",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 329
+    }
+  },
+  {
+    "name": "Sudhanshu Kumar",
+    "mobile_number": "8544533392",
+    "assembly": "hisua",
+    "_metadata": {
+      "originalAssembly": "236-Hisua",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 330
+    }
+  },
+  {
+    "name": "Abhay kumar singh",
+    "mobile_number": "9934683119",
+    "assembly": "hisua",
+    "_metadata": {
+      "originalAssembly": "236-Hisua",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 331
+    }
+  },
+  {
+    "name": "Sunil Kumar",
+    "mobile_number": "9162874432",
+    "assembly": "hisua",
+    "_metadata": {
+      "originalAssembly": "236-Hisua",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 332
+    }
+  },
+  {
+    "name": "Kamlesh yadav",
+    "mobile_number": "9546843156",
+    "assembly": "hisua",
+    "_metadata": {
+      "originalAssembly": "236-Hisua",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 333
+    }
+  },
+  {
+    "name": "Md. Wahid",
+    "mobile_number": "8084551922",
+    "assembly": "Sikandra (SC)",
+    "_metadata": {
+      "originalAssembly": "240-Sikandra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 335
+    }
+  },
+  {
+    "name": "Nanhu Qureshi",
+    "mobile_number": "6287519526",
+    "assembly": "Sikandra (SC)",
+    "_metadata": {
+      "originalAssembly": "240-Sikandra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 336
+    }
+  },
+  {
+    "name": "Dasrath Saw",
+    "mobile_number": "7992298759",
+    "assembly": "Sikandra (SC)",
+    "_metadata": {
+      "originalAssembly": "240-Sikandra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 337
+    }
+  },
+  {
+    "name": "Shahzad Alam",
+    "mobile_number": "8709468872",
+    "assembly": "Sikandra (SC)",
+    "_metadata": {
+      "originalAssembly": "240-Sikandra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 338
+    }
+  },
+  {
+    "name": "Manoj Kumar Or Ghanshyam Yadav",
+    "mobile_number": "9142002597",
+    "assembly": "Sikandra (SC)",
+    "_metadata": {
+      "originalAssembly": "240-Sikandra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 339
+    }
+  },
+  {
+    "name": "Rahul Kumar",
+    "mobile_number": "6201954100",
+    "assembly": "Sikandra (SC)",
+    "_metadata": {
+      "originalAssembly": "240-Sikandra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 340
+    }
+  },
+  {
+    "name": "Nageshwar Yadav",
+    "mobile_number": "6297766958",
+    "assembly": "Sikandra (SC)",
+    "_metadata": {
+      "originalAssembly": "240-Sikandra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 341
+    }
+  },
+  {
+    "name": "Surendra Chowdhury",
+    "mobile_number": "7331036393",
+    "assembly": "Sikandra (SC)",
+    "_metadata": {
+      "originalAssembly": "240-Sikandra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 342
+    }
+  },
+  {
+    "name": "Sayla Kumari",
+    "mobile_number": "9931770558",
+    "assembly": "Sikandra (SC)",
+    "_metadata": {
+      "originalAssembly": "240-Sikandra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 343
+    }
+  },
+  {
+    "name": "bhavesh Kumar",
+    "mobile_number": "9871828656",
+    "assembly": "harlakhi",
+    "_metadata": {
+      "originalAssembly": "31-Harlakhi",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 344
+    }
+  },
+  {
+    "name": "Sonu Kumar",
+    "mobile_number": "6202386596",
+    "assembly": "harlakhi",
+    "_metadata": {
+      "originalAssembly": "31-Harlakhi",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 346
+    }
+  },
+  {
+    "name": "Gokhula Anand jha",
+    "mobile_number": "6202427733",
+    "assembly": "harlakhi",
+    "_metadata": {
+      "originalAssembly": "31-Harlakhi",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 347
+    }
+  },
+  {
+    "name": "Md Sohail",
+    "mobile_number": "7764079174",
+    "assembly": "harlakhi",
+    "_metadata": {
+      "originalAssembly": "31-Harlakhi",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 348
+    }
+  },
+  {
+    "name": "Sitesh Kumar Paswan",
+    "mobile_number": "9631275390",
+    "assembly": "harlakhi",
+    "_metadata": {
+      "originalAssembly": "31-Harlakhi",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 349
+    }
+  },
+  {
+    "name": "govind kumar mahto",
+    "mobile_number": "9973734918",
+    "assembly": "harlakhi",
+    "_metadata": {
+      "originalAssembly": "31-Harlakhi",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 350
+    }
+  },
+  {
+    "name": "naresh shah",
+    "mobile_number": "8084651416",
+    "assembly": "harlakhi",
+    "_metadata": {
+      "originalAssembly": "31-Harlakhi",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 351
+    }
+  },
+  {
+    "name": "hariom kumar",
+    "mobile_number": "7050720310",
+    "assembly": "harlakhi",
+    "_metadata": {
+      "originalAssembly": "31-Harlakhi",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 352
+    }
+  },
+  {
+    "name": "vivek kumar mahto",
+    "mobile_number": "9661084733",
+    "assembly": "harlakhi",
+    "_metadata": {
+      "originalAssembly": "31-Harlakhi",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 353
+    }
+  },
+  {
+    "name": "Anjali kumari 2",
+    "mobile_number": "8340248951",
+    "assembly": "harlakhi",
+    "_metadata": {
+      "originalAssembly": "31-Harlakhi",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 354
+    }
+  },
+  {
+    "name": "anjali kumari",
+    "mobile_number": "7781897016",
+    "assembly": "harlakhi",
+    "_metadata": {
+      "originalAssembly": "31-Harlakhi",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 355
+    }
+  },
+  {
+    "name": "Abdullah",
+    "mobile_number": "8002445456",
+    "assembly": "Araria",
+    "_metadata": {
+      "originalAssembly": "49-Araria",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 356
+    }
+  },
+  {
+    "name": "Masood Alam",
+    "mobile_number": "9006619969",
+    "assembly": "Araria",
+    "_metadata": {
+      "originalAssembly": "49-Araria",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 357
+    }
+  },
+  {
+    "name": "Nahid Alam",
+    "mobile_number": "9234879676",
+    "assembly": "Araria",
+    "_metadata": {
+      "originalAssembly": "49-Araria",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 358
+    }
+  },
+  {
+    "name": "Sharif Babu",
+    "mobile_number": "8603676581",
+    "assembly": "Araria",
+    "_metadata": {
+      "originalAssembly": "49-Araria",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 359
+    }
+  },
+  {
+    "name": "Dilip Kumar",
+    "mobile_number": "6200533200",
+    "assembly": "Araria",
+    "_metadata": {
+      "originalAssembly": "49-Araria",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 360
+    }
+  },
+  {
+    "name": "Vidyanand Gamharya",
+    "mobile_number": "7428559853",
+    "assembly": "Araria",
+    "_metadata": {
+      "originalAssembly": "49-Araria",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 361
+    }
+  },
+  {
+    "name": "Tajmul",
+    "mobile_number": "9631247107",
+    "assembly": "Araria",
+    "_metadata": {
+      "originalAssembly": "49-Araria",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 362
+    }
+  },
+  {
+    "name": "Zahid Alam",
+    "mobile_number": "9973433204",
+    "assembly": "Araria",
+    "_metadata": {
+      "originalAssembly": "49-Araria",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 363
+    }
+  },
+  {
+    "name": "Sarfaraz",
+    "mobile_number": "8210422480",
+    "assembly": "Araria",
+    "_metadata": {
+      "originalAssembly": "49-Araria",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 364
+    }
+  },
+  {
+    "name": "Afroz Alam",
+    "mobile_number": "8825255103",
+    "assembly": "Araria",
+    "_metadata": {
+      "originalAssembly": "49-Araria",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 365
+    }
+  },
+  {
+    "name": "Shadab Alam",
+    "mobile_number": "6204005191",
+    "assembly": "Kishanganj",
+    "_metadata": {
+      "originalAssembly": "54-Kishanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 366
+    }
+  },
+  {
+    "name": "Ashfaq Alam",
+    "mobile_number": "7908608094",
+    "assembly": "Kishanganj",
+    "_metadata": {
+      "originalAssembly": "54-Kishanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 367
+    }
+  },
+  {
+    "name": "Md Rehan",
+    "mobile_number": "7292830314",
+    "assembly": "Kishanganj",
+    "_metadata": {
+      "originalAssembly": "54-Kishanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 368
+    }
+  },
+  {
+    "name": "Muftadi Anwer",
+    "mobile_number": "6299419122",
+    "assembly": "Kishanganj",
+    "_metadata": {
+      "originalAssembly": "54-Kishanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 369
+    }
+  },
+  {
+    "name": "Badrul Ajmal",
+    "mobile_number": "9564198822",
+    "assembly": "Kishanganj",
+    "_metadata": {
+      "originalAssembly": "54-Kishanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 370
+    }
+  },
+  {
+    "name": "Musadique Reza",
+    "mobile_number": "9334571770",
+    "assembly": "Kishanganj",
+    "_metadata": {
+      "originalAssembly": "54-Kishanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 371
+    }
+  },
+  {
+    "name": "Sarfaraz Aktar",
+    "mobile_number": "9771212782",
+    "assembly": "Kishanganj",
+    "_metadata": {
+      "originalAssembly": "54-Kishanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 372
+    }
+  },
+  {
+    "name": "Jakir Alam",
+    "mobile_number": "9801100112",
+    "assembly": "Kishanganj",
+    "_metadata": {
+      "originalAssembly": "54-Kishanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 373
+    }
+  },
+  {
+    "name": "Nahid Anwer",
+    "mobile_number": "7503677661",
+    "assembly": "Kishanganj",
+    "_metadata": {
+      "originalAssembly": "54-Kishanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 374
+    }
+  },
+  {
+    "name": "Radha Kumari",
+    "mobile_number": "6202309302",
+    "assembly": "Kishanganj",
+    "_metadata": {
+      "originalAssembly": "54-Kishanganj",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 375
+    }
+  },
+  {
+    "name": "Nandkishore Kushwaha",
+    "mobile_number": "7004419653",
+    "assembly": "Nautan",
+    "_metadata": {
+      "originalAssembly": "6-Nautan",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 376
+    }
+  },
+  {
+    "name": "Sunil Kumar Chaudhary",
+    "mobile_number": "6280926002",
+    "assembly": "Nautan",
+    "_metadata": {
+      "originalAssembly": "6-Nautan",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 377
+    }
+  },
+  {
+    "name": "Girja Yadav",
+    "mobile_number": "8789921345",
+    "assembly": "Nautan",
+    "_metadata": {
+      "originalAssembly": "6-Nautan",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 378
+    }
+  },
+  {
+    "name": "Shambhu Ram",
+    "mobile_number": "8809464916",
+    "assembly": "Nautan",
+    "_metadata": {
+      "originalAssembly": "6-Nautan",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 379
+    }
+  },
+  {
+    "name": "Nandkishore Prasad",
+    "mobile_number": "6205563502",
+    "assembly": "Nautan",
+    "_metadata": {
+      "originalAssembly": "6-Nautan",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 380
+    }
+  },
+  {
+    "name": "Mukesh Kumar",
+    "mobile_number": "7970708242",
+    "assembly": "Nautan",
+    "_metadata": {
+      "originalAssembly": "6-Nautan",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 381
+    }
+  },
+  {
+    "name": "Sekh Babul",
+    "mobile_number": "9162519766",
+    "assembly": "Nautan",
+    "_metadata": {
+      "originalAssembly": "6-Nautan",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 382
+    }
+  },
+  {
+    "name": "Sunaina Devi",
+    "mobile_number": "8873327664",
+    "assembly": "Nautan",
+    "_metadata": {
+      "originalAssembly": "6-Nautan",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 383
+    }
+  },
+  {
+    "name": "Madan Ram",
+    "mobile_number": "9693910288",
+    "assembly": "Nautan",
+    "_metadata": {
+      "originalAssembly": "6-Nautan",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 384
+    }
+  },
+  {
+    "name": "Amit Kumar",
+    "mobile_number": "8294956394",
+    "assembly": "Nautan",
+    "_metadata": {
+      "originalAssembly": "6-Nautan",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 385
+    }
+  },
+  {
+    "name": "Musaddique",
+    "mobile_number": "9867677194",
+    "assembly": "Kadwa",
+    "_metadata": {
+      "originalAssembly": "64-Kadwa",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 386
+    }
+  },
+  {
+    "name": "Md Anzar Ul Haq",
+    "mobile_number": "9155570086",
+    "assembly": "Kadwa",
+    "_metadata": {
+      "originalAssembly": "64-Kadwa",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 387
+    }
+  },
+  {
+    "name": "Jasim (Khurshid)",
+    "mobile_number": "8409277478",
+    "assembly": "Kadwa",
+    "_metadata": {
+      "originalAssembly": "64-Kadwa",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 388
+    }
+  },
+  {
+    "name": "Moyassar Shafi",
+    "mobile_number": "8521807875",
+    "assembly": "Kadwa",
+    "_metadata": {
+      "originalAssembly": "64-Kadwa",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 389
+    }
+  },
+  {
+    "name": "Md Gani",
+    "mobile_number": "7070312398",
+    "assembly": "Kadwa",
+    "_metadata": {
+      "originalAssembly": "64-Kadwa",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 390
+    }
+  },
+  {
+    "name": "Md Kausar Alam",
+    "mobile_number": "9955453730",
+    "assembly": "Kadwa",
+    "_metadata": {
+      "originalAssembly": "64-Kadwa",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 391
+    }
+  },
+  {
+    "name": "Md Manjar",
+    "mobile_number": "8002097751",
+    "assembly": "Kadwa",
+    "_metadata": {
+      "originalAssembly": "64-Kadwa",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 392
+    }
+  },
+  {
+    "name": "Aftab Alam",
+    "mobile_number": "7481964072",
+    "assembly": "Kadwa",
+    "_metadata": {
+      "originalAssembly": "64-Kadwa",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 393
+    }
+  },
+  {
+    "name": "Anjar Alam",
+    "mobile_number": "9702265288",
+    "assembly": "Kadwa",
+    "_metadata": {
+      "originalAssembly": "64-Kadwa",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 394
+    }
+  },
+  {
+    "name": "Parveen (Farzana)",
+    "mobile_number": "8235800207",
+    "assembly": "Kadwa",
+    "_metadata": {
+      "originalAssembly": "64-Kadwa",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 395
+    }
+  },
+  {
+    "name": "Raushan Jamil",
+    "mobile_number": "7320883378",
+    "assembly": "Pranpur",
+    "_metadata": {
+      "originalAssembly": "66-Pranpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 396
+    }
+  },
+  {
+    "name": "Md Raunak",
+    "mobile_number": "8809354786",
+    "assembly": "Pranpur",
+    "_metadata": {
+      "originalAssembly": "66-Pranpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 397
+    }
+  },
+  {
+    "name": "Md Mamnoon Akhtar",
+    "mobile_number": "7631212149",
+    "assembly": "Pranpur",
+    "_metadata": {
+      "originalAssembly": "66-Pranpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 398
+    }
+  },
+  {
+    "name": "Md Azad Alam",
+    "mobile_number": "9304913550",
+    "assembly": "Pranpur",
+    "_metadata": {
+      "originalAssembly": "66-Pranpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 399
+    }
+  },
+  {
+    "name": "Md Shamim Akhtar",
+    "mobile_number": "8292199733",
+    "assembly": "Pranpur",
+    "_metadata": {
+      "originalAssembly": "66-Pranpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 400
+    }
+  },
+  {
+    "name": "Tanveer Shah",
+    "mobile_number": "9264167757",
+    "assembly": "Pranpur",
+    "_metadata": {
+      "originalAssembly": "66-Pranpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 401
+    }
+  },
+  {
+    "name": "Md Shadab Karim",
+    "mobile_number": "7488257331",
+    "assembly": "Pranpur",
+    "_metadata": {
+      "originalAssembly": "66-Pranpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 402
+    }
+  },
+  {
+    "name": "Mohd Tufail Ali Reza",
+    "mobile_number": "8368302453",
+    "assembly": "Pranpur",
+    "_metadata": {
+      "originalAssembly": "66-Pranpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 403
+    }
+  },
+  {
+    "name": "Md Shah Jahan",
+    "mobile_number": "9113325794",
+    "assembly": "Pranpur",
+    "_metadata": {
+      "originalAssembly": "66-Pranpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 404
+    }
+  },
+  {
+    "name": "Md Shabbir Alam",
+    "mobile_number": "7903915451",
+    "assembly": "Pranpur",
+    "_metadata": {
+      "originalAssembly": "66-Pranpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 405
+    }
+  },
+  {
+    "name": "Sukhdev Rai",
+    "mobile_number": "9939026809",
+    "assembly": "Pranpur",
+    "_metadata": {
+      "originalAssembly": "66-Pranpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 406
+    }
+  },
+  {
+    "name": "Pradip Kumar Rai",
+    "mobile_number": "8084057411",
+    "assembly": "Pranpur",
+    "_metadata": {
+      "originalAssembly": "66-Pranpur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 407
+    }
+  },
+  {
+    "name": "Nandini Singh",
+    "mobile_number": "8709942676",
+    "assembly": "Manihari (ST)",
+    "_metadata": {
+      "originalAssembly": "67-Manihari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 408
+    }
+  },
+  {
+    "name": "Resham Kumari Paswan",
+    "mobile_number": "7481014407",
+    "assembly": "Manihari (ST)",
+    "_metadata": {
+      "originalAssembly": "67-Manihari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 409
+    }
+  },
+  {
+    "name": "Supriya Gupta",
+    "mobile_number": "6200987052",
+    "assembly": "Manihari (ST)",
+    "_metadata": {
+      "originalAssembly": "67-Manihari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 410
+    }
+  },
+  {
+    "name": "Aftab Husain",
+    "mobile_number": "8210099553",
+    "assembly": "Manihari (ST)",
+    "_metadata": {
+      "originalAssembly": "67-Manihari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 411
+    }
+  },
+  {
+    "name": "Md Kushal",
+    "mobile_number": "9942626220",
+    "assembly": "Manihari (ST)",
+    "_metadata": {
+      "originalAssembly": "67-Manihari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 412
+    }
+  },
+  {
+    "name": "Md Sahrul Alam",
+    "mobile_number": "9534782117",
+    "assembly": "Manihari (ST)",
+    "_metadata": {
+      "originalAssembly": "67-Manihari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 413
+    }
+  },
+  {
+    "name": "Azmat Husain",
+    "mobile_number": "8789231749",
+    "assembly": "Manihari (ST)",
+    "_metadata": {
+      "originalAssembly": "67-Manihari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 414
+    }
+  },
+  {
+    "name": "Syed Mahfooz",
+    "mobile_number": "8709389035",
+    "assembly": "Manihari (ST)",
+    "_metadata": {
+      "originalAssembly": "67-Manihari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 415
+    }
+  },
+  {
+    "name": "Aditya Kumar Singh",
+    "mobile_number": "7903872517",
+    "assembly": "Manihari (ST)",
+    "_metadata": {
+      "originalAssembly": "67-Manihari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 416
+    }
+  },
+  {
+    "name": "Bhavesh Kumar",
+    "mobile_number": "8810604379",
+    "assembly": "Manihari (ST)",
+    "_metadata": {
+      "originalAssembly": "67-Manihari",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 417
+    }
+  },
+  {
+    "name": "Abdul Sattar",
+    "mobile_number": "9973107164",
+    "assembly": "Korha (SC)",
+    "_metadata": {
+      "originalAssembly": "69-Korha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 418
+    }
+  },
+  {
+    "name": "Shahabuddin Salafi",
+    "mobile_number": "7562942990",
+    "assembly": "Korha (SC)",
+    "_metadata": {
+      "originalAssembly": "69-Korha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 419
+    }
+  },
+  {
+    "name": "Najrul",
+    "mobile_number": "9006107166",
+    "assembly": "Korha (SC)",
+    "_metadata": {
+      "originalAssembly": "69-Korha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 420
+    }
+  },
+  {
+    "name": "Shakeel",
+    "mobile_number": "7654470548",
+    "assembly": "Korha (SC)",
+    "_metadata": {
+      "originalAssembly": "69-Korha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 421
+    }
+  },
+  {
+    "name": "Samsul ul huque",
+    "mobile_number": "8780563160",
+    "assembly": "Korha (SC)",
+    "_metadata": {
+      "originalAssembly": "69-Korha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 422
+    }
+  },
+  {
+    "name": "Azad Alam",
+    "mobile_number": "8873770867",
+    "assembly": "Chanpatia",
+    "_metadata": {
+      "originalAssembly": "7-Chanpatia",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 424
+    }
+  },
+  {
+    "name": "Manjur Alam",
+    "mobile_number": "7250025729",
+    "assembly": "Chanpatia",
+    "_metadata": {
+      "originalAssembly": "7-Chanpatia",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 425
+    }
+  },
+  {
+    "name": "Nipu Kumar",
+    "mobile_number": "6299835393",
+    "assembly": "Chanpatia",
+    "_metadata": {
+      "originalAssembly": "7-Chanpatia",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 426
+    }
+  },
+  {
+    "name": "Sant Ram",
+    "mobile_number": "8084969590",
+    "assembly": "Chanpatia",
+    "_metadata": {
+      "originalAssembly": "7-Chanpatia",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 427
+    }
+  },
+  {
+    "name": "Sanjay Ram",
+    "mobile_number": "9162305965",
+    "assembly": "Chanpatia",
+    "_metadata": {
+      "originalAssembly": "7-Chanpatia",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 428
+    }
+  },
+  {
+    "name": "Nagendra Paswan",
+    "mobile_number": "8084838557",
+    "assembly": "Chanpatia",
+    "_metadata": {
+      "originalAssembly": "7-Chanpatia",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 429
+    }
+  },
+  {
+    "name": "Munna Paswan ( Shailesh Kumar )",
+    "mobile_number": "7254885011",
+    "assembly": "Chanpatia",
+    "_metadata": {
+      "originalAssembly": "7-Chanpatia",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 430
+    }
+  },
+  {
+    "name": "Lal Mohammad",
+    "mobile_number": "9852729962",
+    "assembly": "Chanpatia",
+    "_metadata": {
+      "originalAssembly": "7-Chanpatia",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 431
+    }
+  },
+  {
+    "name": "Babu Lal",
+    "mobile_number": "6200394341",
+    "assembly": "Chanpatia",
+    "_metadata": {
+      "originalAssembly": "7-Chanpatia",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 432
+    }
+  },
+  {
+    "name": "Guddu Alam",
+    "mobile_number": "6201784369",
+    "assembly": "Chanpatia",
+    "_metadata": {
+      "originalAssembly": "7-Chanpatia",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 433
+    }
+  },
+  {
+    "name": "Ashok Ram",
+    "mobile_number": "8002854699",
+    "assembly": "Chanpatia",
+    "_metadata": {
+      "originalAssembly": "7-Chanpatia",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 434
+    }
+  },
+  {
+    "name": "Ganesh Sada",
+    "mobile_number": "7361020554",
+    "assembly": "Sonbarsha (SC)",
+    "_metadata": {
+      "originalAssembly": "74-Sonbarsha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 435
+    }
+  },
+  {
+    "name": "Ranjit Ram",
+    "mobile_number": "6201974733",
+    "assembly": "Sonbarsha (SC)",
+    "_metadata": {
+      "originalAssembly": "74-Sonbarsha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 436
+    }
+  },
+  {
+    "name": "Rana Sada",
+    "mobile_number": "7901798481",
+    "assembly": "Sonbarsha (SC)",
+    "_metadata": {
+      "originalAssembly": "74-Sonbarsha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 437
+    }
+  },
+  {
+    "name": "Dharmendra Kr Yadav",
+    "mobile_number": "6287315747",
+    "assembly": "Sonbarsha (SC)",
+    "_metadata": {
+      "originalAssembly": "74-Sonbarsha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 438
+    }
+  },
+  {
+    "name": "Nawal Jha",
+    "mobile_number": "6364683871",
+    "assembly": "Sonbarsha (SC)",
+    "_metadata": {
+      "originalAssembly": "74-Sonbarsha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 440
+    }
+  },
+  {
+    "name": "Irfan Khan",
+    "mobile_number": "7250382786",
+    "assembly": "Sonbarsha (SC)",
+    "_metadata": {
+      "originalAssembly": "74-Sonbarsha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 441
+    }
+  },
+  {
+    "name": "Sipi Paswan",
+    "mobile_number": "6203309178",
+    "assembly": "Sonbarsha (SC)",
+    "_metadata": {
+      "originalAssembly": "74-Sonbarsha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 442
+    }
+  },
+  {
+    "name": "Tejnarayan Yadav",
+    "mobile_number": "9801197136",
+    "assembly": "Sonbarsha (SC)",
+    "_metadata": {
+      "originalAssembly": "74-Sonbarsha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 443
+    }
+  },
+  {
+    "name": "Ashok Kumar",
+    "mobile_number": "9608787160",
+    "assembly": "Sonbarsha (SC)",
+    "_metadata": {
+      "originalAssembly": "74-Sonbarsha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 444
+    }
+  },
+  {
+    "name": "Diwakar Kumar",
+    "mobile_number": "6203254592",
+    "assembly": "Sonbarsha (SC)",
+    "_metadata": {
+      "originalAssembly": "74-Sonbarsha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 445
+    }
+  },
+  {
+    "name": "Santosh Rajak",
+    "mobile_number": "6204067865",
+    "assembly": "Sonbarsha (SC)",
+    "_metadata": {
+      "originalAssembly": "74-Sonbarsha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 446
+    }
+  },
+  {
+    "name": "Narayan Yadav",
+    "mobile_number": "9523800409",
+    "assembly": "Sonbarsha (SC)",
+    "_metadata": {
+      "originalAssembly": "74-Sonbarsha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 447
+    }
+  },
+  {
+    "name": "Sanjay Thakur",
+    "mobile_number": "8809011728",
+    "assembly": "Sonbarsha (SC)",
+    "_metadata": {
+      "originalAssembly": "74-Sonbarsha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 448
+    }
+  },
+  {
+    "name": "Krishanmohan Sah",
+    "mobile_number": "8709952905",
+    "assembly": "Sonbarsha (SC)",
+    "_metadata": {
+      "originalAssembly": "74-Sonbarsha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 449
+    }
+  },
+  {
+    "name": "Kailash Yadav",
+    "mobile_number": "8409448502",
+    "assembly": "Sonbarsha (SC)",
+    "_metadata": {
+      "originalAssembly": "74-Sonbarsha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 450
+    }
+  },
+  {
+    "name": "Shambhu Kumar",
+    "mobile_number": "8409364193",
+    "assembly": "Kusheshwarsthan (SC)",
+    "_metadata": {
+      "originalAssembly": "78-Kusheshwar Asthan",
+      "matchScore": 0.9498039215686275,
+      "matchConfidence": "high",
+      "rowIndex": 451
+    }
+  },
+  {
+    "name": "Sidhant Kumar Ray",
+    "mobile_number": "7319949251",
+    "assembly": "Kusheshwarsthan (SC)",
+    "_metadata": {
+      "originalAssembly": "78-Kusheshwar Asthan",
+      "matchScore": 0.9498039215686275,
+      "matchConfidence": "high",
+      "rowIndex": 452
+    }
+  },
+  {
+    "name": "Vijay Yadav",
+    "mobile_number": "6206109377",
+    "assembly": "Kusheshwarsthan (SC)",
+    "_metadata": {
+      "originalAssembly": "78-Kusheshwar Asthan",
+      "matchScore": 0.9498039215686275,
+      "matchConfidence": "high",
+      "rowIndex": 453
+    }
+  },
+  {
+    "name": "Kanchan Kumari",
+    "mobile_number": "6202313176",
+    "assembly": "Kusheshwarsthan (SC)",
+    "_metadata": {
+      "originalAssembly": "78-Kusheshwar Asthan",
+      "matchScore": 0.9498039215686275,
+      "matchConfidence": "high",
+      "rowIndex": 454
+    }
+  },
+  {
+    "name": "Kamal Mukhiya",
+    "mobile_number": "9631217052",
+    "assembly": "Kusheshwarsthan (SC)",
+    "_metadata": {
+      "originalAssembly": "78-Kusheshwar Asthan",
+      "matchScore": 0.9498039215686275,
+      "matchConfidence": "high",
+      "rowIndex": 455
+    }
+  },
+  {
+    "name": "Jay Prakash",
+    "mobile_number": "7764094577",
+    "assembly": "Kusheshwarsthan (SC)",
+    "_metadata": {
+      "originalAssembly": "78-Kusheshwar Asthan",
+      "matchScore": 0.9498039215686275,
+      "matchConfidence": "high",
+      "rowIndex": 456
+    }
+  },
+  {
+    "name": "Nadeem Alam",
+    "mobile_number": "7562830131",
+    "assembly": "Kusheshwarsthan (SC)",
+    "_metadata": {
+      "originalAssembly": "78-Kusheshwar Asthan",
+      "matchScore": 0.9498039215686275,
+      "matchConfidence": "high",
+      "rowIndex": 457
+    }
+  },
+  {
+    "name": "Md Sakir",
+    "mobile_number": "7857077780",
+    "assembly": "Kusheshwarsthan (SC)",
+    "_metadata": {
+      "originalAssembly": "78-Kusheshwar Asthan",
+      "matchScore": 0.9498039215686275,
+      "matchConfidence": "high",
+      "rowIndex": 458
+    }
+  },
+  {
+    "name": "Pranav Gupta",
+    "mobile_number": "9661744002",
+    "assembly": "Kusheshwarsthan (SC)",
+    "_metadata": {
+      "originalAssembly": "78-Kusheshwar Asthan",
+      "matchScore": 0.9498039215686275,
+      "matchConfidence": "high",
+      "rowIndex": 459
+    }
+  },
+  {
+    "name": "Murari Kumar",
+    "mobile_number": "9931548828",
+    "assembly": "Benipur",
+    "_metadata": {
+      "originalAssembly": "80-Benipur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 460
+    }
+  },
+  {
+    "name": "Ranjan Kumar Safi",
+    "mobile_number": "7048931492",
+    "assembly": "Benipur",
+    "_metadata": {
+      "originalAssembly": "80-Benipur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 461
+    }
+  },
+  {
+    "name": "Ram Pravesh Sahu",
+    "mobile_number": "8294236611",
+    "assembly": "Benipur",
+    "_metadata": {
+      "originalAssembly": "80-Benipur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 462
+    }
+  },
+  {
+    "name": "Md Sahnawaj",
+    "mobile_number": "8102702188",
+    "assembly": "Benipur",
+    "_metadata": {
+      "originalAssembly": "80-Benipur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 463
+    }
+  },
+  {
+    "name": "Pawan Kumar",
+    "mobile_number": "6200490041",
+    "assembly": "Benipur",
+    "_metadata": {
+      "originalAssembly": "80-Benipur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 464
+    }
+  },
+  {
+    "name": "Nandan Kumar Ray",
+    "mobile_number": "9110098506",
+    "assembly": "Benipur",
+    "_metadata": {
+      "originalAssembly": "80-Benipur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 465
+    }
+  },
+  {
+    "name": "Rahul Kumar Chaupal",
+    "mobile_number": "8340546590",
+    "assembly": "Benipur",
+    "_metadata": {
+      "originalAssembly": "80-Benipur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 466
+    }
+  },
+  {
+    "name": "Vijay Paswan",
+    "mobile_number": "9102054287",
+    "assembly": "Benipur",
+    "_metadata": {
+      "originalAssembly": "80-Benipur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 467
+    }
+  },
+  {
+    "name": "Rajesh Paswan",
+    "mobile_number": "9931175340",
+    "assembly": "Benipur",
+    "_metadata": {
+      "originalAssembly": "80-Benipur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 468
+    }
+  },
+  {
+    "name": "Gautam Kumar Laldev",
+    "mobile_number": "7543024971",
+    "assembly": "Benipur",
+    "_metadata": {
+      "originalAssembly": "80-Benipur",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 469
+    }
+  },
+  {
+    "name": "Dinesh Ram",
+    "mobile_number": "9939849394",
+    "assembly": "Jale",
+    "_metadata": {
+      "originalAssembly": "87-Jale",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 470
+    }
+  },
+  {
+    "name": "Ejaj Ahmed",
+    "mobile_number": "8235183588",
+    "assembly": "Jale",
+    "_metadata": {
+      "originalAssembly": "87-Jale",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 471
+    }
+  },
+  {
+    "name": "Ram Shiwalak Yadav",
+    "mobile_number": "8521802196",
+    "assembly": "Jale",
+    "_metadata": {
+      "originalAssembly": "87-Jale",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 472
+    }
+  },
+  {
+    "name": "Rajendra Kumar Paswan",
+    "mobile_number": "9330539914",
+    "assembly": "Jale",
+    "_metadata": {
+      "originalAssembly": "87-Jale",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 473
+    }
+  },
+  {
+    "name": "Bhushan Prasad",
+    "mobile_number": "9113706735",
+    "assembly": "Jale",
+    "_metadata": {
+      "originalAssembly": "87-Jale",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 474
+    }
+  },
+  {
+    "name": "Subodh Majhi",
+    "mobile_number": "8651610545",
+    "assembly": "Jale",
+    "_metadata": {
+      "originalAssembly": "87-Jale",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 475
+    }
+  },
+  {
+    "name": "Ramesh Kumar",
+    "mobile_number": "9341414434",
+    "assembly": "Jale",
+    "_metadata": {
+      "originalAssembly": "87-Jale",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 476
+    }
+  },
+  {
+    "name": "Praveen Kumar",
+    "mobile_number": "9576711207",
+    "assembly": "Jale",
+    "_metadata": {
+      "originalAssembly": "87-Jale",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 477
+    }
+  },
+  {
+    "name": "Mishri Ram",
+    "mobile_number": "9507090921",
+    "assembly": "Jale",
+    "_metadata": {
+      "originalAssembly": "87-Jale",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 478
+    }
+  },
+  {
+    "name": "Manish Kumar",
+    "mobile_number": "9835385981",
+    "assembly": "Jale",
+    "_metadata": {
+      "originalAssembly": "87-Jale",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 479
+    }
+  },
+  {
+    "name": "Avinash Kumar",
+    "mobile_number": "9002958934",
+    "assembly": "Sakra (SC)",
+    "_metadata": {
+      "originalAssembly": "92-Sakra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 480
+    }
+  },
+  {
+    "name": "Sudhir Kumar Aka Rahul Ray",
+    "mobile_number": "7033426749",
+    "assembly": "Sakra (SC)",
+    "_metadata": {
+      "originalAssembly": "92-Sakra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 481
+    }
+  },
+  {
+    "name": "Avinash Kumar",
+    "mobile_number": "8102996608",
+    "assembly": "Sakra (SC)",
+    "_metadata": {
+      "originalAssembly": "92-Sakra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 482
+    }
+  },
+  {
+    "name": "Deepak Devanand",
+    "mobile_number": "8651653309",
+    "assembly": "Sakra (SC)",
+    "_metadata": {
+      "originalAssembly": "92-Sakra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 483
+    }
+  },
+  {
+    "name": "Md Farhan Raza",
+    "mobile_number": "9693446639",
+    "assembly": "Sakra (SC)",
+    "_metadata": {
+      "originalAssembly": "92-Sakra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 484
+    }
+  },
+  {
+    "name": "Aftab Alam",
+    "mobile_number": "9939715953",
+    "assembly": "Sakra (SC)",
+    "_metadata": {
+      "originalAssembly": "92-Sakra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 485
+    }
+  },
+  {
+    "name": "Vinay Kumar Ram",
+    "mobile_number": "9508226325",
+    "assembly": "Sakra (SC)",
+    "_metadata": {
+      "originalAssembly": "92-Sakra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 486
+    }
+  },
+  {
+    "name": "Sonu Kumar",
+    "mobile_number": "9835323115",
+    "assembly": "Sakra (SC)",
+    "_metadata": {
+      "originalAssembly": "92-Sakra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 487
+    }
+  },
+  {
+    "name": "Uday Yadav",
+    "mobile_number": "9939774232",
+    "assembly": "Sakra (SC)",
+    "_metadata": {
+      "originalAssembly": "92-Sakra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 488
+    }
+  },
+  {
+    "name": "Md. Tufail",
+    "mobile_number": "9031797448",
+    "assembly": "Sakra (SC)",
+    "_metadata": {
+      "originalAssembly": "92-Sakra",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 489
+    }
+  },
+  {
+    "name": "Raza Ansari",
+    "mobile_number": "9117343385",
+    "assembly": "Paru",
+    "_metadata": {
+      "originalAssembly": "97-Paroo",
+      "matchScore": 0.8483333333333334,
+      "matchConfidence": "low",
+      "rowIndex": 490
+    }
+  },
+  {
+    "name": "Ajay Ram",
+    "mobile_number": "6202721054",
+    "assembly": "Paru",
+    "_metadata": {
+      "originalAssembly": "97-Paroo",
+      "matchScore": 0.8483333333333334,
+      "matchConfidence": "low",
+      "rowIndex": 491
+    }
+  },
+  {
+    "name": "Nijamuddin",
+    "mobile_number": "8651505002",
+    "assembly": "Paru",
+    "_metadata": {
+      "originalAssembly": "97-Paroo",
+      "matchScore": 0.8483333333333334,
+      "matchConfidence": "low",
+      "rowIndex": 492
+    }
+  },
+  {
+    "name": "Basir Alam",
+    "mobile_number": "7369075500",
+    "assembly": "Paru",
+    "_metadata": {
+      "originalAssembly": "97-Paroo",
+      "matchScore": 0.8483333333333334,
+      "matchConfidence": "low",
+      "rowIndex": 493
+    }
+  },
+  {
+    "name": "Saroj Kushwaha",
+    "mobile_number": "8292597165",
+    "assembly": "Paru",
+    "_metadata": {
+      "originalAssembly": "97-Paroo",
+      "matchScore": 0.8483333333333334,
+      "matchConfidence": "low",
+      "rowIndex": 494
+    }
+  },
+  {
+    "name": "Noor Alam Sah",
+    "mobile_number": "9064978953",
+    "assembly": "Paru",
+    "_metadata": {
+      "originalAssembly": "97-Paroo",
+      "matchScore": 0.8483333333333334,
+      "matchConfidence": "low",
+      "rowIndex": 495
+    }
+  },
+  {
+    "name": "Mandip Yadav",
+    "mobile_number": "9905877730",
+    "assembly": "Paru",
+    "_metadata": {
+      "originalAssembly": "97-Paroo",
+      "matchScore": 0.8483333333333334,
+      "matchConfidence": "low",
+      "rowIndex": 496
+    }
+  },
+  {
+    "name": "Mumtaz Ansari",
+    "mobile_number": "9931083299",
+    "assembly": "Paru",
+    "_metadata": {
+      "originalAssembly": "97-Paroo",
+      "matchScore": 0.8483333333333334,
+      "matchConfidence": "low",
+      "rowIndex": 497
+    }
+  },
+  {
+    "name": "Inderjeet",
+    "mobile_number": "8084104962",
+    "assembly": "Paru",
+    "_metadata": {
+      "originalAssembly": "97-Paroo",
+      "matchScore": 0.8483333333333334,
+      "matchConfidence": "low",
+      "rowIndex": 498
+    }
+  },
+  {
+    "name": "Ajay Thakur",
+    "mobile_number": "8119819835",
+    "assembly": "Paru",
+    "_metadata": {
+      "originalAssembly": "97-Paroo",
+      "matchScore": 0.8483333333333334,
+      "matchConfidence": "low",
+      "rowIndex": 499
+    }
+  },
+  {
+    "name": "Md Nazir Alam",
+    "mobile_number": "9661314322",
+    "assembly": "Kadwa",
+    "_metadata": {
+      "originalAssembly": "64-Kadwa",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 500
+    }
+  },
+  {
+    "name": "Imam Zaffer",
+    "mobile_number": "9102526020",
+    "assembly": "Kadwa",
+    "_metadata": {
+      "originalAssembly": "64-Kadwa",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 501
+    }
+  },
+  {
+    "name": "MD Naim",
+    "mobile_number": "8797428198",
+    "assembly": "Korha (SC)",
+    "_metadata": {
+      "originalAssembly": "69-Korha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 502
+    }
+  },
+  {
+    "name": "Shiv Narayan",
+    "mobile_number": "9317907046",
+    "assembly": "Korha (SC)",
+    "_metadata": {
+      "originalAssembly": "69-Korha",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 503
+    }
+  },
+  {
+    "name": "Raja Babu Chandrawanshi",
+    "mobile_number": "6204862100",
+    "assembly": "Rajgir (SC)",
+    "_metadata": {
+      "originalAssembly": "173-Rajgir",
+      "matchScore": 1,
+      "matchConfidence": "high",
+      "rowIndex": 505
+    }
+  }
+]

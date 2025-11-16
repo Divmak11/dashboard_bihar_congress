@@ -16,6 +16,8 @@ import { getCallCenterNewMetricsForAssembly } from "@/app/utils/mapCallCenterNew
 import type { CallCenterNewAssemblyMetrics } from "@/app/utils/mapCallCenterNewAggregator";
 import { getCombinedHoverMetricsForAssembly } from "@/app/utils/mapHoverCombinedAggregator";
 import type { CombinedHoverMetrics } from "@/app/utils/mapHoverCombinedAggregator";
+import { getSlpTrainingMetricsForAssembly } from "@/app/utils/mapSlpTrainingAggregator";
+import type { SlpTrainingAssemblyMetrics } from "@/app/utils/mapSlpTrainingAggregator";
 
 // Dynamically import React-Leaflet components to avoid SSR issues
 // TypeScript: Cast to 'any' to suppress prop type errors due to dynamic import and ESM-only modules
@@ -116,6 +118,9 @@ export default function BiharMapPage() {
   // Call Center New conversions for selected assembly
   const [callCenterNewMetrics, setCallCenterNewMetrics] = useState<CallCenterNewAssemblyMetrics | null>(null);
   const [callCenterNewLoading, setCallCenterNewLoading] = useState(false);
+  // SLP Training metrics for selected assembly
+  const [slpTrainingMetrics, setSlpTrainingMetrics] = useState<SlpTrainingAssemblyMetrics | null>(null);
+  const [slpTrainingLoading, setSlpTrainingLoading] = useState(false);
   // Nukkad Meetings combined (WTM-AC + WTM-SLP + Shakti-AC)
   const [nukkadCount, setNukkadCount] = useState<number | null>(null);
   const [nukkadLoading, setNukkadLoading] = useState(false);
@@ -133,6 +138,7 @@ export default function BiharMapPage() {
       setGgyMetrics(null);
       setManifestoMetrics(null);
       setCallCenterNewMetrics(null);
+      setSlpTrainingMetrics(null);
       setNukkadCount(null);
       return;
     }
@@ -229,6 +235,18 @@ export default function BiharMapPage() {
       .then((m) => { if (!cancelled) setCallCenterNewMetrics(m); })
       .catch((err) => { console.error('[MapPage] Call Center New metrics error', err); if (!cancelled) setCallCenterNewMetrics(null); })
       .finally(() => { if (!cancelled) setCallCenterNewLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedAssembly]);
+
+  // Fetch SLP Training metrics when assembly is selected (fuzzy match)
+  useEffect(() => {
+    if (!selectedAssembly) return;
+    let cancelled = false;
+    setSlpTrainingLoading(true);
+    getSlpTrainingMetricsForAssembly(selectedAssembly)
+      .then((m) => { if (!cancelled) setSlpTrainingMetrics(m); })
+      .catch((err) => { console.error('[MapPage] SLP Training metrics error', err); if (!cancelled) setSlpTrainingMetrics(null); })
+      .finally(() => { if (!cancelled) setSlpTrainingLoading(false); });
     return () => { cancelled = true; };
   }, [selectedAssembly]);
 
@@ -330,6 +348,7 @@ export default function BiharMapPage() {
     <div>WhatsApp Groups: <b>${m.whatsappGroups}</b></div>
     <div>Training Sessions: <b>${m.trainingSessions}</b></div>
     <div>Manifesto Complaints: <b>${m.manifestoComplaints}</b></div>
+    <div>SLP Training: <b>${m.slpTraining}</b></div>
   `;
 
   const onEachFeature = useCallback((feature: any, layer: any) => {
@@ -518,6 +537,12 @@ export default function BiharMapPage() {
               >
                 WT-SLP Professionals
               </button>
+              <button
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm ${selectedTab === "slp-training" ? "bg-emerald-200 text-emerald-900" : "bg-gray-100 text-gray-700"}`}
+                onClick={() => setSelectedTab("slp-training")}
+              >
+                SLP Training
+              </button>
             </div>
           </div>
           {/* Tab content */}
@@ -678,6 +703,42 @@ export default function BiharMapPage() {
                 ) : (
                   <div className="col-span-full text-center py-8 text-gray-500">
                     No data available for this assembly
+                  </div>
+                )}
+              </div>
+            )}
+            {selectedTab === "slp-training" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {slpTrainingLoading ? (
+                  <div className="col-span-full text-center py-8">
+                    <div className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading SLP Training metrics...
+                    </div>
+                  </div>
+                ) : slpTrainingMetrics ? (
+                  <>
+                    <Metric label="Total SLPs" value={slpTrainingMetrics.totalSlps} />
+                    <Metric label="Trained" value={slpTrainingMetrics.trainedCount} />
+                    <Metric label="Pending" value={slpTrainingMetrics.pendingCount} />
+                    <Metric label="In Progress" value={slpTrainingMetrics.inProgressCount} />
+                    {slpTrainingMetrics.match.confidence !== 'high' && (
+                      <div className="col-span-full mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <div className="flex items-center gap-2 text-sm text-yellow-800">
+                          <span className="font-medium">Match Confidence: {slpTrainingMetrics.match.confidence}</span>
+                          {slpTrainingMetrics.match.matchAssembly && (
+                            <span className="text-yellow-600">(Matched to: {slpTrainingMetrics.match.matchAssembly})</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    No SLP Training data available for this assembly
                   </div>
                 )}
               </div>
