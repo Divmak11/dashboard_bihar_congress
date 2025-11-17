@@ -395,3 +395,42 @@ The YouTube Dashboard provides management and analytics for social media influen
 - Admin-only "YouTube" card linking to `/wtm-youtube`
 - Shows total themes, influencers, and videos
 - Fetched via `fetchYoutubeSummary()` with caching
+
+## Check-In Data Vertical
+
+**Location & Files:**
+- UI:
+  - `app/verticals/checkin-data/page.tsx` → Main vertical page with user cards and daily details
+  - Components:
+    - `components/checkin/CheckinUserCard.tsx` → Summary card for individual users
+    - `components/checkin/CheckinDailyDetails.tsx` → Modal showing daily check-in records
+- Models:
+  - `models/checkinTypes.ts` → `UserCheckin`, `DailyCount`, `CheckinHomeSummary`
+- Utilities:
+  - `app/utils/fetchCheckinData.ts` → Firebase data fetching functions
+
+**Data Structure:**
+- Collection: `checkin_data`
+- Document fields:
+  - `user_id` (string) - Phone number
+  - `name` (string) - User name
+  - `totalCount` (number) - Total check-ins
+  - `dailyCounts` (array) - Array of `{date: string, count: number}` objects
+
+**Key Features:**
+- User summary cards showing name, phone, total check-ins
+- Search and filter by user name or phone number
+- Sort by total check-ins, name, or days tracked
+- Click to view detailed daily check-in counts
+- Summary metrics: total users, total check-ins, average per user, active in last 7 days
+
+**Data Flow:**
+- `fetchAllCheckinData()` - Fetches all user check-in records from Firebase
+- `fetchCheckinHomeSummary()` - Calculates summary metrics for home page card
+- `fetchUserCheckinData(userId)` - Fetches data for specific user
+
+**Home Page Integration:**
+- Admin-only "Check-In Data" card in "Connecting Dashboard Data" section
+- Shows total users, total check-ins, and active users in last 7 days
+- Links to `/verticals/checkin-data`
+- Fetched via `fetchCheckinHomeSummary()` with parallel loading
