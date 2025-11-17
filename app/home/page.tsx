@@ -20,6 +20,8 @@ import { SlpTrainingSummary } from "../../models/slpTrainingTypes";
 import { TrainingHomeSummary } from "../../models/trainingTypes";
 import { initializeCache, forceCacheRefresh, CACHE_KEYS } from "../utils/cacheUtils";
 import { fetchWhatsappHomeSummary } from "../utils/fetchWhatsappData";
+import { fetchCheckinHomeSummary } from "../utils/fetchCheckinData";
+import { CheckinHomeSummary } from "../../models/checkinTypes";
 import LogoutButton from "../../components/LogoutButton";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, collection, getDocs } from "firebase/firestore";
@@ -45,6 +47,7 @@ interface DashboardCardMetrics {
   slpTrainingSummary: SlpTrainingSummary | null;
   whatsappHomeSummary: { totalGroups: number; totalAssemblies: number } | null;
   trainingHomeSummary: TrainingHomeSummary | null;
+  checkinHomeSummary: CheckinHomeSummary | null;
 }
 
 export default function HomePage() {
@@ -60,7 +63,8 @@ export default function HomePage() {
     ggyHomeSummary: null,
     slpTrainingSummary: null,
     whatsappHomeSummary: null,
-    trainingHomeSummary: null
+    trainingHomeSummary: null,
+    checkinHomeSummary: null
   });
   const [role, setRole] = useState<string | null>(null);
   const [cacheInitialized, setCacheInitialized] = useState(false);
@@ -148,7 +152,7 @@ export default function HomePage() {
       
       // Fetch summaries in parallel with caching (auto-login if needed)
       // Note: Manifesto/Migrant summaries are intentionally excluded to enforce hardcoded home-card values.
-      const [wtmSlpSummary, youtubeSummary, manifestoComplaintsCount, ggySummary, slpTrainingSummary, whatsappSummary, trainingHomeSummary] = await Promise.all([
+      const [wtmSlpSummary, youtubeSummary, manifestoComplaintsCount, ggySummary, slpTrainingSummary, whatsappSummary, trainingHomeSummary, checkinSummary] = await Promise.all([
         // Fetch WTM-SLP summary for all time (no date parameters) - uses caching for homepage
         getWtmSlpSummary(undefined, undefined, undefined),
         // Fetch YouTube summary for admin only - uses caching
@@ -162,7 +166,9 @@ export default function HomePage() {
         // WhatsApp Data summary (single-field reads; no composite indexes)
         fetchWhatsappHomeSummary(),
         // Training (WTM + Shakti) lightweight summary for home card
-        fetchTrainingHomeSummary()
+        fetchTrainingHomeSummary(),
+        // Check-In Data summary
+        fetchCheckinHomeSummary()
       ]);
       
       console.log('[HomePage] WTM-SLP summary data:', wtmSlpSummary);
@@ -180,7 +186,8 @@ export default function HomePage() {
         ggyHomeSummary: ggySummary ?? null,
         slpTrainingSummary: slpTrainingSummary,
         whatsappHomeSummary: whatsappSummary ?? null,
-        trainingHomeSummary: trainingHomeSummary ?? null
+        trainingHomeSummary: trainingHomeSummary ?? null,
+        checkinHomeSummary: checkinSummary ?? null
       });
       
     } catch (error) {
@@ -196,7 +203,8 @@ export default function HomePage() {
         ggyHomeSummary: null,
         slpTrainingSummary: null,
         whatsappHomeSummary: null,
-        trainingHomeSummary: null
+        trainingHomeSummary: null,
+        checkinHomeSummary: null
       });
     }
   }, [user?.uid, router]);
@@ -227,14 +235,15 @@ export default function HomePage() {
       ]);
       
       // Fetch fresh data (Manifesto/Migrant excluded; use hardcoded values below)
-      const [wtmSlpSummary, youtubeSummary, manifestoComplaintsCount, ggySummary, slpTrainingSummary, whatsappSummary, trainingHomeSummary] = await Promise.all([
+      const [wtmSlpSummary, youtubeSummary, manifestoComplaintsCount, ggySummary, slpTrainingSummary, whatsappSummary, trainingHomeSummary, checkinSummary] = await Promise.all([
         getWtmSlpSummary(undefined, undefined, undefined, undefined, undefined, true), // forceRefresh = true
         fetchYoutubeSummary(true), // forceRefresh = true
         getManifestoComplaintsCount(),
         fetchGgyOverallSummary(true),
         fetchSlpTrainingSummary(),
         fetchWhatsappHomeSummary(),
-        fetchTrainingHomeSummary(true)
+        fetchTrainingHomeSummary(true),
+        fetchCheckinHomeSummary()
       ]);
       
       
@@ -249,7 +258,8 @@ export default function HomePage() {
         ggyHomeSummary: ggySummary ?? null,
         slpTrainingSummary: slpTrainingSummary,
         whatsappHomeSummary: whatsappSummary ?? null,
-        trainingHomeSummary: trainingHomeSummary ?? null
+        trainingHomeSummary: trainingHomeSummary ?? null,
+        checkinHomeSummary: checkinSummary ?? null
       });
       
       console.log('[HomePage] Force refresh completed');
@@ -930,6 +940,61 @@ export default function HomePage() {
                   <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-emerald-500 border-t-transparent"></div>
                     <span className="text-gray-700 font-medium">Loading Migrant...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Check-In Data card */}
+            <div
+              onClick={() => {
+                setNavigatingTo('/verticals/checkin-data');
+                router.push('/verticals/checkin-data');
+              }}
+              className="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 bg-sky-100 p-6 flex flex-col gap-4 hover:shadow-2xl transition group cursor-pointer relative"
+            >
+              <div className="flex flex-col items-center mb-2 gap-1">
+                <h2 className="text-xl font-bold text-center group-hover:text-sky-700 transition">Check-In Data</h2>
+                <span className="px-3 py-1 rounded-full bg-white/70 text-gray-800 text-xs font-semibold border border-gray-300 mt-1">
+                  User Check-ins
+                </span>
+              </div>
+              <div className="flex flex-col gap-2 mt-2">
+                {metrics.isLoading ? (
+                  <div className="flex justify-center items-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-sky-500"></div>
+                  </div>
+                ) : metrics.checkinHomeSummary ? (
+                  <>
+                    <div className="flex items-center gap-2 justify-center">
+                      <span className="font-semibold text-gray-700">Total Users:</span>
+                      <span className="text-gray-900 dark:text-gray-100 font-bold">
+                        {metrics.checkinHomeSummary.totalUsers}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 justify-center">
+                      <span className="font-semibold text-gray-700">Total Check-ins:</span>
+                      <span className="text-gray-900 dark:text-gray-100 font-bold">
+                        {metrics.checkinHomeSummary.totalCheckins}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 justify-center">
+                      <span className="font-semibold text-gray-700">Active (7 days):</span>
+                      <span className="text-gray-900 dark:text-gray-100 font-bold">
+                        {metrics.checkinHomeSummary.activeUsersLastWeek}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-sm text-gray-700 text-center">No data available</div>
+                )}
+              </div>
+              {/* Loading overlay for navigation */}
+              {navigatingTo === '/verticals/checkin-data' && (
+                <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <div className="bg-white rounded-lg p-4 shadow-lg flex items-center gap-3">
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-sky-500 border-t-transparent"></div>
+                    <span className="text-gray-700 font-medium">Loading Check-In Data...</span>
                   </div>
                 </div>
               )}

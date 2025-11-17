@@ -48,6 +48,7 @@ The modular documentation is organized as follows:
    - Training Data Vertical
    - Manifesto Vertical
    - Ghar-Ghar Yatra
+   - Check-In Data Vertical
    - SLP Training Vertical
 
 5. **Full CodeMap**: 
