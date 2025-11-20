@@ -202,12 +202,29 @@ const getHierarchicalNukkadSlp = async (
 // Detailed fetchers
 export const fetchDetailedNukkadAc = async (options: FetchMetricsOptions): Promise<any[]> => {
   const list = await getHierarchicalNukkadAc(options.assemblies, options.dateRange, options.handler_id, options.vertical);
-  // Enrich coordinatorName from users
+  // Enrich coordinatorName from appropriate collection(s)
   const ids = [...new Set(list.map((r: any) => r.handler_id).filter(Boolean))];
-  const names = await resolveUserNamesByIds(ids);
+
+  let names: Map<string, string>;
+  if (options.vertical === 'shakti-abhiyaan') {
+    // For Shakti, query both shakti-users and users collections
+    // shakti-users takes precedence, users as fallback
+    const [shaktiNames, userNames] = await Promise.all([
+      resolveShaktiUserNamesByIds(ids),
+      resolveUserNamesByIds(ids)
+    ]);
+
+    // Merge with shakti-users taking precedence
+    names = new Map([...userNames, ...shaktiNames]);
+
+    console.log(`[fetchDetailedNukkadAc] Shakti vertical: Resolved ${shaktiNames.size} from shakti-users, ${userNames.size} from users`);
+  } else {
+    // For WTM, use users collection only
+    names = await resolveUserNamesByIds(ids);
+  }
   const mapped = list.map((doc: any) => {
     const ms = typeof doc.createdAt === 'number' ? doc.createdAt : (typeof doc.created_at === 'number' ? doc.created_at : undefined);
-    const dateStr = ms ? new Date(ms).toISOString().slice(0,10) : (doc.meetingDate || doc.dateOfVisit || '');
+    const dateStr = ms ? new Date(ms).toISOString().slice(0, 10) : (doc.meetingDate || doc.dateOfVisit || '');
     const totalMembers = Array.isArray(doc.members) ? doc.members.length : (doc.totalMembers || doc.membersCount || 0);
     // Normalize images/photos into a single array for UI consumption
     const rawImages = doc?.image_links ?? doc?.imageLinks ?? doc?.photoUrls ?? doc?.photo_urls ?? doc?.photos ?? doc?.images;
@@ -228,11 +245,14 @@ export const fetchDetailedNukkadAc = async (options: FetchMetricsOptions): Promi
 export const fetchDetailedNukkadSlp = async (options: FetchMetricsOptions): Promise<any[]> => {
   const list = await getHierarchicalNukkadSlp(options.assemblies, options.dateRange, options.handler_id);
   const ids = [...new Set(list.map((r: any) => r.handler_id).filter(Boolean))];
+
+  console.log('[fetchDetailedNukkadSlp] Fetching names for SLP IDs:', ids);
+
   // Resolve SLP names from wtm-slp using document IDs only (as per requirement)
   const names = await resolveSlpNamesFromWtmByIds(ids);
   const mapped = list.map((doc: any) => {
     const ms = typeof doc.createdAt === 'number' ? doc.createdAt : (typeof doc.created_at === 'number' ? doc.created_at : undefined);
-    const dateStr = ms ? new Date(ms).toISOString().slice(0,10) : (doc.meetingDate || doc.dateOfVisit || '');
+    const dateStr = ms ? new Date(ms).toISOString().slice(0, 10) : (doc.meetingDate || doc.dateOfVisit || '');
     const totalMembers = Array.isArray(doc.members) ? doc.members.length : (doc.totalMembers || doc.membersCount || 0);
     // Normalize images/photos into a single array for UI consumption
     const rawImages = doc?.image_links ?? doc?.imageLinks ?? doc?.photoUrls ?? doc?.photo_urls ?? doc?.photos ?? doc?.images;
@@ -249,7 +269,7 @@ export const fetchDetailedNukkadSlp = async (options: FetchMetricsOptions): Prom
   });
   return mapped;
 };
- 
+
 
 /**
  * Helper function to adjust date range for admin users.
@@ -278,23 +298,23 @@ export const getAdjustedDateRange = (
 
   // For admin with "Last Day" filter, extend end date by 8 hours
   const adjustedDateRange = { ...dateRange };
-  
+
   // Parse the end date and add 8 hours
   const endDate = new Date(adjustedDateRange.endDate);
   endDate.setHours(endDate.getHours() + 8);
-  
+
   // Format back to YYYY-MM-DD format
   const year = endDate.getFullYear();
   const month = String(endDate.getMonth() + 1).padStart(2, '0');
   const day = String(endDate.getDate()).padStart(2, '0');
   adjustedDateRange.endDate = `${year}-${month}-${day}`;
-  
+
   console.log('[getAdjustedDateRange] Admin "Last Day" filter adjusted:', {
     original: dateRange,
     adjusted: adjustedDateRange,
     adminRole: adminUser.role
   });
-  
+
   return adjustedDateRange;
 };
 
@@ -304,7 +324,7 @@ const isShaktiAC = async (acId: string): Promise<boolean> => {
     const shaktiCollection = collection(db, 'shakti-abhiyaan');
     const q = query(shaktiCollection, where('form_type', '==', 'add-data'));
     const snap = await getDocs(q);
-    
+
     for (const doc of snap.docs) {
       const data = doc.data() as any;
       const coordinators = data.coveredAssemblyCoordinators || [];
@@ -346,10 +366,40 @@ const resolveUserNamesByIds = async (handlerIds: string[]): Promise<Map<string, 
   return nameMap;
 };
 
+// Helper: Resolve AC/user names from 'shakti-users' collection by handler_id (batched 'in' queries)
+const resolveShaktiUserNamesByIds = async (handlerIds: string[]): Promise<Map<string, string>> => {
+  const nameMap = new Map<string, string>();
+  const uniqueIds = [...new Set((handlerIds || []).filter(Boolean))];
+  if (uniqueIds.length === 0) return nameMap;
+
+  const shaktiUsersCol = collection(db, 'shakti-users');
+  const chunkSize = 10;
+  for (let i = 0; i < uniqueIds.length; i += chunkSize) {
+    const batch = uniqueIds.slice(i, i + chunkSize);
+    try {
+      const qShaktiUsers = query(shaktiUsersCol, where(documentId(), 'in', batch));
+      const snap = await getDocs(qShaktiUsers);
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        const id = d.id;
+        // Only use 'name' property, never displayName or fallback to ID
+        const name = data?.name || 'Unknown';
+        nameMap.set(id, name);
+      });
+    } catch (err) {
+      console.error('[resolveShaktiUserNamesByIds] Error resolving batch:', err);
+    }
+  }
+  return nameMap;
+};
+
 // Helper: Resolve SLP names from 'wtm-slp' collection using document IDs only
 const resolveSlpNamesFromWtmByIds = async (slpIds: string[]): Promise<Map<string, string>> => {
   const nameMap = new Map<string, string>();
   const uniqueIds = [...new Set((slpIds || []).filter(Boolean))];
+
+  console.log('[resolveSlpNamesFromWtmByIds] Requesting IDs:', uniqueIds);
+
   if (uniqueIds.length === 0) return nameMap;
 
   const wtmCol = collection(db, 'wtm-slp');
@@ -357,12 +407,18 @@ const resolveSlpNamesFromWtmByIds = async (slpIds: string[]): Promise<Map<string
   for (let i = 0; i < uniqueIds.length; i += chunkSize) {
     const batch = uniqueIds.slice(i, i + chunkSize);
     try {
+      console.log(`[resolveSlpNamesFromWtmByIds] Querying batch ${i / chunkSize + 1}:`, batch);
       const qWtm = query(wtmCol, where(documentId(), 'in', batch));
       const snap = await getDocs(qWtm);
+      console.log(`[resolveSlpNamesFromWtmByIds] Batch ${i / chunkSize + 1} found ${snap.size} docs`);
+
       snap.forEach((d) => {
         const data = d.data() as any;
         // Use 'name' primarily; older docs might have 'recommendedPersonName'
         const name = (data?.name || data?.recommendedPersonName || '').toString();
+
+        console.log(`[resolveSlpNamesFromWtmByIds] Doc ${d.id}: name="${data?.name}", recommended="${data?.recommendedPersonName}", resolved="${name}"`);
+
         if (name) {
           nameMap.set(d.id, name);
         }
@@ -371,6 +427,8 @@ const resolveSlpNamesFromWtmByIds = async (slpIds: string[]): Promise<Map<string
       console.error('[resolveSlpNamesFromWtmByIds] Error resolving batch:', err);
     }
   }
+
+  console.log('[resolveSlpNamesFromWtmByIds] Final map size:', nameMap.size);
   return nameMap;
 };
 
@@ -402,9 +460,9 @@ const getHierarchicalMemberActivity = async (assemblies?: string[], dateRange?: 
       const endDateObj = new Date(`${dateRange.endDate}T23:59:59.999Z`);
       const startEpochMs = startDateObj.getTime();
       const endEpochMs = endDateObj.getTime();
-      
+
       console.log('[getHierarchicalMemberActivity] Filtering by createdAt:', startEpochMs, 'to', endEpochMs);
-      
+
       baseQuery1 = query(baseQuery1, where('createdAt', '>=', startEpochMs), where('createdAt', '<=', endEpochMs));
       baseQuery2 = query(baseQuery2, where('createdAt', '>=', startEpochMs), where('createdAt', '<=', endEpochMs));
     }
@@ -412,10 +470,10 @@ const getHierarchicalMemberActivity = async (assemblies?: string[], dateRange?: 
     // Execute queries with assembly chunking to handle >10 assembly limit
     let snap1Results = [];
     let snap2Results = [];
-    
+
     if (assemblies && assemblies.length > 0) {
       const uniqueAssemblies = [...new Set(assemblies)];
-      
+
       if (uniqueAssemblies.length <= 10) {
         // Single query for <=10 assemblies
         const query1WithAssemblies = query(baseQuery1, where('assembly', 'in', uniqueAssemblies));
@@ -429,24 +487,24 @@ const getHierarchicalMemberActivity = async (assemblies?: string[], dateRange?: 
         for (let i = 0; i < uniqueAssemblies.length; i += 10) {
           chunks.push(uniqueAssemblies.slice(i, i + 10));
         }
-        
+
         console.log(`[getHierarchicalMemberActivity] Chunking ${uniqueAssemblies.length} assemblies into ${chunks.length} queries`);
-        
+
         const query1Promises = chunks.map(chunk => {
           const chunkQuery = query(baseQuery1, where('assembly', 'in', chunk));
           return getDocs(chunkQuery);
         });
-        
+
         const query2Promises = chunks.map(chunk => {
           const chunkQuery = query(baseQuery2, where('assembly', 'in', chunk));
           return getDocs(chunkQuery);
         });
-        
+
         const [query1Results, query2Results] = await Promise.all([
           Promise.all(query1Promises),
           Promise.all(query2Promises)
         ]);
-        
+
         snap1Results = query1Results;
         snap2Results = query2Results;
       }
@@ -458,7 +516,7 @@ const getHierarchicalMemberActivity = async (assemblies?: string[], dateRange?: 
     }
 
     const activitiesMap = new Map();
-    
+
     // Process all snap1 results
     snap1Results.forEach((snap) => {
       snap.forEach((doc) => {
@@ -467,7 +525,7 @@ const getHierarchicalMemberActivity = async (assemblies?: string[], dateRange?: 
         }
       });
     });
-    
+
     // Process all snap2 results
     snap2Results.forEach((snap) => {
       snap.forEach((doc) => {
@@ -510,22 +568,22 @@ const getHierarchicalPanchayatWaActivity = async (assemblies?: string[], dateRan
       // Convert coordinator date range (YYYY-MM-DD) to ISO strings for createdAt field (stored as string)
       const startDateISO = `${dateRange.startDate}T00:00:00.000Z`;
       const endDateISO = `${dateRange.endDate}T23:59:59.999Z`;
-      
+
       console.log('[getHierarchicalPanchayatWaActivity] Filtering by createdAt (string):', startDateISO, 'to', endDateISO);
-      
+
       baseQuery1 = query(baseQuery1, where('createdAt', '>=', startDateISO), where('createdAt', '<=', endDateISO));
       baseQuery2 = query(baseQuery2, where('createdAt', '>=', startDateISO), where('createdAt', '<=', endDateISO));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
     const activitiesMap = new Map();
-    
+
     snap1.forEach((doc) => {
       if (!activitiesMap.has(doc.id)) {
         activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
       }
     });
-    
+
     snap2.forEach((doc) => {
       if (!activitiesMap.has(doc.id)) {
         activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
@@ -564,22 +622,22 @@ const getHierarchicalMaiBahinYojnaActivity = async (assemblies?: string[], dateR
       // Use string comparison for 'date' field (format: "2025-07-17")
       const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
       const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
-      
+
       console.log('[getHierarchicalMaiBahinYojnaActivity] Filtering by date:', startDateStr, 'to', endDateStr);
-      
+
       baseQuery1 = query(baseQuery1, where('date', '>=', startDateStr), where('date', '<=', endDateStr));
       baseQuery2 = query(baseQuery2, where('date', '>=', startDateStr), where('date', '<=', endDateStr));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
     const activitiesMap = new Map();
-    
+
     snap1.forEach((doc) => {
       if (!activitiesMap.has(doc.id)) {
         activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
       }
     });
-    
+
     snap2.forEach((doc) => {
       if (!activitiesMap.has(doc.id)) {
         activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
@@ -618,22 +676,22 @@ const getHierarchicalLocalIssueVideoActivity = async (assemblies?: string[], dat
       // Use string comparison for date_submitted field (format: "2025-07-13")
       const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
       const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
-      
+
       console.log('[getHierarchicalLocalIssueVideoActivity] Filtering by date_submitted:', startDateStr, 'to', endDateStr);
-      
+
       baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr));
       baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
     const activitiesMap = new Map();
-    
+
     snap1.forEach((doc) => {
       if (!activitiesMap.has(doc.id)) {
         activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
       }
     });
-    
+
     snap2.forEach((doc) => {
       if (!activitiesMap.has(doc.id)) {
         activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
@@ -659,7 +717,7 @@ const getHierarchicalAcVideos = async (assemblies?: string[], dateRange?: { star
     console.log('[getHierarchicalAcVideos] Fetching AC videos from wtm-slp collection');
     console.log('[getHierarchicalAcVideos] Assemblies:', assemblies);
     console.log('[getHierarchicalAcVideos] Handler ID:', handler_id);
-    
+
     const wtmSlpCollection = collection(db, 'wtm-slp');
     let baseQuery1 = query(wtmSlpCollection, where('form_type', '==', 'local-issue-video'));
     let baseQuery2 = query(wtmSlpCollection, where('type', '==', 'local-issue-video'));
@@ -681,22 +739,22 @@ const getHierarchicalAcVideos = async (assemblies?: string[], dateRange?: { star
       // Use string comparison for date_submitted field (format: "2025-07-13")
       const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
       const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
-      
+
       console.log('[getHierarchicalAcVideos] Filtering by date_submitted:', startDateStr, 'to', endDateStr);
-      
+
       baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr));
       baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
     const videosMap = new Map();
-    
+
     snap1.forEach((doc) => {
       if (!videosMap.has(doc.id)) {
         videosMap.set(doc.id, { ...doc.data(), id: doc.id });
       }
     });
-    
+
     snap2.forEach((doc) => {
       if (!videosMap.has(doc.id)) {
         videosMap.set(doc.id, { ...doc.data(), id: doc.id });
@@ -722,19 +780,19 @@ const getHierarchicalShaktiLeaders = async (assemblies?: string[], dateRange?: {
     console.log('[getHierarchicalShaktiLeaders] Fetching Shakti SLPs from shakti-abhiyaan collection');
     console.log('[getHierarchicalShaktiLeaders] Zone Assemblies:', assemblies);
     console.log('[getHierarchicalShaktiLeaders] AC Handler ID:', handler_id);
-    
+
     const shaktiCollection = collection(db, 'shakti-abhiyaan');
     const q = query(shaktiCollection, where('form_type', '==', 'add-data'));
     const snap = await getDocs(q);
-    
+
     const slpsList: any[] = [];
-    
+
     snap.forEach((doc) => {
       const data = doc.data() as any;
       const coveredAssemblies = data.coveredAssemblies || [];
       const coordinators = data.coveredAssemblyCoordinators || [];
       const documentCreatedAt = data.createdAt; // Get createdAt from document root
-      
+
       // Zone Level: Check if any zone assemblies intersect with document's coveredAssemblies
       if (assemblies && assemblies.length > 0) {
         const hasIntersection = assemblies.some(assembly => coveredAssemblies.includes(assembly));
@@ -744,18 +802,18 @@ const getHierarchicalShaktiLeaders = async (assemblies?: string[], dateRange?: {
         }
         console.log(`[getHierarchicalShaktiLeaders] Document ${doc.id} covers zone assemblies:`, coveredAssemblies);
       }
-      
+
       coordinators.forEach((coord: any) => {
         // AC Level: Filter by specific AC handler_id if provided
         if (handler_id && coord.id !== handler_id) {
           return;
         }
-        
+
         // Zone Level: Only include ACs whose assembly is in the zone's assemblies
         if (assemblies && assemblies.length > 0 && !assemblies.includes(coord.assembly)) {
           return;
         }
-        
+
         // Add all SLPs under this coordinator
         if (coord.slps && Array.isArray(coord.slps)) {
           coord.slps.forEach((slp: any) => {
@@ -772,49 +830,49 @@ const getHierarchicalShaktiLeaders = async (assemblies?: string[], dateRange?: {
         }
       });
     });
-    
+
     // Apply local date filtering if dateRange is provided
     let filteredSlpsList = slpsList;
     if (dateRange) {
       // Convert date range strings to milliseconds for comparison
       const startDateMs = new Date(dateRange.startDate).getTime();
       const endDateMs = new Date(dateRange.endDate).setHours(23, 59, 59, 999); // End of day
-      
+
       console.log(`[getHierarchicalShaktiLeaders] Date range: ${dateRange.startDate} to ${dateRange.endDate}`);
       console.log(`[getHierarchicalShaktiLeaders] Filtering by createdAt (milliseconds): ${startDateMs} to ${endDateMs}`);
-      
+
       // Debug: Log first few SLPs to check createdAt values
-      console.log(`[getHierarchicalShaktiLeaders] Sample SLP createdAt values:`, 
-        slpsList.slice(0, 3).map(slp => ({ 
-          name: slp.name, 
-          createdAt: slp.createdAt, 
+      console.log(`[getHierarchicalShaktiLeaders] Sample SLP createdAt values:`,
+        slpsList.slice(0, 3).map(slp => ({
+          name: slp.name,
+          createdAt: slp.createdAt,
           type: typeof slp.createdAt,
           date: slp.createdAt ? new Date(slp.createdAt).toISOString() : 'N/A'
         }))
       );
-      
+
       filteredSlpsList = slpsList.filter((slp: any) => {
         if (!slp.createdAt) {
           console.log(`[getHierarchicalShaktiLeaders] SLP ${slp.name} has no createdAt`);
           return false;
         }
-        
+
         if (typeof slp.createdAt !== 'number') {
           console.log(`[getHierarchicalShaktiLeaders] SLP ${slp.name} createdAt is not number:`, typeof slp.createdAt, slp.createdAt);
           return false;
         }
-        
+
         const isInRange = slp.createdAt >= startDateMs && slp.createdAt <= endDateMs;
         if (!isInRange) {
           console.log(`[getHierarchicalShaktiLeaders] SLP ${slp.name} outside range: ${slp.createdAt} (${new Date(slp.createdAt).toISOString()})`);
         }
-        
+
         return isInRange;
       });
-      
+
       console.log(`[getHierarchicalShaktiLeaders] Filtered from ${slpsList.length} to ${filteredSlpsList.length} Shakti SLPs`);
     }
-    
+
     console.log(`[getHierarchicalShaktiLeaders] Found ${filteredSlpsList.length} Shakti SLPs`);
     return filteredSlpsList;
   } catch (error) {
@@ -830,12 +888,12 @@ const getHierarchicalShaktiSaathi = async (assemblies?: string[], dateRange?: { 
   try {
     const slpActivityCollection = collection(db, 'slp-activity');
     let baseQuery1 = query(
-      slpActivityCollection, 
+      slpActivityCollection,
       where('form_type', '==', 'members'),
       where('parentVertical', '==', 'shakti-abhiyaan')
     );
     let baseQuery2 = query(
-      slpActivityCollection, 
+      slpActivityCollection,
       where('type', '==', 'members'),
       where('parentVertical', '==', 'shakti-abhiyaan')
     );
@@ -856,22 +914,22 @@ const getHierarchicalShaktiSaathi = async (assemblies?: string[], dateRange?: { 
       const endDateObj = new Date(`${dateRange.endDate}T23:59:59.999Z`);
       const startEpochMs = startDateObj.getTime();
       const endEpochMs = endDateObj.getTime();
-      
+
       console.log('[getHierarchicalShaktiSaathi] Filtering by createdAt:', startEpochMs, 'to', endEpochMs);
-      
+
       baseQuery1 = query(baseQuery1, where('createdAt', '>=', startEpochMs), where('createdAt', '<=', endEpochMs));
       baseQuery2 = query(baseQuery2, where('createdAt', '>=', startEpochMs), where('createdAt', '<=', endEpochMs));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
     const activitiesMap = new Map();
-    
+
     snap1.forEach((doc) => {
       if (!activitiesMap.has(doc.id)) {
         activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
       }
     });
-    
+
     snap2.forEach((doc) => {
       if (!activitiesMap.has(doc.id)) {
         activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
@@ -879,28 +937,28 @@ const getHierarchicalShaktiSaathi = async (assemblies?: string[], dateRange?: { 
     });
 
     const result = Array.from(activitiesMap.values());
-    
+
     // Enrich with coordinator names using parentDocId for efficient lookup
     const coordinatorNamesMap = new Map<string, string>();
-    
+
     // Get unique parentDocIds from activities
     const uniqueParentDocIds = [...new Set(result.map((activity: any) => activity.parentDocId).filter(Boolean))];
-    
+
     if (uniqueParentDocIds.length > 0) {
       // Fetch specific shakti-abhiyaan documents using parentDocId
       const shaktiCollection = collection(db, 'shakti-abhiyaan');
       const parentDocPromises = uniqueParentDocIds.map(docId => getDoc(doc(shaktiCollection, docId)));
       const parentDocs = await Promise.all(parentDocPromises);
-      
+
       // Create a map of parentDocId to its SLP data for quick lookup
       const parentDocSLPMap = new Map<string, any[]>();
-      
+
       parentDocs.forEach((parentDoc, index) => {
         if (parentDoc.exists()) {
           const data = parentDoc.data();
           const parentDocId = uniqueParentDocIds[index];
           const allSLPs: any[] = [];
-          
+
           // Collect all SLPs from coveredAssemblyCoordinators array
           if (data.coveredAssemblyCoordinators && Array.isArray(data.coveredAssemblyCoordinators)) {
             data.coveredAssemblyCoordinators.forEach((coord: any) => {
@@ -909,17 +967,17 @@ const getHierarchicalShaktiSaathi = async (assemblies?: string[], dateRange?: { 
               }
             });
           }
-          
+
           parentDocSLPMap.set(parentDocId, allSLPs);
         }
       });
-      
+
       // Now map handler_ids to names using the parentDocId from each activity
       result.forEach((activity: any) => {
         if (activity.parentDocId && activity.handler_id) {
           const slpsInParentDoc = parentDocSLPMap.get(activity.parentDocId);
           if (slpsInParentDoc) {
-            const matchingSLP = slpsInParentDoc.find((slp: any) => 
+            const matchingSLP = slpsInParentDoc.find((slp: any) =>
               slp.id === activity.handler_id || slp.uid === activity.handler_id
             );
             if (matchingSLP) {
@@ -929,13 +987,13 @@ const getHierarchicalShaktiSaathi = async (assemblies?: string[], dateRange?: { 
         }
       });
     }
-    
+
     // Add coordinator names to activity records
     const enrichedResult = result.map((activity: any) => ({
       ...activity,
       coordinatorName: coordinatorNamesMap.get(activity.handler_id) || activity.handler_id || 'Unknown'
     }));
-    
+
     return enrichedResult;
   } catch (error) {
     console.error('[getHierarchicalShaktiSaathi] Error:', error);
@@ -950,12 +1008,12 @@ const getHierarchicalShaktiClubs = async (assemblies?: string[], dateRange?: { s
   try {
     const slpActivityCollection = collection(db, 'slp-activity');
     let baseQuery1 = query(
-      slpActivityCollection, 
+      slpActivityCollection,
       where('form_type', '==', 'panchayat-wa'),
       where('parentVertical', '==', 'shakti-abhiyaan')
     );
     let baseQuery2 = query(
-      slpActivityCollection, 
+      slpActivityCollection,
       where('type', '==', 'panchayat-wa'),
       where('parentVertical', '==', 'shakti-abhiyaan')
     );
@@ -974,22 +1032,22 @@ const getHierarchicalShaktiClubs = async (assemblies?: string[], dateRange?: { s
       // Convert coordinator date range (YYYY-MM-DD) to ISO strings for createdAt field (stored as string)
       const startDateISO = `${dateRange.startDate}T00:00:00.000Z`;
       const endDateISO = `${dateRange.endDate}T23:59:59.999Z`;
-      
+
       console.log('[getHierarchicalShaktiClubs] Filtering by createdAt (string):', startDateISO, 'to', endDateISO);
-      
+
       baseQuery1 = query(baseQuery1, where('createdAt', '>=', startDateISO), where('createdAt', '<=', endDateISO));
       baseQuery2 = query(baseQuery2, where('createdAt', '>=', startDateISO), where('createdAt', '<=', endDateISO));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
     const activitiesMap = new Map();
-    
+
     snap1.forEach((doc) => {
       if (!activitiesMap.has(doc.id)) {
         activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
       }
     });
-    
+
     snap2.forEach((doc) => {
       if (!activitiesMap.has(doc.id)) {
         activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
@@ -1010,12 +1068,12 @@ const getHierarchicalShaktiForms = async (assemblies?: string[], dateRange?: { s
   try {
     const slpActivityCollection = collection(db, 'slp-activity');
     let baseQuery1 = query(
-      slpActivityCollection, 
+      slpActivityCollection,
       where('form_type', '==', 'mai-bahin-yojna'),
       where('parentVertical', '==', 'shakti-abhiyaan')
     );
     let baseQuery2 = query(
-      slpActivityCollection, 
+      slpActivityCollection,
       where('type', '==', 'mai-bahin-yojna'),
       where('parentVertical', '==', 'shakti-abhiyaan')
     );
@@ -1034,22 +1092,22 @@ const getHierarchicalShaktiForms = async (assemblies?: string[], dateRange?: { s
       // Use string comparison for 'date' field (format: "2025-07-17")
       const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
       const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
-      
+
       console.log('[getHierarchicalShaktiForms] Filtering by date:', startDateStr, 'to', endDateStr);
-      
+
       baseQuery1 = query(baseQuery1, where('date', '>=', startDateStr), where('date', '<=', endDateStr));
       baseQuery2 = query(baseQuery2, where('date', '>=', startDateStr), where('date', '<=', endDateStr));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
     const activitiesMap = new Map();
-    
+
     snap1.forEach((doc) => {
       if (!activitiesMap.has(doc.id)) {
         activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
       }
     });
-    
+
     snap2.forEach((doc) => {
       if (!activitiesMap.has(doc.id)) {
         activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
@@ -1100,9 +1158,9 @@ const getHierarchicalShaktiBaithaks = async (
       // Use string comparison for dateFormatted field (format: "2025-07-06")
       const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
       const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
-      
+
       console.log('[getHierarchicalShaktiBaithaks] Filtering by dateFormatted:', startDateStr, 'to', endDateStr);
-      
+
       baseQuery1 = query(baseQuery1, where('dateFormatted', '>=', startDateStr), where('dateFormatted', '<=', endDateStr));
       baseQuery2 = query(baseQuery2, where('dateFormatted', '>=', startDateStr), where('dateFormatted', '<=', endDateStr));
     }
@@ -1159,7 +1217,7 @@ const getHierarchicalShaktiLocalIssueVideoActivity = async (
     if (dateRange) {
       const startDateStr = dateRange.startDate;
       const endDateStr = dateRange.endDate;
-      
+
       baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr));
       baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr));
     }
@@ -1167,10 +1225,10 @@ const getHierarchicalShaktiLocalIssueVideoActivity = async (
     // Execute queries with assembly chunking to handle >10 assembly limit
     let snap1Results = [];
     let snap2Results = [];
-    
+
     if (assemblies && assemblies.length > 0) {
       const uniqueAssemblies = [...new Set(assemblies)];
-      
+
       if (uniqueAssemblies.length <= 10) {
         const query1WithAssemblies = query(baseQuery1, where('assembly', 'in', uniqueAssemblies));
         const query2WithAssemblies = query(baseQuery2, where('assembly', 'in', uniqueAssemblies));
@@ -1182,17 +1240,17 @@ const getHierarchicalShaktiLocalIssueVideoActivity = async (
         for (let i = 0; i < uniqueAssemblies.length; i += 10) {
           chunks.push(uniqueAssemblies.slice(i, i + 10));
         }
-        
+
         console.log(`[getHierarchicalShaktiLocalIssueVideoActivity] Chunking ${uniqueAssemblies.length} assemblies into ${chunks.length} queries`);
-        
+
         const query1Promises = chunks.map(chunk => getDocs(query(baseQuery1, where('assembly', 'in', chunk))));
         const query2Promises = chunks.map(chunk => getDocs(query(baseQuery2, where('assembly', 'in', chunk))));
-        
+
         const [query1Results, query2Results] = await Promise.all([
           Promise.all(query1Promises),
           Promise.all(query2Promises)
         ]);
-        
+
         snap1Results = query1Results;
         snap2Results = query2Results;
       }
@@ -1203,7 +1261,7 @@ const getHierarchicalShaktiLocalIssueVideoActivity = async (
     }
 
     const activitiesMap = new Map();
-    
+
     // Process all snap1 results
     snap1Results.forEach((snap) => {
       snap.forEach((doc) => {
@@ -1212,7 +1270,7 @@ const getHierarchicalShaktiLocalIssueVideoActivity = async (
         }
       });
     });
-    
+
     // Process all snap2 results
     snap2Results.forEach((snap) => {
       snap.forEach((doc) => {
@@ -1252,22 +1310,22 @@ const getHierarchicalChaupals = async (assemblies?: string[], dateRange?: { star
       // Use string comparison for dateFormatted field (format: "2025-07-06")
       const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
       const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
-      
+
       console.log('[getHierarchicalChaupals] Filtering by dateFormatted:', startDateStr, 'to', endDateStr);
-      
+
       baseQuery1 = query(baseQuery1, where('dateFormatted', '>=', startDateStr), where('dateFormatted', '<=', endDateStr));
       baseQuery2 = query(baseQuery2, where('dateFormatted', '>=', startDateStr), where('dateFormatted', '<=', endDateStr));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
     const activitiesMap = new Map();
-    
+
     snap1.forEach((doc) => {
       if (!activitiesMap.has(doc.id)) {
         activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
       }
     });
-    
+
     snap2.forEach((doc) => {
       if (!activitiesMap.has(doc.id)) {
         activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
@@ -1276,7 +1334,7 @@ const getHierarchicalChaupals = async (assemblies?: string[], dateRange?: { star
 
     const result = Array.from(activitiesMap.values());
     const filteredResult = result.filter((doc: any) => doc.parentVertical !== 'shakti-abhiyaan');
-    
+
     // Map dateFormatted to dateOfVisit for compatibility with ActivitiesList component
     // Note: Chaupals are SLP activities, not AC activities, so no coordinatorName should be added
     const mappedResult = filteredResult.map((doc: any) => ({
@@ -1284,7 +1342,7 @@ const getHierarchicalChaupals = async (assemblies?: string[], dateRange?: { star
       dateOfVisit: doc.dateFormatted || doc.dateOfVisit // Use dateFormatted as dateOfVisit
       // Removed coordinatorName - Chaupals are SLP-created, not AC activities
     }));
-    
+
     return mappedResult;
   } catch (error) {
     console.error('[getHierarchicalChaupals] Error:', error);
@@ -1312,9 +1370,9 @@ const getHierarchicalCentralWaGroups = async (assemblies?: string[], dateRange?:
       // Convert coordinator date range (YYYY-MM-DD) to ISO strings for createdAt field (stored as string)
       const startDateISO = `${dateRange.startDate}T00:00:00.000Z`;
       const endDateISO = `${dateRange.endDate}T23:59:59.999Z`;
-      
+
       console.log('[getHierarchicalCentralWaGroups] Filtering by createdAt (string):', startDateISO, 'to', endDateISO);
-      
+
       centralQuery = query(centralQuery, where('createdAt', '>=', startDateISO), where('createdAt', '<=', endDateISO));
     }
 
@@ -1488,22 +1546,22 @@ const getHierarchicalTrainingActivity = async (assemblies?: string[], dateRange?
       // Use string comparison for 'date' field (format: "2025-07-17")
       const startDateStr = dateRange.startDate; // Already in YYYY-MM-DD format
       const endDateStr = dateRange.endDate;     // Already in YYYY-MM-DD format
-      
+
       console.log('[getHierarchicalTrainingActivity] Filtering by date:', startDateStr, 'to', endDateStr);
-      
+
       baseQuery1 = query(baseQuery1, where('date', '>=', startDateStr), where('date', '<=', endDateStr));
       baseQuery2 = query(baseQuery2, where('date', '>=', startDateStr), where('date', '<=', endDateStr));
     }
 
     const [snap1, snap2] = await Promise.all([getDocs(baseQuery1), getDocs(baseQuery2)]);
     const activitiesMap = new Map();
-    
+
     snap1.forEach((doc) => {
       if (!activitiesMap.has(doc.id)) {
         activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
       }
     });
-    
+
     snap2.forEach((doc) => {
       if (!activitiesMap.has(doc.id)) {
         activitiesMap.set(doc.id, { ...doc.data(), id: doc.id });
@@ -1524,41 +1582,41 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
     console.log('[fetchCumulativeMetrics] Starting with options:', options);
     console.log('[fetchCumulativeMetrics] Assemblies:', options.assemblies);
     console.log('[fetchCumulativeMetrics] Handler ID:', options.handler_id);
-    
+
     // Adjust date range for admin users if needed
     const adjustedDateRange = getAdjustedDateRange(
       options.dateRange,
       options.adminUser || null,
       options.isLastDayFilter || false
     );
-    
+
     // Validate input parameters
     if (options.assemblies && options.assemblies.length > 0) {
       validateAssemblyData(options.assemblies);
     }
-    
+
     if (adjustedDateRange) {
       validateDateRange(adjustedDateRange.startDate, adjustedDateRange.endDate);
     }
-    
+
     // Fetch all metrics for any AC type - data will naturally be 0 if no activities exist
-    
+
     // Fetch all metrics for all hierarchy levels
     const [
-      wtmSummary, 
-      saathi, 
-      shaktiLeaders, 
-      shaktiSaathi, 
-      clubs, 
-      shaktiClubs, 
-      forms, 
-      shaktiForms, 
-      shaktiVideos, 
-      videos, 
+      wtmSummary,
+      saathi,
+      shaktiLeaders,
+      shaktiSaathi,
+      clubs,
+      shaktiClubs,
+      forms,
+      shaktiForms,
+      shaktiVideos,
+      videos,
       acVideos,
-      chaupals, 
+      chaupals,
       shaktiBaithaks,
-      centralWaGroups, 
+      centralWaGroups,
       assemblyWaGroups,
       shaktiAssemblyWaGroups,
       // Nukkad metrics
@@ -1631,19 +1689,19 @@ export const fetchCumulativeMetrics = async (options: FetchMetricsOptions): Prom
       nukkadSlp: nukkadSlpCount,
     };
   } catch (error) {
-    const errorCode = error instanceof Error && error.message.includes('date') 
+    const errorCode = error instanceof Error && error.message.includes('date')
       ? ERROR_CODES.INVALID_DATE_RANGE
       : error instanceof Error && error.message.includes('assembly')
-      ? ERROR_CODES.DATA_VALIDATION_ERROR
-      : getFirebaseErrorCode(error);
-    
+        ? ERROR_CODES.DATA_VALIDATION_ERROR
+        : getFirebaseErrorCode(error);
+
     const appError = createAppError(errorCode, error as Error, {
       function: 'fetchCumulativeMetrics',
       options
     });
-    
+
     logError(appError);
-    
+
     // Re-throw the error with user-friendly message for UI to handle
     throw appError;
   }
@@ -1688,7 +1746,7 @@ export const fetchZones = async (): Promise<Zone[]> => {
 export const fetchZonesForWTM = async (): Promise<Zone[]> => {
   try {
     const q = query(
-      collection(db, 'admin-users'), 
+      collection(db, 'admin-users'),
       where('role', '==', 'zonal-incharge'),
       where('parentVertical', '==', 'wtm')
     );
@@ -1718,7 +1776,7 @@ export const fetchZonesForWTM = async (): Promise<Zone[]> => {
  * Fetch assemblies belonging to a zone.
  * Fetch assemblies by reading `assemblies` array from selected zone document in `admin-users` collection.
  */
- export const fetchAssemblies = async (zoneId: string): Promise<string[]> => {
+export const fetchAssemblies = async (zoneId: string): Promise<string[]> => {
   if (!zoneId) return [];
   try {
     const ref = doc(db, 'admin-users', zoneId);
@@ -1739,7 +1797,7 @@ export const fetchZonesForWTM = async (): Promise<Zone[]> => {
  */
 export const fetchAssemblyCoordinatorsForWTM = async (assembly: string): Promise<AC[]> => {
   if (!assembly) return [];
-  
+
   try {
     // Query 1a: ACs with single assembly field
     const q1a = query(
@@ -1747,37 +1805,37 @@ export const fetchAssemblyCoordinatorsForWTM = async (assembly: string): Promise
       where('role', '==', 'Assembly Coordinator'),
       where('assembly', '==', assembly)
     );
-    
+
     // Query 1b: ACs with multiple assemblies field
     const q1b = query(
       collection(db, 'users'),
       where('role', '==', 'Assembly Coordinator'),
       where('assemblies', 'array-contains', assembly)
     );
-    
+
     // Execute both queries in parallel
     const [snap1a, snap1b] = await Promise.all([getDocs(q1a), getDocs(q1b)]);
     console.log('[fetchAssemblyCoordinatorsForWTM] AC queries returned', snap1a.size + snap1b.size, 'documents for assembly:', assembly);
-    
+
     const list: AC[] = [];
     const addedUids = new Set<string>(); // Track added UIDs to avoid duplicates
-    
+
     // Process both query results with deduplication
     [snap1a, snap1b].forEach((snap) => {
       snap.forEach((d) => {
         const data = d.data() as any;
         if (!addedUids.has(d.id)) {
-          list.push({ 
-            uid: d.id, 
-            name: data.name || 'AC', 
+          list.push({
+            uid: d.id,
+            name: data.name || 'AC',
             assembly,
-            handler_id: data.handler_id 
+            handler_id: data.handler_id
           });
           addedUids.add(d.id);
         }
       });
     });
-    
+
     // If no Assembly Coordinators found, try Zonal Incharge as fallback
     if (list.length === 0) {
       const q2a = query(
@@ -1785,35 +1843,35 @@ export const fetchAssemblyCoordinatorsForWTM = async (assembly: string): Promise
         where('role', '==', 'Zonal Incharge'),
         where('assembly', '==', assembly)
       );
-      
+
       const q2b = query(
         collection(db, 'users'),
         where('role', '==', 'Zonal Incharge'),
         where('assemblies', 'array-contains', assembly)
       );
-      
+
       const [snap2a, snap2b] = await Promise.all([getDocs(q2a), getDocs(q2b)]);
       console.log('[fetchAssemblyCoordinatorsForWTM] Zonal Incharge fallback returned', snap2a.size + snap2b.size, 'documents');
-      
+
       [snap2a, snap2b].forEach((snap) => {
         snap.forEach((d) => {
           const data = d.data() as any;
           if (!addedUids.has(d.id)) {
-            list.push({ 
-              uid: d.id, 
-              name: data.name || 'ZI', 
+            list.push({
+              uid: d.id,
+              name: data.name || 'ZI',
               assembly,
-              handler_id: data.handler_id 
+              handler_id: data.handler_id
             });
             addedUids.add(d.id);
           }
         });
       });
     }
-    
+
     // NOTE: Explicitly excluding shakti-abhiyaan collection source for WTM vertical
     // Also excluding meeting handler_id fallback to keep AC list clean
-    
+
     console.log(`[fetchAssemblyCoordinatorsForWTM] Found ${list.length} ACs for assembly ${assembly} (WTM only)`);
     return list;
   } catch (err) {
@@ -1845,37 +1903,37 @@ export const fetchAssemblyCoordinators = async (assembly: string): Promise<AC[]>
       where('role', '==', 'Assembly Coordinator'),
       where('assembly', '==', assembly)
     );
-    
+
     const q1b = query(
       collection(db, 'users'),
       where('role', '==', 'Assembly Coordinator'),
       where('assemblies', 'array-contains', assembly)
     );
-    
+
     // Execute both queries in parallel for optimal performance
     const [snap1a, snap1b] = await Promise.all([getDocs(q1a), getDocs(q1b)]);
     console.log('[fetchAssemblyCoordinators] Single assembly query returned', snap1a.size, 'documents');
     console.log('[fetchAssemblyCoordinators] Multi-assembly query returned', snap1b.size, 'documents');
-    
+
     const list: AC[] = [];
     const addedUids = new Set<string>(); // Track added UIDs to avoid duplicates
-    
+
     // Process both query results with deduplication
     [snap1a, snap1b].forEach((snap) => {
       snap.forEach((d) => {
         const data = d.data() as any;
         if (!addedUids.has(d.id)) {
-          list.push({ 
-            uid: d.id, 
-            name: data.name || 'AC', 
+          list.push({
+            uid: d.id,
+            name: data.name || 'AC',
             assembly,
-            handler_id: data.handler_id 
+            handler_id: data.handler_id
           });
           addedUids.add(d.id);
         }
       });
     });
-    
+
     // If no Assembly Coordinators found, try Zonal Incharge with same pattern
     if (list.length === 0) {
       const q2a = query(
@@ -1883,39 +1941,39 @@ export const fetchAssemblyCoordinators = async (assembly: string): Promise<AC[]>
         where('role', '==', 'Zonal Incharge'),
         where('assembly', '==', assembly)
       );
-      
+
       const q2b = query(
         collection(db, 'users'),
         where('role', '==', 'Zonal Incharge'),
         where('assemblies', 'array-contains', assembly)
       );
-      
+
       const [snap2a, snap2b] = await Promise.all([getDocs(q2a), getDocs(q2b)]);
       console.log('[fetchAssemblyCoordinators] Zonal Incharge queries returned', snap2a.size + snap2b.size, 'documents');
-      
+
       [snap2a, snap2b].forEach((snap) => {
         snap.forEach((d) => {
           const data = d.data() as any;
           if (!addedUids.has(d.id)) {
-            list.push({ 
-              uid: d.id, 
-              name: data.name || 'ZI', 
+            list.push({
+              uid: d.id,
+              name: data.name || 'ZI',
               assembly,
-              handler_id: data.handler_id 
+              handler_id: data.handler_id
             });
             addedUids.add(d.id);
           }
         });
       });
     }
-    
+
     // Source 2: shakti-abhiyaan collection (coveredAssemblyCoordinators)
     const q2 = query(
       collection(db, 'shakti-abhiyaan'),
       where('form_type', '==', 'add-data')
     );
     const snap2 = await getDocs(q2);
-    
+
     snap2.forEach((d) => {
       const data = d.data() as any;
       const coordinators = data.coveredAssemblyCoordinators || [];
@@ -1931,7 +1989,7 @@ export const fetchAssemblyCoordinators = async (assembly: string): Promise<AC[]>
         }
       });
     });
-    
+
     // Source 3 (fallback): If no ACs found, derive from meeting documents handler_id
     if (list.length === 0) {
       console.log('[fetchAssemblyCoordinators] No ACs found in users/shakti-abhiyaan, trying meetings fallback...');
@@ -1972,7 +2030,7 @@ export const fetchAssemblyCoordinators = async (assembly: string): Promise<AC[]>
         console.warn('[fetchAssemblyCoordinators] Meetings fallback failed', fallbackErr);
       }
     }
-    
+
     console.log('[fetchAssemblyCoordinators] Final list size:', list.length);
 
     list.sort((a, b) => a.name.localeCompare(b.name));
@@ -1989,20 +2047,20 @@ export const fetchAssemblyCoordinators = async (assembly: string): Promise<AC[]>
  */
 export const fetchAssemblyCoordinatorsForShakti = async (assembly: string): Promise<AC[]> => {
   if (!assembly) return [];
-  
+
   try {
     console.log('[fetchAssemblyCoordinatorsForShakti] Fetching Shakti ACs for assembly:', assembly);
-    
+
     const list: AC[] = [];
     const addedUids = new Set<string>();
-    
+
     // Only query shakti-abhiyaan collection (coveredAssemblyCoordinators)
     const shaktiQuery = query(
       collection(db, 'shakti-abhiyaan'),
       where('form_type', '==', 'add-data')
     );
     const shaktiSnap = await getDocs(shaktiQuery);
-    
+
     shaktiSnap.forEach((d) => {
       const data = d.data() as any;
       const coordinators = data.coveredAssemblyCoordinators || [];
@@ -2020,7 +2078,7 @@ export const fetchAssemblyCoordinatorsForShakti = async (assembly: string): Prom
         }
       });
     });
-    
+
     console.log(`[fetchAssemblyCoordinatorsForShakti] Found ${list.length} Shakti ACs for assembly ${assembly}`);
     return list.sort((a, b) => a.name.localeCompare(b.name));
   } catch (err) {
@@ -2036,7 +2094,7 @@ export const fetchSlpsForAc = async (acId: string): Promise<SLP[]> => {
   if (!acId) return [];
   try {
     const list: SLP[] = [];
-    
+
     // First, check if this AC is from shakti-abhiyaan or users collection
     let isShaktiAc = false;
     try {
@@ -2064,7 +2122,7 @@ export const fetchSlpsForAc = async (acId: string): Promise<SLP[]> => {
     } catch (err) {
       console.log(`[fetchSlpsForAc] Error checking AC source:`, err);
     }
-    
+
     // Source 1: Associated SLPs from shakti-abhiyaan (only if AC is from Shakti)
     if (isShaktiAc) {
       const q1 = query(
@@ -2072,7 +2130,7 @@ export const fetchSlpsForAc = async (acId: string): Promise<SLP[]> => {
         where('form_type', '==', 'add-data')
       );
       const snap1 = await getDocs(q1);
-      
+
       snap1.forEach((d) => {
         const data = d.data() as any;
         const coordinators = data.coveredAssemblyCoordinators || [];
@@ -2093,7 +2151,7 @@ export const fetchSlpsForAc = async (acId: string): Promise<SLP[]> => {
         });
       });
     }
-    
+
     // Source 2: Meeting SLPs from wtm-slp where handler_id matches AC
     const q2 = query(
       collection(db, 'wtm-slp'),
@@ -2102,7 +2160,7 @@ export const fetchSlpsForAc = async (acId: string): Promise<SLP[]> => {
       where('handler_id', '==', acId)
     );
     const snap2 = await getDocs(q2);
-    
+
     snap2.forEach((d) => {
       const data = d.data() as any;
       if (data.name && !list.find(slp => slp.name === data.name)) {
@@ -2115,7 +2173,7 @@ export const fetchSlpsForAc = async (acId: string): Promise<SLP[]> => {
         });
       }
     });
-    
+
     // Source 3: Independent SLPs (always shown when SLP dropdown is visible)
     // Get independent SLPs from users collection
     const q3 = query(
@@ -2124,7 +2182,7 @@ export const fetchSlpsForAc = async (acId: string): Promise<SLP[]> => {
       where('independent', '==', true)
     );
     const snap3 = await getDocs(q3);
-    
+
     snap3.forEach((d) => {
       const data = d.data() as any;
       if (!list.find(slp => slp.uid === d.id)) {
@@ -2138,7 +2196,7 @@ export const fetchSlpsForAc = async (acId: string): Promise<SLP[]> => {
         });
       }
     });
-    
+
     list.sort((a, b) => a.name.localeCompare(b.name));
     return list;
   } catch (err) {
@@ -2155,7 +2213,7 @@ export const fetchSlpsForAc = async (acId: string): Promise<SLP[]> => {
 export const fetchDetailedMeetings = async (options: FetchMetricsOptions): Promise<any[]> => {
   try {
     console.log('[fetchDetailedMeetings] Fetching with options:', options);
-    
+
     const wtmSlpCollection = collection(db, 'wtm-slp');
     let baseQuery1 = query(wtmSlpCollection, where('form_type', '==', 'meeting'));
     let baseQuery2 = query(wtmSlpCollection, where('type', '==', 'meeting'));
@@ -2169,16 +2227,16 @@ export const fetchDetailedMeetings = async (options: FetchMetricsOptions): Promi
     // Add date filter if provided - meetings use created_at field with epoch timestamp (to match getWtmSlpSummary)
     if (options.dateRange) {
       console.log('[fetchDetailedMeetings] Applying date filter:', options.dateRange);
-      
+
       // Use UTC boundaries to match getWtmSlpSummary filtering logic
       const startDateObj = new Date(`${options.dateRange.startDate}T00:00:00.000Z`);
       const endDateObj = new Date(`${options.dateRange.endDate}T23:59:59.999Z`);
-      
+
       const startEpochMs = startDateObj.getTime();
       const endEpochMs = endDateObj.getTime();
-      
+
       console.log(`[fetchDetailedMeetings] Date filter range: ${startEpochMs} to ${endEpochMs}`);
-      
+
       baseQuery1 = query(baseQuery1, where('created_at', '>=', startEpochMs), where('created_at', '<=', endEpochMs), orderBy('created_at', 'desc'));
       baseQuery2 = query(baseQuery2, where('created_at', '>=', startEpochMs), where('created_at', '<=', endEpochMs), orderBy('created_at', 'desc'));
     } else {
@@ -2190,10 +2248,10 @@ export const fetchDetailedMeetings = async (options: FetchMetricsOptions): Promi
     // Execute queries with assembly chunking to handle >10 assembly limit
     let snap1Results = [];
     let snap2Results = [];
-    
+
     if (options.assemblies && options.assemblies.length > 0) {
       const uniqueAssemblies = [...new Set(options.assemblies)];
-      
+
       if (uniqueAssemblies.length <= 10) {
         // Single query for <=10 assemblies
         const query1WithAssemblies = query(baseQuery1, where('assembly', 'in', uniqueAssemblies));
@@ -2207,24 +2265,24 @@ export const fetchDetailedMeetings = async (options: FetchMetricsOptions): Promi
         for (let i = 0; i < uniqueAssemblies.length; i += 10) {
           chunks.push(uniqueAssemblies.slice(i, i + 10));
         }
-        
+
         console.log(`[fetchDetailedMeetings] Chunking ${uniqueAssemblies.length} assemblies into ${chunks.length} queries`);
-        
+
         const query1Promises = chunks.map(chunk => {
           const chunkQuery = query(baseQuery1, where('assembly', 'in', chunk));
           return getDocs(chunkQuery);
         });
-        
+
         const query2Promises = chunks.map(chunk => {
           const chunkQuery = query(baseQuery2, where('assembly', 'in', chunk));
           return getDocs(chunkQuery);
         });
-        
+
         const [query1Results, query2Results] = await Promise.all([
           Promise.all(query1Promises),
           Promise.all(query2Promises)
         ]);
-        
+
         snap1Results = query1Results;
         snap2Results = query2Results;
       }
@@ -2234,9 +2292,9 @@ export const fetchDetailedMeetings = async (options: FetchMetricsOptions): Promi
       snap1Results = [snap1];
       snap2Results = [snap2];
     }
-    
+
     const meetingsMap = new Map();
-    
+
     // Process all snap1 results
     snap1Results.forEach((snap) => {
       snap.forEach((doc) => {
@@ -2245,7 +2303,7 @@ export const fetchDetailedMeetings = async (options: FetchMetricsOptions): Promi
         }
       });
     });
-    
+
     // Process all snap2 results
     snap2Results.forEach((snap) => {
       snap.forEach((doc) => {
@@ -2256,16 +2314,16 @@ export const fetchDetailedMeetings = async (options: FetchMetricsOptions): Promi
     });
 
     const result = Array.from(meetingsMap.values());
-    
+
     // Enrich with coordinator names (AC names from users collection)
     const coordinatorNamesMap = new Map<string, string>();
     const uniqueHandlerIds = [...new Set(result.map((meeting: any) => meeting.handler_id).filter(Boolean))];
-    
+
     console.log(`[fetchDetailedMeetings] Found ${uniqueHandlerIds.length} unique handler IDs:`, uniqueHandlerIds);
-    
+
     if (uniqueHandlerIds.length > 0) {
       const usersCollection = collection(db, 'users');
-      
+
       // Handle Firebase 'IN' query limit of 30 by batching
       const batchSize = 30;
       for (let i = 0; i < uniqueHandlerIds.length; i += batchSize) {
@@ -2273,14 +2331,14 @@ export const fetchDetailedMeetings = async (options: FetchMetricsOptions): Promi
         // Try querying by document ID first since handler_id might be the document ID
         const usersQuery = query(usersCollection, where(documentId(), 'in', batch));
         const usersSnap = await getDocs(usersQuery);
-        
+
         console.log(`[fetchDetailedMeetings] Batch:`, batch);
         console.log(`[fetchDetailedMeetings] Found ${usersSnap.size} user documents`);
-        
+
         usersSnap.forEach((doc) => {
           const userData = doc.data();
           console.log(`[fetchDetailedMeetings] User doc ${doc.id}:`, { name: userData.name });
-          
+
           // Only match by document ID (handler_id should be the document ID)
           if (batch.includes(doc.id)) {
             // Only use 'name' property, fallback to 'Unknown'
@@ -2290,13 +2348,13 @@ export const fetchDetailedMeetings = async (options: FetchMetricsOptions): Promi
         });
       }
     }
-    
+
     // Add coordinator names to meeting records
     const enrichedResult = result.map((meeting: any) => ({
       ...meeting,
       coordinatorName: coordinatorNamesMap.get(meeting.handler_id) || 'Unknown'
     }));
-    
+
     console.log(`[fetchDetailedMeetings] Found ${enrichedResult.length} meetings with coordinator names`);
     return enrichedResult;
   } catch (error) {
@@ -2311,7 +2369,7 @@ export const fetchDetailedMeetings = async (options: FetchMetricsOptions): Promi
 export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promise<any[]> => {
   try {
     console.log('[fetchDetailedMembers] Fetching with options:', options);
-    
+
     const slpActivityCollection = collection(db, 'slp-activity');
     let baseQuery1 = query(slpActivityCollection, where('form_type', '==', 'members'));
     let baseQuery2 = query(slpActivityCollection, where('type', '==', 'members'));
@@ -2325,17 +2383,17 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
     // Add date filter if provided - members use createdAt field with epoch ms format (to match getHierarchicalMemberActivity)
     if (options.dateRange) {
       console.log('[fetchDetailedMembers] Applying date filter:', options.dateRange);
-      
+
       // Use UTC boundaries to ensure full 24-hour coverage regardless of timezone
       const startDateObj = new Date(`${options.dateRange.startDate}T00:00:00.000Z`);
       const endDateObj = new Date(`${options.dateRange.endDate}T23:59:59.999Z`);
       const startEpochMs = startDateObj.getTime();
       const endEpochMs = endDateObj.getTime();
-      
+
       console.log(`[fetchDetailedMembers] Date filter range: ${startEpochMs} to ${endEpochMs}`);
       console.log(`[fetchDetailedMembers] Start date: ${startDateObj.toISOString()}`);
       console.log(`[fetchDetailedMembers] End date: ${endDateObj.toISOString()}`);
-      
+
       baseQuery1 = query(baseQuery1, where('createdAt', '>=', startEpochMs), where('createdAt', '<=', endEpochMs), orderBy('createdAt', 'desc'));
       baseQuery2 = query(baseQuery2, where('createdAt', '>=', startEpochMs), where('createdAt', '<=', endEpochMs), orderBy('createdAt', 'desc'));
     } else {
@@ -2347,10 +2405,10 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
     // Execute queries with assembly chunking to handle >10 assembly limit
     let snap1Results = [];
     let snap2Results = [];
-    
+
     if (options.assemblies && options.assemblies.length > 0) {
       const uniqueAssemblies = [...new Set(options.assemblies)];
-      
+
       if (uniqueAssemblies.length <= 10) {
         // Single query for <=10 assemblies
         const query1WithAssemblies = query(baseQuery1, where('assembly', 'in', uniqueAssemblies));
@@ -2364,24 +2422,24 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
         for (let i = 0; i < uniqueAssemblies.length; i += 10) {
           chunks.push(uniqueAssemblies.slice(i, i + 10));
         }
-        
+
         console.log(`[fetchDetailedMembers] Chunking ${uniqueAssemblies.length} assemblies into ${chunks.length} queries`);
-        
+
         const query1Promises = chunks.map(chunk => {
           const chunkQuery = query(baseQuery1, where('assembly', 'in', chunk));
           return getDocs(chunkQuery);
         });
-        
+
         const query2Promises = chunks.map(chunk => {
           const chunkQuery = query(baseQuery2, where('assembly', 'in', chunk));
           return getDocs(chunkQuery);
         });
-        
+
         const [query1Results, query2Results] = await Promise.all([
           Promise.all(query1Promises),
           Promise.all(query2Promises)
         ]);
-        
+
         snap1Results = query1Results;
         snap2Results = query2Results;
       }
@@ -2394,14 +2452,14 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
     // Calculate total document counts from all result snapshots
     const totalSnap1Docs = snap1Results.reduce((total, snap) => total + snap.size, 0);
     const totalSnap2Docs = snap2Results.reduce((total, snap) => total + snap.size, 0);
-    
+
     console.log(`[fetchDetailedMembers] Query 1 (form_type='members') returned: ${totalSnap1Docs} documents`);
     console.log(`[fetchDetailedMembers] Query 2 (type='members') returned: ${totalSnap2Docs} documents`);
-    
+
     const membersMap = new Map();
     let documentsWithoutCreatedAt = 0;
     let documentsOutsideRange = 0;
-    
+
     // Process all snap1 results
     snap1Results.forEach((snap) => {
       snap.forEach((doc) => {
@@ -2423,7 +2481,7 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
         }
       });
     });
-    
+
     // Process all snap2 results
     snap2Results.forEach((snap) => {
       snap.forEach((doc) => {
@@ -2451,16 +2509,16 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
     console.log(`[fetchDetailedMembers] Documents outside date range: ${documentsOutsideRange}`);
 
     const result = Array.from(membersMap.values());
-    
+
     // Debug parentVertical filtering
     const beforeShaktiFilter = result.length;
     const filteredResult = result.filter((doc: any) => doc.parentVertical !== 'shakti-abhiyaan');
     const shaktiFiltered = beforeShaktiFilter - filteredResult.length;
-    
+
     console.log(`[fetchDetailedMembers] Before shakti filter: ${beforeShaktiFilter}`);
     console.log(`[fetchDetailedMembers] Shakti documents filtered out: ${shaktiFiltered}`);
     console.log(`[fetchDetailedMembers] Final result count: ${filteredResult.length}`);
-    
+
     // Sample a few documents for debugging
     if (filteredResult.length > 0) {
       console.log('[fetchDetailedMembers] Sample documents:');
@@ -2468,26 +2526,26 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
         console.log(`  ${index + 1}. ID: ${doc.id}, createdAt: ${doc.createdAt}, date: ${new Date(doc.createdAt).toISOString()}`);
       });
     }
-    
+
     // Enrich with coordinator names (SLP names from wtm-slp collection)
     const coordinatorNamesMap = new Map<string, string>();
     const uniqueHandlerIds = [...new Set(filteredResult.map((member: any) => member.handler_id).filter(Boolean))];
-    
+
     if (uniqueHandlerIds.length > 0) {
       console.log(`[fetchDetailedMembers] Looking up ${uniqueHandlerIds.length} unique handler IDs for SLP names`);
-      
+
       // Handle Firebase 'IN' query limit of 30 by batching
       const batchSize = 30;
       for (let i = 0; i < uniqueHandlerIds.length; i += batchSize) {
         const batch = uniqueHandlerIds.slice(i, i + batchSize);
-        
+
         // Look up SLP names from wtm-slp collection using document IDs
         const wtmSlpCollection = collection(db, 'wtm-slp');
         const wtmSlpQuery = query(wtmSlpCollection, where(documentId(), 'in', batch));
         const wtmSlpSnap = await getDocs(wtmSlpQuery);
-        
-        console.log(`[fetchDetailedMembers] Batch ${Math.floor(i/batchSize) + 1}: Found ${wtmSlpSnap.size} SLP records for ${batch.length} handler IDs`);
-        
+
+        console.log(`[fetchDetailedMembers] Batch ${Math.floor(i / batchSize) + 1}: Found ${wtmSlpSnap.size} SLP records for ${batch.length} handler IDs`);
+
         wtmSlpSnap.forEach((doc) => {
           const data = doc.data();
           const slpName = data.name || data.recommendedPersonName || doc.id;
@@ -2495,16 +2553,16 @@ export const fetchDetailedMembers = async (options: FetchMetricsOptions): Promis
           console.log(`[fetchDetailedMembers] Mapped handler_id ${doc.id} to SLP name: ${slpName}`);
         });
       }
-      
+
       console.log(`[fetchDetailedMembers] Successfully mapped ${coordinatorNamesMap.size} handler IDs to SLP names`);
     }
-    
+
     // Add coordinator names to member records
     const enrichedResult = filteredResult.map((member: any) => ({
       ...member,
       coordinatorName: coordinatorNamesMap.get(member.handler_id) || member.handler_id || 'Unknown'
     }));
-    
+
     return enrichedResult;
   } catch (error) {
     console.error('[fetchDetailedMembers] Error:', error);
@@ -2534,7 +2592,7 @@ export const fetchDetailedLeaders = async (options: FetchMetricsOptions): Promis
 export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise<any[]> => {
   try {
     console.log('[fetchDetailedVideos] Fetching with options:', options);
-    
+
     const slpActivityCollection = collection(db, 'slp-activity');
     let baseQuery1 = query(slpActivityCollection, where('form_type', '==', 'local-issue-video'));
     let baseQuery2 = query(slpActivityCollection, where('type', '==', 'local-issue-video'));
@@ -2549,9 +2607,9 @@ export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise
     if (options.dateRange) {
       const startDateStr = options.dateRange.startDate; // Already in YYYY-MM-DD format
       const endDateStr = options.dateRange.endDate;     // Already in YYYY-MM-DD format
-      
+
       console.log('[fetchDetailedVideos] Applying Firestore date filter:', startDateStr, 'to', endDateStr);
-      
+
       baseQuery1 = query(baseQuery1, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr), orderBy('date_submitted', 'desc'));
       baseQuery2 = query(baseQuery2, where('date_submitted', '>=', startDateStr), where('date_submitted', '<=', endDateStr), orderBy('date_submitted', 'desc'));
     } else {
@@ -2563,10 +2621,10 @@ export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise
     // Execute queries with assembly chunking to handle >10 assembly limit
     let snap1Results = [];
     let snap2Results = [];
-    
+
     if (options.assemblies && options.assemblies.length > 0) {
       const uniqueAssemblies = [...new Set(options.assemblies)];
-      
+
       if (uniqueAssemblies.length <= 10) {
         // Single query for <=10 assemblies
         const query1WithAssemblies = query(baseQuery1, where('assembly', 'in', uniqueAssemblies));
@@ -2580,24 +2638,24 @@ export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise
         for (let i = 0; i < uniqueAssemblies.length; i += 10) {
           chunks.push(uniqueAssemblies.slice(i, i + 10));
         }
-        
+
         console.log(`[fetchDetailedVideos] Chunking ${uniqueAssemblies.length} assemblies into ${chunks.length} queries`);
-        
+
         const query1Promises = chunks.map(chunk => {
           const chunkQuery = query(baseQuery1, where('assembly', 'in', chunk));
           return getDocs(chunkQuery);
         });
-        
+
         const query2Promises = chunks.map(chunk => {
           const chunkQuery = query(baseQuery2, where('assembly', 'in', chunk));
           return getDocs(chunkQuery);
         });
-        
+
         const [query1Results, query2Results] = await Promise.all([
           Promise.all(query1Promises),
           Promise.all(query2Promises)
         ]);
-        
+
         snap1Results = query1Results;
         snap2Results = query2Results;
       }
@@ -2607,16 +2665,16 @@ export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise
       snap1Results = [snap1];
       snap2Results = [snap2];
     }
-    
+
     // Calculate total document counts from all result snapshots
     const totalSnap1Docs = snap1Results.reduce((total, snap) => total + snap.size, 0);
     const totalSnap2Docs = snap2Results.reduce((total, snap) => total + snap.size, 0);
-    
+
     console.log(`[fetchDetailedVideos] Query 1 (form_type='local-issue-video') returned: ${totalSnap1Docs} documents`);
     console.log(`[fetchDetailedVideos] Query 2 (type='local-issue-video') returned: ${totalSnap2Docs} documents`);
-    
+
     const videosMap = new Map();
-    
+
     // Process all snap1 results
     snap1Results.forEach((snap) => {
       snap.forEach((doc) => {
@@ -2625,7 +2683,7 @@ export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise
         }
       });
     });
-    
+
     // Process all snap2 results
     snap2Results.forEach((snap) => {
       snap.forEach((doc) => {
@@ -2637,26 +2695,26 @@ export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise
 
     const result = Array.from(videosMap.values());
     const filteredResult = result.filter((doc: any) => doc.parentVertical !== 'shakti-abhiyaan');
-    
+
     // Enrich with coordinator names (SLP names from shakti-abhiyaan collection)
     const coordinatorNamesMap = new Map<string, string>();
     const uniqueHandlerIds = [...new Set(filteredResult.map((member: any) => member.handler_id).filter(Boolean))];
-    
+
     if (uniqueHandlerIds.length > 0) {
       // Handle Firebase 'IN' query limit of 30 by batching
       const batchSize = 30;
       for (let i = 0; i < uniqueHandlerIds.length; i += batchSize) {
         const batch = uniqueHandlerIds.slice(i, i + batchSize);
-        
+
         // Look up SLP names from shakti-abhiyaan collection structure
         const shaktiCollection = collection(db, 'shakti-abhiyaan');
         const shaktiQuery = query(shaktiCollection, where('form_type', '==', 'add-data'));
         const shaktiSnap = await getDocs(shaktiQuery);
-        
+
         shaktiSnap.forEach((doc) => {
           const data = doc.data();
           const coordinators = data.coveredAssemblyCoordinators || [];
-          
+
           coordinators.forEach((coord: any) => {
             if (coord.slps) {
               coord.slps.forEach((slp: any) => {
@@ -2671,12 +2729,12 @@ export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise
             }
           });
         });
-        
+
         // Also try to look up from wtm-slp collection for meeting-based SLPs
         const wtmSlpCollection = collection(db, 'wtm-slp');
         const wtmSlpQuery = query(wtmSlpCollection, where('handler_id', 'in', batch));
         const wtmSlpSnap = await getDocs(wtmSlpQuery);
-        
+
         wtmSlpSnap.forEach((doc) => {
           const data = doc.data();
           if (data.name && batch.includes(data.handler_id)) {
@@ -2685,13 +2743,13 @@ export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise
         });
       }
     }
-    
+
     // Add coordinator names to video records
     const enrichedResult = filteredResult.map((video: any) => ({
       ...video,
       coordinatorName: coordinatorNamesMap.get(video.handler_id) || video.handler_id || 'Unknown'
     }));
-    
+
     console.log(`[fetchDetailedVideos] Found ${enrichedResult.length} videos with coordinator names`);
     return enrichedResult;
   } catch (error) {
@@ -2705,7 +2763,7 @@ export const fetchDetailedVideos = async (options: FetchMetricsOptions): Promise
  */
 export const fetchDetailedData = async (metricType: string, options: FetchMetricsOptions): Promise<any[]> => {
   console.log(`[fetchDetailedData] Fetching ${metricType} with options:`, options);
-  
+
   switch (metricType) {
     case 'meetings':
       return fetchDetailedMeetings(options);
@@ -2776,7 +2834,39 @@ export const fetchDetailedDataPaged = async (
     if (supported.has(metricType)) {
       const res = await serverPagedFetchForMetric(metricType, options, pageSize, cursorBefore);
       // If server paging yielded items, return directly
-      if (res) return res;
+      if (res) {
+        // Enrich with coordinator names if needed (since serverPagedFetchForMetric returns raw data)
+        if (metricType === 'nukkadSlp') {
+          const ids = [...new Set(res.items.map((r: any) => r.handler_id).filter(Boolean))];
+          console.log('[fetchDetailedDataPaged] Enriching nukkadSlp names for IDs:', ids);
+          const names = await resolveSlpNamesFromWtmByIds(ids);
+          res.items = res.items.map((doc: any) => ({
+            ...doc,
+            coordinatorName: names.get(doc.handler_id) || doc.handler_id || 'Unknown'
+          }));
+        } else if (metricType === 'nukkadAc') {
+          const ids = [...new Set(res.items.map((r: any) => r.handler_id).filter(Boolean))];
+          let names: Map<string, string>;
+
+          if (options.vertical === 'shakti-abhiyaan') {
+            const [shaktiNames, userNames] = await Promise.all([
+              resolveShaktiUserNamesByIds(ids),
+              resolveUserNamesByIds(ids)
+            ]);
+            names = new Map([...userNames, ...shaktiNames]);
+            console.log(`[fetchDetailedDataPaged] Shakti AC enrichment: Resolved ${shaktiNames.size} from shakti-users, ${userNames.size} from users`);
+          } else {
+            names = await resolveUserNamesByIds(ids);
+          }
+
+          res.items = res.items.map((doc: any) => ({
+            ...doc,
+            coordinatorName: names.get(doc.handler_id) || doc.handler_id || 'Unknown'
+          }));
+        }
+
+        return res;
+      }
     }
   } catch (err) {
     console.warn('[fetchDetailedDataPaged] Server-side paging failed, falling back:', err);
@@ -2797,7 +2887,7 @@ export const fetchDetailedDataPaged = async (
     // - { seconds: number, nanoseconds: number }
     if (typeof val === 'object') {
       if (typeof (val as any).toDate === 'function') {
-        try { return (val as any).toDate().getTime(); } catch {}
+        try { return (val as any).toDate().getTime(); } catch { }
       }
       if (typeof (val as any).seconds === 'number') {
         return (val as any).seconds * 1000;
@@ -2899,7 +2989,7 @@ const serverPagedFetchForMetric = async (
   if (!cfg) return null;
 
   // Normalize end bound using cursorBefore if provided
-  const convertMsToDateStr = (ms: number) => new Date(ms).toISOString().slice(0,10);
+  const convertMsToDateStr = (ms: number) => new Date(ms).toISOString().slice(0, 10);
   let endBound: string | number | undefined = undefined;
   if (cursorBefore !== undefined && cursorBefore !== null) {
     endBound = typeof cursorBefore === 'number' ? (cfg.dateKind === 'string' ? convertMsToDateStr(cursorBefore) : cursorBefore) : cursorBefore;

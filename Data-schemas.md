@@ -121,7 +121,8 @@ UI & Data Flow:
 - Detailed view: `NukkadMeetingsList.tsx`
 - Photos: Nukkad detailed list shows a "View Photos" action. Images are normalized to `image_links` from any of: `image_links`, `imageLinks`, `photoUrls`, `photo_urls`, `photos`, `images`.
 - Coordinator names:
-  - AC Nukkad: resolved via `users` collection (existing behavior)
+  - AC Nukkad (WTM): resolved via `users` collection only
+  - AC Nukkad (Shakti): resolved via BOTH `shakti-users` (primary) and `users` (fallback) collections
   - SLP Nukkad: resolved ONLY via `wtm-slp` using SLP document IDs (no `users` lookup)
 - Fetchers:
   - AC: `getHierarchicalNukkadAc()` + `fetchDetailedNukkadAc()`

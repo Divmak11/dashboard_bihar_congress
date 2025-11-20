@@ -21,6 +21,9 @@
 /build
 
 
+#agent
+/.agent
+
 # misc
 .DS_Store
 *.pem

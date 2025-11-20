@@ -113,4 +113,9 @@ Use this snippet for the Short Log below:
 
 - [2025-11-14 20:03 IST] Change: Added Training home-card summary metrics with caching (sessions, attendees, assemblies, zones, WTM vs Shakti). Files: `app/home/page.tsx`, `app/utils/fetchTrainingData.ts`, `app/utils/cacheUtils.ts`, `models/trainingTypes.ts`. Docs: [Verticals.md](../Verticals.md#training-data-vertical), [Architecture.md](../Architecture.md#home-cards--caching).
 
+- [2025-11-20 12:17 IST] Fix: Nukkad Meetings (AC) coordinator names for Shakti Abhiyaan now resolved correctly from `shakti-users` collection. Added `resolveShaktiUserNamesByIds()` helper; updated `fetchDetailedNukkadAc()` to query both `shakti-users` (primary) and `users` (fallback) for Shakti vertical. Files: `app/utils/fetchHierarchicalData.ts`. Docs: [Data-schemas.md](../Data-schemas.md#nukkad-meetings-new).
+- [2025-11-20 13:20 IST] Fix: Nukkad Meetings (SLP) coordinator names now resolved in paged fetcher. Updated `fetchDetailedDataPaged` to enrich `nukkadSlp` and `nukkadAc` items with names using `resolveSlpNamesFromWtmByIds` and `resolveShaktiUserNamesByIds`/`resolveUserNamesByIds` respectively. Previously, the paged fetcher returned raw data without name resolution. Files: `app/utils/fetchHierarchicalData.ts`.
+
+- [2025-11-20 12:32 IST] Fix: Nukkad Meetings (SLP) coordinator names now show 'Unknown' instead of document IDs when name fields are missing. Updated `resolveSlpNamesFromWtmByIds()` to always set map entry; added console warning for debugging. Files: `app/utils/fetchHierarchicalData.ts`.
+
 ---
